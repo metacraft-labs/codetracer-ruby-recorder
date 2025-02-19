@@ -210,9 +210,4 @@ File.write(trace_metadata_path, metadata_json_output)
 File.write(trace_paths_path, paths_json_output)
 
 $stderr.write("=================================================\n")
-$stderr.write("""
-codetracer ruby tracer: wrote trace to 
-#{trace_path} and
-#{trace_metadata_path} and
-#{trace_paths_path}
-")
+$stderr.write("codetracer ruby tracer: saved trace to #{trace_folder}\n")
