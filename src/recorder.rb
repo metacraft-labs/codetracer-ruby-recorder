@@ -306,7 +306,7 @@ NIL_VALUE = ValueRecord.new(kind: 'None', type_id: NO_TYPE_INDEX)
 
 $VALUE_COUNT = 0
 
-def to_value(v, depth=0)
+def to_value(v, depth=2)
   if depth <= 0
     return NIL_VALUE
   end
