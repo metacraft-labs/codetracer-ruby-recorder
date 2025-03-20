@@ -78,12 +78,11 @@ end
 def load_variables(binding)
   if $trace.tracing
     # $stdout.write binding.local_variables
-    # binding.local_variables.map do |name|
-    #   v = binding.local_variable_get(name)
-    #   out = to_value(v)
-    #   [name, out]
-    # end
-    []
+    binding.local_variables.map do |name|
+      v = binding.local_variable_get(name)
+      out = to_value(v)
+      [name, out]
+    end
   else
     []
   end
@@ -92,18 +91,17 @@ end
 
 $trace.t1 = TracePoint.new(:call, :c_call, :b_call) do |tp|
   if tp.path.end_with?('.rb') && !tp.path.include?('lib/ruby/') && !tp.path.include?('gems/') && !tp.path.end_with?("trace.rb") && !tp.path.end_with?("recorder.rb") && tp.event == :call
-    # args_1 = tp.parameters.map do |(kind, name)|
-    #   [name.to_sym, to_value(tp.binding.local_variable_get(name))]
-    # end
+    args_1 = tp.parameters.map do |(kind, name)|
+      [name.to_sym, to_value(tp.binding.local_variable_get(name))]
+    end
     # can be class or module
     module_name = tp.self.class.name
-    args = []
-    # begin
-    #   args = [[:self, raw_obj_value(tp.self.to_s, module_name)]] + args_1
-    # rescue
-    #   # $stderr.write("error args\n")
-    #   args = []
-    # end
+    begin
+      args = [[:self, raw_obj_value(tp.self.to_s, module_name)]] + args_1
+    rescue
+      # $stderr.write("error args\n")
+      args = []
+    end
     args.each do |(name, value)|
       $trace.register_variable(name, value)
     end
@@ -131,7 +129,7 @@ $trace.t2 = TracePoint.new(:return) do |tp|
     # from functions we dont track: e.g. c_call?
     # ignore for now
   else
-    return_value = NIL_VALUE # to_value(tp.return_value)
+    return_value = to_value(tp.return_value)
     $trace.register_step(tp.path, tp.lineno)
     # return value support inspired by existing IDE-s/envs like 
     # Visual Studio/JetBrains IIRC
