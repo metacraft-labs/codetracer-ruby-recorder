@@ -167,8 +167,9 @@ class TraceRecord
   def register_step(path, line)
     step_record = StepRecord.new(self.path_id(path), line)
     @events << [:Step, step_record] # because we convert later to {Step: step-record}: default enum json format in serde/rust
+    # $stderr.write path, "\n"
     $STEP_COUNT += 1
-    if $STEP_COUNT % 100_000 == 0
+    if $STEP_COUNT % 1_000 == 0
       $stdout.write "steps ", $STEP_COUNT, "\n"
     end
   end
@@ -281,8 +282,8 @@ def sequence_value(elements)
 end
 
 # fields: Array of [String, TypeRecord]
-def struct_value(class_name, field_names, field_values)
-  field_ct_values = field_values.map { |value| to_value(value) }
+def struct_value(class_name, field_names, field_values, depth)
+  field_ct_values = field_values.map { |value| to_value(value, depth - 1) }
   specific_info = {
     kind: "Struct",
     fields: field_names.zip(field_ct_values).map do |(name, value)|
@@ -303,7 +304,16 @@ NOT_SUPPORTED_VALUE = ValueRecord.new(kind: 'Error', type_id: NO_TYPE_INDEX, msg
 NIL_VALUE = ValueRecord.new(kind: 'None', type_id: NO_TYPE_INDEX)
 
 
-def to_value(v)
+$VALUE_COUNT = 0
+
+def to_value(v, depth=0)
+  if depth <= 0
+    return NIL_VALUE
+  end
+  $VALUE_COUNT += 1
+  if $VALUE_COUNT % 10_000 == 0
+    $stderr.write("value #{$VALUE_COUNT}\n")
+  end
   case v
   when Integer
     int_value(v)
@@ -319,14 +329,14 @@ def to_value(v)
     NIL_VALUE
   when Array
     sequence_value(v.map do |element|
-      to_value(element)
+      to_value(element, depth - 1)
     end)
   when Object
     field_names = v.instance_variables.map { |name| name.to_s[1..] }
     field_values = v.instance_variables.map do |name|
       v.instance_variable_get(name)
     end
-    struct_value(v.class.name, field_names, field_values)
+    struct_value(v.class.name, field_names, field_values, depth)
   else
     NOT_SUPPORTED_VALUE
   end
