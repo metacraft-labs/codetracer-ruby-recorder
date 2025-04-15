@@ -101,6 +101,8 @@ NONE = 30
 
 NONE_TYPE_SPECIFIC_INFO = {kind: 'None'}
 
+$STEP_COUNT = 0
+
 class TraceRecord
   # part of the final trace
   attr_accessor :steps, :calls, :variables, :events, :types, :flow, :paths
@@ -242,17 +244,50 @@ class TraceRecord
     # locals
     {}
   end
+
+  def serialize(program)
+    if ENV["CODETRACER_RUBY_TRACER_DEBUG"] == "1"
+      pp @events
+    end
+
+    output = @events.map { |kind, event| [[kind, event.to_data_for_json]].to_h }
+
+    metadata_output = {
+      program: program,
+      args: ARGV,
+      workdir: Dir.pwd
+    }
+    # pp output
+    
+    json_output = JSON.pretty_generate(output)
+    metadata_json_output = JSON.pretty_generate(metadata_output)
+    paths_json_output = JSON.pretty_generate($codetracer_record.paths)
+    
+    trace_path = ENV["CODETRACER_DB_TRACE_PATH"] || "trace.json"
+    trace_folder = File.dirname(trace_path)
+    trace_metadata_path = File.join(trace_folder , "trace_metadata.json")
+    trace_paths_path = File.join(trace_folder , "trace_paths.json")
+    
+    # p trace_path, json_output
+    File.write(trace_path, json_output)
+    File.write(trace_metadata_path, metadata_json_output)
+    File.write(trace_paths_path, paths_json_output)
+    
+    $stderr.write("=================================================\n")
+    $stderr.write("codetracer ruby tracer: saved trace to #{trace_folder}\n")
+  end
 end
 
 ##################
 
-$trace = TraceRecord.new
+record = TraceRecord.new
+$codetracer_record = record
 
-INT_TYPE_INDEX = $trace.load_type_id(INT, "Integer")
-STRING_TYPE_INDEX = $trace.load_type_id(STRING, "String")
-BOOL_TYPE_INDEX = $trace.load_type_id(BOOL, "Bool")
-SYMBOL_TYPE_INDEX = $trace.load_type_id(STRING, "Symbol")
-NO_TYPE_INDEX = $trace.load_type_id(ERROR, "No type")
+INT_TYPE_INDEX = record.load_type_id(INT, "Integer")
+STRING_TYPE_INDEX = record.load_type_id(STRING, "String")
+BOOL_TYPE_INDEX = record.load_type_id(BOOL, "Bool")
+SYMBOL_TYPE_INDEX = record.load_type_id(STRING, "Symbol")
+NO_TYPE_INDEX = record.load_type_id(ERROR, "No type")
 
 # IMPORTANT: sync with common_types.nim / runtime_tracing EventLogKind
 EVENT_KIND_WRITE = 0
@@ -272,12 +307,12 @@ def symbol_value(text)
 end
 
 def raw_obj_value(raw, class_name)
-  ti = $trace.load_type_id(RAW, class_name)
+  ti = $codetracer_record.load_type_id(RAW, class_name)
   ValueRecord.new(kind: 'Raw', type_id: ti, r: raw)
 end
 
 def sequence_value(elements)
-  ti = $trace.load_type_id(SEQ, "Array")
+  ti = $codetracer_record.load_type_id(SEQ, "Array")
   ValueRecord.new(kind: 'Sequence', type_id: ti, elements: elements)
 end
 
@@ -294,7 +329,7 @@ def struct_value(class_name, field_names, field_values, depth)
   # fields can change (dynamic language)
   # we can still reuse a single type most of the time
   # or make it more flexible, but TODO for now
-  ti = $trace.register_struct_type(class_name, specific_info)
+  ti = $codetracer_record.register_struct_type(class_name, specific_info)
   ValueRecord.new(kind: 'Struct', type_id: ti, field_values: field_ct_values)
 end
 
@@ -306,7 +341,9 @@ NIL_VALUE = ValueRecord.new(kind: 'None', type_id: NO_TYPE_INDEX)
 
 $VALUE_COUNT = 0
 
-def to_value(v, depth=2)
+MAX_COUNT = 5000
+
+def to_value(v, depth=10)
   if depth <= 0
     return NIL_VALUE
   end
@@ -328,10 +365,16 @@ def to_value(v, depth=2)
   when nil
     NIL_VALUE
   when Array
-    sequence_value(v.map do |element|
-      to_value(element, depth - 1)
-    end)
+    if v.count > MAX_COUNT
+      # $stderr.write "array count ", v.count, "\n"
+      NOT_SUPPORTED_VALUE # TODO: non-expanded/other hint?
+    else
+      sequence_value(v.map do |element|
+        to_value(element, depth - 1)
+      end)
+    end
   when Object
+    # NOT_SUPPORTED_VALUE
     field_names = v.instance_variables.map { |name| name.to_s[1..] }
     field_values = v.instance_variables.map do |name|
       v.instance_variable_get(name)
