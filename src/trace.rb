@@ -6,7 +6,7 @@ require 'json'
 require_relative 'recorder'
 
 if ARGV[0].nil?
-  $stderr.puts("ruby trace.rb <program>")
+  $stderr.puts("ruby trace.rb <program> [<args>]")
   exit(1)
 end
 
@@ -23,17 +23,153 @@ program = ARGV[0]
 # however this seems as a risky solution, as it clears global gem state!
 # BE CAREFUL if you have other ruby projects/data there!
 
-$trace.register_call("", 1, "<top-level>", [])
-
-$STEP_COUNT = 0
-
 # override some of the IO methods to record them for event log
 module Kernel
   alias :old_p :p
   alias :old_puts :puts
+  alias :old_print :print
 
   def p(*args)
-    if $trace.tracing
+    if $tracer.tracing
+      $tracer.deactivate
+      $tracer.record_event(caller, args.join("\n"))
+      $tracer.activate
+    end
+    old_p(*args)
+  end
+
+  def puts(*args)
+    if $tracer.tracing
+      $tracer.deactivate
+      $tracer.record_event(caller, args.join("\n"))
+      $tracer.activate
+    end
+    old_puts(*args)
+  end
+
+  def print(*args)
+    if $tracer.tracing
+      $tracer.deactivate
+      $tracer.record_event(caller, args.join("\n"))
+      $tracer.activate
+    end
+    old_print(*args)
+  end
+
+end
+
+# class IO
+#   alias :old_write :write
+
+#   def write(name, content="", offset=0, opt=nil)
+#     if $tracer.tracing
+#       $tracer.deactivate
+#       $tracer.record_event(caller, content)
+#       $tracer.activate
+#     end
+#     old_write(name, content, offset, opt)
+#   end
+# end
+
+class Tracer
+  attr_accessor :calls_tracepoint, :return_tracepoint,
+                :line_tracepoint, :raise_tracepoint, :tracing
+
+  attr_reader :ignore_list, :record
+
+  def initialize(record)
+    @tracing = false
+    @trace_stopped = false
+    @record = record
+    @ignore_list = []
+  end
+
+  def stop_tracing
+    @trace_stopped = true
+    @tracing = false
+  end
+
+  def tracks_call?(tp)
+    tp.path.end_with?('.rb') && !@ignore_list.any? { |path| tp.path.include?(path) }
+  end
+
+  def ignore(path)
+    @ignore_list << path
+  end
+
+  def prepare_args(tp)
+    args_after_self = tp.parameters.map do |(kind, name)|
+      value = if tp.binding.nil? || name.nil?
+          NIL_VALUE
+        else
+          begin
+            to_value(tp.binding.local_variable_get(name))
+          rescue
+            NIL_VALUE
+          end
+        end
+      [name.to_sym, value]
+    end
+
+    # can be class or module
+    module_name = tp.self.class.name
+    begin
+      args = [[:self, raw_obj_value(tp.self.to_s, module_name)]] + args_after_self
+    rescue
+      # $stderr.write("error args\n")
+      args = []
+    end
+
+    args.each do |(name, value)|
+      @record.register_variable(name, value)
+    end
+
+    arg_records = args.map do |(name, value)|
+      [@record.load_variable_id(name), value]
+    end
+
+    arg_records
+  end
+
+  def record_call(tp)
+    if self.tracks_call?(tp)
+      module_name = tp.self.class.name
+      method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
+      method_name = "#{method_name_prefix}#{tp.method_id}"
+
+      old_puts "call #{method_name} with #{tp.parameters}"
+
+      arg_records = prepare_args(tp)
+
+      @record.register_step(tp.path, tp.lineno)
+      @record.register_call(tp.path, tp.lineno, method_name, arg_records)
+    else
+    end
+  end
+
+  def record_return(tp)
+    if self.tracks_call?(tp)
+      old_puts "return"
+      return_value = to_value(tp.return_value)
+      @record.register_step(tp.path, tp.lineno)
+      # return value support inspired by existing IDE-s/envs like 
+      # Visual Studio/JetBrains IIRC
+      # (Nikola Gamzakov showed me some examples)
+      @record.register_variable("<return_value>", return_value)
+      @record.events << [:Return, ReturnRecord.new(return_value)]
+    end
+
+    def record_step(tp)
+      if self.tracks_call?(tp)
+        @record.register_step(tp.path, tp.lineno)
+        variables = self.load_variables(tp.binding)
+        variables.each do |(name, value)|
+          @record.register_variable(name, value)
+        end
+      end
+    end
+
+    def record_event(caller, content)
       # reason/effect are on different steps:
       # reason: before `p` is called;
       # effect: now, when the args are evaluated 
@@ -42,126 +178,96 @@ module Kernel
       begin
         location = caller[0].split[0].split(':')[0..1]
         path, line = location[0], location[1].to_i
-        $trace.register_step(path, line)
+        @record.register_step(path, line)
       rescue
         # ignore for now: we'll just jump to last previous step 
         # which might be from args
       end
       # start is last step on this level: log for reason: the previous step on this level 
-      $trace.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, args.join("\n"))]
+      @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content)]
     end
-    old_p(*args)
+
+    def record_exception(tp)
+      @record.events << [:Event, RecordEvent.new(EVENT_KIND_ERROR, tp.raised_exception.to_s)]
+    end
   end
 
-  def puts(*args)
-    if $trace.tracing
-      # reason/effect are on different steps:
-      # reason before `p` is called; effect now, when the args are evaluated which
-      # is after many calls/steps
-      # maybe add a step for this call
-      begin
-        location = caller[0].split[0].split(':')[0..1]
-        path, line = location[0], location[1].to_i
-        $trace.register_step(path, line)
-      rescue
-        # ignore for now: we'll just jump to last previous step 
-        # which might be from args
+  def activate
+    if !@trace_stopped
+      @calls_tracepoint.enable
+      @return_tracepoint.enable
+      @line_tracepoint.enable
+      @raise_tracepoint.enable
+      @tracing = true
+    end
+  end
+
+  def deactivate
+    @tracing = false
+    @calls_tracepoint.disable
+    @return_tracepoint.disable
+    @line_tracepoint.disable
+    @raise_tracepoint.disable
+  end
+
+  private
+  
+  def load_variables(binding)
+    if !binding.nil?
+      # $stdout.write binding.local_variables
+      binding.local_variables.map do |name|
+        v = binding.local_variable_get(name)
+        out = to_value(v)
+        [name, out]
       end
-      # start is last step on this level: log for reason: the previous step on this level 
-      $trace.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, args.join("\n"))]
+    else
+      []
     end
-    old_puts(*args)
-  end
+  end  
 end
 
 
-def load_variables(binding)
-  if $trace.tracing
-    # $stdout.write binding.local_variables
-    binding.local_variables.map do |name|
-      v = binding.local_variable_get(name)
-      out = to_value(v)
-      [name, out]
-    end
-  else
-    []
-  end
+$tracer = Tracer.new($codetracer_record)
+
+# also possible :c_call, :b_call: for now record ruby calls (:call)
+# c_call: c lang
+# b_call: block entry
+# https://rubyapi.org/3.4/o/tracepoint
+$tracer.calls_tracepoint = TracePoint.new(:call) do |tp|
+  $tracer.deactivate
+  $tracer.record_call(tp)
+  $tracer.activate
 end
 
-
-$trace.t1 = TracePoint.new(:call, :c_call, :b_call) do |tp|
-  if tp.path.end_with?('.rb') && !tp.path.include?('lib/ruby/') && !tp.path.include?('gems/') && !tp.path.end_with?("trace.rb") && !tp.path.end_with?("recorder.rb") && tp.event == :call
-    args_1 = tp.parameters.map do |(kind, name)|
-      [name.to_sym, to_value(tp.binding.local_variable_get(name))]
-    end
-    # can be class or module
-    module_name = tp.self.class.name
-    begin
-      args = [[:self, raw_obj_value(tp.self.to_s, module_name)]] + args_1
-    rescue
-      # $stderr.write("error args\n")
-      args = []
-    end
-    args.each do |(name, value)|
-      $trace.register_variable(name, value)
-    end
-
-    arg_records = args.map do |(name, value)|
-      [$trace.load_variable_id(name), value]
-    end
-
-    $trace.register_step(tp.path, tp.lineno)
-    
-    method_name_prefix = if module_name == 'Object'
-        ''
-      else 
-        "#{module_name}#"
-      end
-    method_name = "#{method_name_prefix}#{tp.method_id}"
-    $trace.register_call(tp.path, tp.lineno, method_name, arg_records)
-  else
-  end
+$tracer.return_tracepoint = TracePoint.new(:return) do |tp|
+  $tracer.deactivate
+  $tracer.record_return(tp)
+  $tracer.activate
 end
 
-$trace.t2 = TracePoint.new(:return) do |tp|
-  if !tp.path.end_with?('.rb') || tp.path.include?('lib/ruby/') || tp.path.include?('gems/') || tp.path.end_with?("trace.rb") || tp.path.end_with?("recorder.rb")
-    # TODO: is it possible that we match returns here
-    # from functions we dont track: e.g. c_call?
-    # ignore for now
-  else
-    return_value = to_value(tp.return_value)
-    $trace.register_step(tp.path, tp.lineno)
-    # return value support inspired by existing IDE-s/envs like 
-    # Visual Studio/JetBrains IIRC
-    # (Nikola showed me some examples)
-    $trace.register_variable("<return_value>", return_value)
-    $trace.events << [:Return, ReturnRecord.new(return_value)]
-  end
+$tracer.line_tracepoint = TracePoint.new(:line) do |tp|
+  $tracer.deactivate
+  $tracer.record_step(tp)
+  $tracer.activate
 end
 
-
-$trace.t3 = TracePoint.new(:line) do |tp|
-  if !tp.path.end_with?("trace.rb") && !tp.path.end_with?("recorder.rb") && !tp.path.include?('lib/ruby/') && !tp.path.include?('gems/') && tp.path.end_with?('.rb')
-    $trace.register_step(tp.path, tp.lineno)
-    variables = load_variables(tp.binding)
-    variables.each do |(name, value)|
-      $trace.register_variable(name, value)
-    end
-  end
+$tracer.raise_tracepoint = TracePoint.new(:raise) do |tp|
+  $tracer.deactivate
+  $tracer.record_exception(tp)
+  $tracer.activate
 end
 
-$trace.t4 =  TracePoint.new(:raise) do |tp|
-  $trace.events << [:Event, RecordEvent.new(EVENT_KIND_ERROR, tp.raised_exception.to_s)]
-end
-
-$trace.t1.enable
-$trace.t2.enable
-$trace.t3.enable
-$trace.t4.enable
-$trace.tracing = true
+$tracer.record.register_call("", 1, "<top-level>", [])
+$tracer.ignore('lib/ruby')
+$tracer.ignore('trace.rb')
+$tracer.ignore('recorder.rb')
+$tracer.ignore('<internal:')
+$tracer.ignore('gems/')
+  
 
 trace_args = ARGV
 ARGV = ARGV[1..-1]
+$tracer.activate
 begin
   Kernel.load(program)
 rescue Exception => e
@@ -181,38 +287,6 @@ rescue Exception => e
 end
 ARGV = trace_args
 
-$trace.tracing = false
-$trace.t1.disable
-$trace.t2.disable
-$trace.t3.disable
-$trace.t4.disable
+$tracer.stop_tracing
 
-if ENV["CODETRACER_RUBY_TRACER_DEBUG"] == "1"
-  pp $trace.events
-end
-
-output = $trace.events.map { |kind, event| [[kind, event.to_data_for_json]].to_h }
-
-metadata_output = {
-  program: program,
-  args: ARGV,
-  workdir: Dir.pwd
-}
-# pp output
-
-json_output = JSON.pretty_generate(output)
-metadata_json_output = JSON.pretty_generate(metadata_output)
-paths_json_output = JSON.pretty_generate($trace.paths)
-
-trace_path = ENV["CODETRACER_DB_TRACE_PATH"] || "trace.json"
-trace_folder = File.dirname(trace_path)
-trace_metadata_path = File.join(trace_folder , "trace_metadata.json")
-trace_paths_path = File.join(trace_folder , "trace_paths.json")
-
-# p trace_path, json_output
-File.write(trace_path, json_output)
-File.write(trace_metadata_path, metadata_json_output)
-File.write(trace_paths_path, paths_json_output)
-
-$stderr.write("=================================================\n")
-$stderr.write("codetracer ruby tracer: saved trace to #{trace_folder}\n")
+$tracer.record.serialize(program)
