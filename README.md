@@ -38,28 +38,32 @@ However, this is limited:
 
 For other languages, we've used a more deeply integrated approach: patching the interpreter or VM itself (e.g. Noir).
 
-### Patching the VM
+### Possible Alternative Approaches
 
-This can be a good approach for Ruby as well: it can let us record more precisely subvalues, assignments and subexpressions and to let
-some CodeTracer features work in a deeper/better way.
+#### Create a C extension for the VM, based on the `rb_add_event_hook2`
 
-One usually needs to add additional logic to places where new opcodes/lines are being ran, and to call entries/exits. Additionally
-tracking assignments can be a great addition, but it really depends on the interpreter internals.
+This would be a straigh-forward port of the current code, but developed as a native extension (e.g. in C/C++ or Rust). The expected speedup will be significant.
 
-### Filtering
+#### Patching the VM
 
-It would be useful to have a way to record in detail only certain periods of the program, or certain functions or modules: 
+This approach may provide more depth: it can let us record more precisely calculated sub-expressions, assignments to record fields and other details required for the full CodeTracer experience.
+
+The patching can be done either directly in the source code of the VM or through a binary instrumentation framework, such as Frida. The existing [ruby-trace](https://www.nccgroup.com/us/research-blog/tool-update-ruby-trace-a-low-level-tracer-for-ruby/) project provides an example for this.
+
+#### Filtering
+
+It would be useful to have a way to record only certain intervals within the program execution, or certain functions or modules: 
 we plan on expanding the [trace format](https://github.com/metacraft-labs/runtime_tracing/) and CodeTracer' support, so that this is possible. It would let one be able to record interesting
 parts of even long-running or more heavy programs.
 
-### Cooperation
+### Contributing
 
-We'd be very happy if the community finds this useful, and if anyone wants to
+We'd be very happy if the community finds this useful, and if anyone wants to:
 
-* Cooperate with us on supporting/advancing the Ruby support or CodeTracer 
-* Contribute Ruby support or anything else to this trace or to [CodeTracer](https://github.com/metacraft-labs/CodeTracer)
-* Just discuss various ideas with us: here, in the issue tracker, or in our [discord](https://discord.gg/qSDCAFMP)
-* Use and test the ruby support or CodeTracer
+* Use and test the Ruby support or CodeTracer.
+* Cooperate with us on supporting/advancing the Ruby support of [CodeTracer](https://github.com/metacraft-labs/CodeTracer).
+* Provide feedback and discuss alternative implementation ideas: in the issue tracker, or in our [discord](https://discord.gg/qSDCAFMP).
+* Provide [sponorship](https://opencollective.com/codetracer), so we can hire dedicated full-time maintainers for this project.
 
 ### Legal info
 
