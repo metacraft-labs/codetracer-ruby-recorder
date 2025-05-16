@@ -184,11 +184,11 @@ class Tracer
         # which might be from args
       end
       # start is last step on this level: log for reason: the previous step on this level 
-      @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content)]
+      @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content, "")]
     end
 
     def record_exception(tp)
-      @record.events << [:Event, RecordEvent.new(EVENT_KIND_ERROR, tp.raised_exception.to_s)]
+      @record.events << [:Event, RecordEvent.new(EVENT_KIND_ERROR, tp.raised_exception.to_s, "")]
     end
   end
 

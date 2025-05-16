@@ -29,7 +29,7 @@ StepRecord = Struct.new(:path_id, :line) do
   end
 end
 
-RecordEvent = Struct.new(:kind, :content) do
+RecordEvent = Struct.new(:kind, :content, :metadata) do
   def to_data_for_json
     to_h
   end
