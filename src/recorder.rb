@@ -42,7 +42,7 @@ FullValueRecord = Struct.new(:variable_id, :value) do
 end
  
 
-ValueRecord = Struct.new(:kind, :type_id, :i, :b, :text, :r, :msg, :elements, :field_values, keyword_init: true) do
+ValueRecord = Struct.new(:kind, :type_id, :i, :b, :text, :r, :msg, :elements, :is_slice, :field_values, keyword_init: true) do
   def to_data_for_json
     res = to_h.compact
     if !res[:elements].nil?
@@ -291,7 +291,7 @@ NO_TYPE_INDEX = record.load_type_id(ERROR, "No type")
 
 # IMPORTANT: sync with common_types.nim / runtime_tracing EventLogKind
 EVENT_KIND_WRITE = 0
-EVENT_KIND_ERROR = 9
+EVENT_KIND_ERROR = 11
 
 def int_value(i)
   ValueRecord.new(kind: 'Int', type_id: INT_TYPE_INDEX, i: i)
@@ -313,7 +313,7 @@ end
 
 def sequence_value(elements)
   ti = $codetracer_record.load_type_id(SEQ, "Array")
-  ValueRecord.new(kind: 'Sequence', type_id: ti, elements: elements)
+  ValueRecord.new(kind: 'Sequence', type_id: ti, elements: elements, is_slice: false)
 end
 
 # fields: Array of [String, TypeRecord]
