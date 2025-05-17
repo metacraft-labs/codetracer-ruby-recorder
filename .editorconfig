@@ -1,0 +1,24 @@
+# EditorConfig helps maintain consistent coding styles
+# across different editors and IDEs
+# https://EditorConfig.org
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.rb]
+indent_style = space
+indent_size = 2
+
+[{Gemfile,Rakefile,config.ru}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+# Two trailing spaces yield a hard line break in Markdown.
+# https://spec.commonmark.org/0.30/#hard-line-breaks
+trim_trailing_whitespace = false
