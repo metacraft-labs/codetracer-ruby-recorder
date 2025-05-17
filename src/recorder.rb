@@ -2,6 +2,8 @@
 # Copyright (c) 2025 Metacraft Labs Ltd
 # See LICENSE file in the project root for full license information.
 
+require 'fileutils'
+
 CallRecord = Struct.new(:function_id, :args) do
   def to_data_for_json
     res = to_h
@@ -261,9 +263,10 @@ class TraceRecord
     json_output = JSON.pretty_generate(output)
     metadata_json_output = JSON.pretty_generate(metadata_output)
     paths_json_output = JSON.pretty_generate($codetracer_record.paths)
-    
+
     trace_path = ENV["CODETRACER_DB_TRACE_PATH"] || "trace.json"
     trace_folder = File.dirname(trace_path)
+    FileUtils.mkdir_p(trace_folder)
     trace_metadata_path = File.join(trace_folder , "trace_metadata.json")
     trace_paths_path = File.join(trace_folder , "trace_paths.json")
     
