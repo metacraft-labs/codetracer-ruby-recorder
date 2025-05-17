@@ -63,7 +63,7 @@ We'd be very happy if the community finds this useful, and if anyone wants to:
 * Use and test the Ruby support or CodeTracer.
 * Cooperate with us on supporting/advancing the Ruby support of [CodeTracer](https://github.com/metacraft-labs/CodeTracer).
 * Provide feedback and discuss alternative implementation ideas: in the issue tracker, or in our [discord](https://discord.gg/qSDCAFMP).
-* Provide [sponorship](https://opencollective.com/codetracer), so we can hire dedicated full-time maintainers for this project.
+* Provide [sponsorship](https://opencollective.com/codetracer), so we can hire dedicated full-time maintainers for this project.
 
 ### Legal info
 
