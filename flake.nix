@@ -12,7 +12,7 @@
         let pkgs = import nixpkgs { inherit system; };
         in {
           default = pkgs.mkShell {
-            packages = with pkgs; [ ruby just ];
+            packages = with pkgs; [ ruby just git-lfs ];
           };
         });
     };
