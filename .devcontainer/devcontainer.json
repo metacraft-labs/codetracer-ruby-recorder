@@ -1,8 +1,20 @@
 {
   "name": "codetracer-ruby-recorder",
-  "features": {
-    "ghcr.io/devcontainers/features/nix:1": {},
-    "ghcr.io/devcontainers-community/features/direnv:1": {}
+  "dockerFile": "Dockerfile",
+  "context": "${localWorkspaceFolder}",
+  "build": {
+    "args": {
+      "USER_UID": "${localEnv:USER_UID}",
+      "USER_GID": "${localEnv:USER_GID}"
+    },
   },
-  "postCreateCommand": "direnv allow"
+  "postCreateCommand": "direnv allow",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "direnv.direnv",
+        "arrterian.nix-env-selector"
+      ]
+    }
+  }
 }
