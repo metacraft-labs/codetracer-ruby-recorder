@@ -18,6 +18,12 @@ ruby trace.rb <path to ruby file>
 
 however you probably want to use it in combination with CodeTracer, which would be released soon.
 
+### Development
+
+This repository provides a Nix flake for the development shell. With direnv installed, the shell is loaded automatically when you enter the directory. Run `direnv allow` once to enable it.
+
+The same environment is configured for GitHub Codespaces via devcontainer configuration.
+
 ### env variables
 
 * if you pass `CODETRACER_RUBY_TRACER_DEBUG=1`, you enables some additional debug-related logging
