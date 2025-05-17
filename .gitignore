@@ -1,3 +1,5 @@
 *.json
+!.devcontainer/devcontainer.json
 !test/fixtures/*.json
 test/tmp/
+.direnv/
