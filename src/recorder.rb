@@ -107,7 +107,6 @@ class TraceRecord
   # part of the final trace
   attr_accessor :steps, :calls, :variables, :events, :types, :flow, :paths
   
-  attr_accessor :events 
   # internal helpers
   attr_accessor :stack, :step_stack, :exprs, :tracing
   attr_accessor :t1, :t2, :t3, :t4 # tracepoints
