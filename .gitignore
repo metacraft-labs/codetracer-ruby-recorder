@@ -1,1 +1,3 @@
 *.json
+!test/fixtures/*.json
+test/tmp/
