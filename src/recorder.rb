@@ -140,7 +140,7 @@ class TraceRecord
   end
 
   def load_flow(path, line, binding)
-    if @exprs.key?(path)
+    unless @exprs.key?(path)
       @exprs[path] = load_exprs(path)
     end
     path_exprs = @exprs[path]
@@ -239,10 +239,9 @@ class TraceRecord
     variable_id
   end
 
-  def load_exprs()
+  def load_exprs(path)
     # TODO: eventually, if we implement recorder support for flow
-    # for now this logic is handled by db-backend based on recorded lo
-    # locals
+    # for now this logic is handled by db-backend based on recorded locals
     {}
   end
 
