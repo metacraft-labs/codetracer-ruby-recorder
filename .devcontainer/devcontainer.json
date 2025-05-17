@@ -1,0 +1,8 @@
+{
+  "name": "codetracer-ruby-recorder",
+  "features": {
+    "ghcr.io/devcontainers/features/nix:1": {},
+    "ghcr.io/devcontainers-community/features/direnv:1": {}
+  },
+  "postCreateCommand": "direnv allow"
+}
