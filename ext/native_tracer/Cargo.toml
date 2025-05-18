@@ -1,0 +1,12 @@
+[package]
+name = "codetracer_ruby_native_recoreder"
+version = "0.1.0"
+edition = "2021" # latest stable Rust edition
+description = "Native Ruby tracer using rb_add_event_hook2"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rb-sys = "0.9"
+runtime_tracing = "0.1"
