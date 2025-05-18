@@ -1,4 +1,4 @@
-# codetracer_ruby_native_recorder
+# codetracer_ruby_recorder
 
 This crate provides a minimal Ruby tracer implemented in Rust.
 It registers a Ruby VM event hook using `rb_add_event_hook2` and
@@ -17,7 +17,7 @@ If you have `just` installed, run `just build-extension` from the project root.
 The produced shared library can be required from Ruby:
 
 ```ruby
-require_relative 'target/release/libcodetracer_ruby_native_recorder'
+require_relative 'target/release/libcodetracer_ruby_recorder'
 ```
 
 Once loaded, the tracer starts writing a trace to `trace.json` or the

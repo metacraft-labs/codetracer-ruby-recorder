@@ -12,7 +12,18 @@
         let pkgs = import nixpkgs { inherit system; };
         in {
           default = pkgs.mkShell {
-            packages = with pkgs; [ ruby rustc cargo just git-lfs ];
+            packages = with pkgs; [
+              ruby
+
+              # The native extension is implemented in Rust
+              rustc
+              cargo
+              libiconv # required as a dependency when building the rb-sys Rust crate
+
+              # For build automation
+              just
+              git-lfs
+            ];
           };
         });
     };
