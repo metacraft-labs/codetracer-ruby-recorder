@@ -23,7 +23,7 @@ extern "C" fn event_hook(ev: rb_event_flag_t, _data: VALUE, _self: VALUE, _mid: 
 }
 
 #[no_mangle]
-pub extern "C" fn Init_codetracer_ruby_native_recorder() {
+pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
         let out = std::env::var("CODETRACER_DB_TRACE_PATH").unwrap_or_else(|_| "trace.json".to_string());
         let file = std::fs::File::create(out).expect("failed to create trace output");
