@@ -1,9 +1,15 @@
 # Instructions for Codex
 
+To build the Rust native extension, execute:
+
+```
+just build-extension
+```
+
 To run the test suite, execute:
 
 ```
-ruby -Itest test/test_tracer.rb
+just test
 ```
 
 The tester executes a number of sample programs in `test/programs` and compares their outputs to the fixtures in `test/fixtures`.
@@ -11,7 +17,7 @@ The tester executes a number of sample programs in `test/programs` and compares 
 To run the benchmark, execute:
 
 ```
-ruby test/benchmarks/run_benchmark.rb heavy_work
+just bench
 ```
 
 # Code quality guidelines
