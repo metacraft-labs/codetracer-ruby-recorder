@@ -4,3 +4,4 @@
 !test/benchmarks/fixtures/*.json
 test/tmp/
 .direnv/
+pkg/
