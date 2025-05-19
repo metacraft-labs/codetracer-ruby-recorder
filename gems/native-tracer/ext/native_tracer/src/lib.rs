@@ -1,18 +1,17 @@
 #![allow(clippy::missing_safety_doc)]
 
 use std::{
-    ffi::{CStr, CString},
+    ffi::CStr,
     mem::transmute,
-    os::raw::{c_char, c_int, c_void},
-    path::{Path, PathBuf},
+    os::raw::{c_char, c_void},
+    path::Path,
     ptr,
-    sync::{Mutex},
+    sync::Mutex,
 };
 
 use rb_sys::{
     rb_add_event_hook2, rb_remove_event_hook_with_data, rb_define_class,
-    rb_define_alloc_func, rb_define_method, rb_obj_alloc,
-    rb_ivar_set, rb_ivar_get, rb_intern, rb_ull2inum, rb_num2ull,
+    rb_define_alloc_func, rb_define_method,
     rb_event_hook_flag_t::RUBY_EVENT_HOOK_FLAG_RAW_ARG,
     rb_event_flag_t, rb_trace_arg_t,
     rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path,
@@ -21,23 +20,75 @@ use rb_sys::{
 };
 use runtime_tracing::{Tracer, Line};
 
+#[repr(C)]
+struct RTypedData {
+    _basic: [VALUE; 2],
+    type_: *const rb_data_type_t,
+    typed_flag: VALUE,
+    data: *mut c_void,
+}
+
+#[repr(C)]
+struct rb_data_type_function_struct {
+    dmark: Option<unsafe extern "C" fn(*mut c_void)>,
+    dfree: Option<unsafe extern "C" fn(*mut c_void)>,
+    dsize: Option<unsafe extern "C" fn(*const c_void) -> usize>,
+    dcompact: Option<unsafe extern "C" fn(*mut c_void)>,
+    reserved: [*mut c_void; 1],
+}
+
+#[repr(C)]
+struct rb_data_type_t {
+    wrap_struct_name: *const c_char,
+    function: rb_data_type_function_struct,
+    parent: *const rb_data_type_t,
+    data: *mut c_void,
+    flags: VALUE,
+}
+
+extern "C" {
+    fn rb_data_typed_object_wrap(
+        klass: VALUE,
+        datap: *mut c_void,
+        data_type: *const rb_data_type_t,
+    ) -> VALUE;
+    fn rb_check_typeddata(obj: VALUE, data_type: *const rb_data_type_t) -> *mut c_void;
+}
+
 struct Recorder {
     tracer: Mutex<Tracer>,
     active: bool,
 }
 
-static mut PTR_IVAR: ID = 0;
+unsafe extern "C" fn recorder_free(ptr: *mut c_void) {
+    if !ptr.is_null() {
+        drop(Box::from_raw(ptr as *mut Recorder));
+    }
+}
+
+static mut RECORDER_TYPE: rb_data_type_t = rb_data_type_t {
+    wrap_struct_name: b"Recorder\0".as_ptr() as *const c_char,
+    function: rb_data_type_function_struct {
+        dmark: None,
+        dfree: Some(recorder_free),
+        dsize: None,
+        dcompact: None,
+        reserved: [ptr::null_mut(); 1],
+    },
+    parent: ptr::null(),
+    data: ptr::null_mut(),
+    flags: 0 as VALUE,
+};
 
 unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
-    let val = rb_ivar_get(obj, PTR_IVAR);
-    rb_num2ull(val) as *mut Recorder
+    let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
+    rb_check_typeddata(obj, ty) as *mut Recorder
 }
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
-    let obj = rb_obj_alloc(klass);
     let recorder = Box::new(Recorder { tracer: Mutex::new(Tracer::new("ruby", &vec![])), active: false });
-    rb_ivar_set(obj, PTR_IVAR, rb_ull2inum(Box::into_raw(recorder) as u64));
-    obj
+    let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
+    rb_data_typed_object_wrap(klass, Box::into_raw(recorder) as *mut c_void, ty)
 }
 
 unsafe extern "C" fn ruby_recorder_initialize(_self: VALUE) -> VALUE {
@@ -89,7 +140,8 @@ unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE) -> VALUE {
         }
     }
     drop(Box::from_raw(recorder_ptr));
-    rb_ivar_set(self_val, PTR_IVAR, rb_ull2inum(0));
+    let rdata = self_val as *mut RTypedData;
+    (*rdata).data = ptr::null_mut();
     rb_sys::Qnil.into()
 }
 
@@ -130,7 +182,6 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 #[no_mangle]
 pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
-        PTR_IVAR = rb_intern(b"@ptr\0".as_ptr() as *const c_char);
         let class = rb_define_class(b"RubyRecorder\0".as_ptr() as *const c_char, rb_cObject);
         rb_define_alloc_func(class, Some(ruby_recorder_alloc));
         let init_cb: unsafe extern "C" fn(VALUE) -> VALUE = ruby_recorder_initialize;
