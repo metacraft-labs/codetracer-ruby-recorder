@@ -11,4 +11,4 @@ recorder.enable_tracing
 puts 'this will be traced'
 recorder.disable_tracing
 puts 'tracing disabled'
-recorder.flush_trace(ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pwd)
+recorder.flush_trace(Dir.pwd)
