@@ -52,6 +52,12 @@ Two Ruby gems are published from this repository:
 * **codetracer_pure_ruby_recorder** – a pure Ruby fallback without the
   native extension.
 
+A helper script is available to build and push all gems in one go:
+
+```bash
+ruby scripts/publish_gems.rb
+```
+
 ### Native extension gem
 
 1. Install the development dependencies:
@@ -89,3 +95,6 @@ gem push codetracer_pure_ruby_recorder-<version>.gem
 
 Ensure the version matches the native extension gem so that both
 packages can be used interchangeably.
+
+All the above steps are automated by `scripts/publish_gems.rb` which
+builds and publishes the pure Ruby gem and all native variants.
