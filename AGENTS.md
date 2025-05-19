@@ -20,6 +20,36 @@ To run the benchmark, execute:
 just bench
 ```
 
+# You don't have access to the internet
+
+During development, certain commands will fail because you don't have
+access to the intenet.
+
+The script `.codex/internet_resources/download.sh` is executed before
+your development session stars while your computer is still connected
+to the internet.
+
+You can examine this script to see what kind of internet resources
+have been downloaded for offline use. If it's difficult for you to
+achieve a task without access to additional internet resources, you
+can always propose a PR that modifies the download.sh script instead
+of completing your main task.
+
+Downloading development dependencies may also fail due to the lack of
+internet connectivity. We are trying to maintain the script `.codex/build_all_targets.sh`
+that is also executed before your development session starts while
+your computer is still connected to the internet. It tries to run
+all build commands that need development dependencies in order to
+cache the dependencies for offline use. Please propose changes to
+this script when you introduce new build targets with dependencies.
+
+When you need to consult the documentation or source code modules
+for a particular dependency, always try to find where this dependency
+have been downloaded and try to access the necessary files through
+the file system (i.e. depending on the programming language, the
+operating system and the package manager being used, they should
+be in their standard location).
+
 # Code quality guidelines
 
 - Strive to achieve high code quality.
