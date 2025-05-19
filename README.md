@@ -16,6 +16,13 @@ ruby trace.rb <path to ruby file>
 # or in the folder of `$CODETRACER_DB_TRACE_PATH` if such an env var is defined
 ```
 
+You can also invoke a lightweight CLI that loads the native tracer extension
+directly:
+
+```bash
+ruby src/native_trace.rb <path to ruby file>
+```
+
 however you probably want to use it in combination with CodeTracer, which would be released soon.
 
 ### Development
