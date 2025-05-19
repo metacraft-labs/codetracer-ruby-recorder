@@ -6,7 +6,6 @@ use std::{
     os::raw::{c_char, c_void},
     path::Path,
     ptr,
-    sync::Mutex,
 };
 
 use rb_sys::{
@@ -17,6 +16,7 @@ use rb_sys::{
     rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path,
     rb_cObject, VALUE, ID, RUBY_EVENT_LINE,
     RSTRING_PTR, RSTRING_LEN,
+    rb_raise, rb_eIOError,
 };
 use runtime_tracing::{Tracer, Line};
 
@@ -56,7 +56,7 @@ extern "C" {
 }
 
 struct Recorder {
-    tracer: Mutex<Tracer>,
+    tracer: Tracer,
     active: bool,
 }
 
@@ -86,14 +86,9 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 }
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
-    let recorder = Box::new(Recorder { tracer: Mutex::new(Tracer::new("ruby", &vec![])), active: false });
+    let recorder = Box::new(Recorder { tracer: Tracer::new("ruby", &vec![]), active: false });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
     rb_data_typed_object_wrap(klass, Box::into_raw(recorder) as *mut c_void, ty)
-}
-
-unsafe extern "C" fn ruby_recorder_initialize(_self: VALUE) -> VALUE {
-    // nothing special for now
-    rb_sys::Qnil.into()
 }
 
 unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
@@ -118,14 +113,15 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     rb_sys::Qnil.into()
 }
 
-fn flush_to_dir(tracer: &Tracer, dir: &Path) {
-    let _ = std::fs::create_dir_all(dir);
+fn flush_to_dir(tracer: &Tracer, dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    std::fs::create_dir_all(dir)?;
     let events = dir.join("trace.json");
     let metadata = dir.join("trace_metadata.json");
     let paths = dir.join("trace_paths.json");
-    let _ = tracer.store_trace_events(&events);
-    let _ = tracer.store_trace_metadata(&metadata);
-    let _ = tracer.store_trace_paths(&paths);
+    tracer.store_trace_events(&events)?;
+    tracer.store_trace_metadata(&metadata)?;
+    tracer.store_trace_paths(&paths)?;
+    Ok(())
 }
 
 unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE) -> VALUE {
@@ -134,14 +130,16 @@ unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE) -> VALUE {
     let ptr = RSTRING_PTR(out_dir) as *const u8;
     let len = RSTRING_LEN(out_dir) as usize;
     let slice = std::slice::from_raw_parts(ptr, len);
-    if let Ok(path_str) = std::str::from_utf8(slice) {
-        if let Ok(t) = recorder.tracer.lock() {
-            flush_to_dir(&t, Path::new(path_str));
+
+    match std::str::from_utf8(slice) {
+        Ok(path_str) => {
+            if let Err(e) = flush_to_dir(&recorder.tracer, Path::new(path_str)) {
+                rb_raise(rb_eIOError, b"Failed to flush trace: %s\0".as_ptr() as *const c_char, e.to_string().as_ptr() as *const c_char);
+            }
         }
+        Err(e) => rb_raise(rb_eIOError, b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char, e.to_string().as_ptr() as *const c_char),
     }
-    drop(Box::from_raw(recorder_ptr));
-    let rdata = self_val as *mut RTypedData;
-    (*rdata).data = ptr::null_mut();
+
     rb_sys::Qnil.into()
 }
 
@@ -172,9 +170,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 
     if !path_ptr.is_null() {
         if let Ok(path) = CStr::from_ptr(path_ptr).to_str() {
-            if let Ok(mut t) = recorder.tracer.lock() {
-                t.register_step(Path::new(path), Line(line));
-            }
+            recorder.tracer.register_step(Path::new(path), Line(line));
         }
     }
 }
@@ -184,11 +180,9 @@ pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
         let class = rb_define_class(b"RubyRecorder\0".as_ptr() as *const c_char, rb_cObject);
         rb_define_alloc_func(class, Some(ruby_recorder_alloc));
-        let init_cb: unsafe extern "C" fn(VALUE) -> VALUE = ruby_recorder_initialize;
         let enable_cb: unsafe extern "C" fn(VALUE) -> VALUE = enable_tracing;
         let disable_cb: unsafe extern "C" fn(VALUE) -> VALUE = disable_tracing;
         let flush_cb: unsafe extern "C" fn(VALUE, VALUE) -> VALUE = flush_trace;
-        rb_define_method(class, b"initialize\0".as_ptr() as *const c_char, Some(transmute(init_cb)), 0);
         rb_define_method(class, b"enable_tracing\0".as_ptr() as *const c_char, Some(transmute(enable_cb)), 0);
         rb_define_method(class, b"disable_tracing\0".as_ptr() as *const c_char, Some(transmute(disable_cb)), 0);
         rb_define_method(class, b"flush_trace\0".as_ptr() as *const c_char, Some(transmute(flush_cb)), 1);
