@@ -6,31 +6,34 @@ A recorder of Ruby programs that produces [CodeTracer](https://github.com/metacr
 > Currently it is in a very early phase: we're welcoming contribution and discussion!
 
 
-### usage
+### Usage
 
 you can currently use it directly with
 
 ```bash
-ruby trace.rb <path to ruby file>
-# produces several trace json files in the current directory
-# or in the folder of `$CODETRACER_DB_TRACE_PATH` if such an env var is defined
+ruby trace.rb [--out-dir DIR] <path to ruby file>
+# produces several trace json files in DIR,
+# or in `$CODETRACER_RUBY_RECORDER_OUT_DIR` if DIR is not provided.
+# Defaults to the current directory.
+# Pass --help to list all options.
 ```
 
 You can also invoke a lightweight CLI that loads the native tracer extension
 directly:
 
 ```bash
-ruby src/native_trace.rb <path to ruby file>
+ruby src/native_trace.rb [--out-dir DIR] <path to ruby file>
+# Uses DIR or `$CODETRACER_RUBY_RECORDER_OUT_DIR` to choose where traces are saved.
 ```
 
 however you probably want to use it in combination with CodeTracer, which would be released soon.
 
-### env variables
+### ENV variables
 
 * if you pass `CODETRACER_RUBY_TRACER_DEBUG=1`, you enables some additional debug-related logging
-* `CODETRACER_DB_TRACE_PATH` can be used to override the path to `trace.json` (it's used internally by codetracer as well)
+* `CODETRACER_RUBY_RECORDER_OUT_DIR` can be used to specify the directory for trace files
 
-## future directions
+## Future directions
 
 The current Ruby support is a prototype. In the future, it may be expanded to function in a way to similar to the more complete implementations, e.g. [Noir](https://github.com/blocksense-network/noir/tree/blocksense/tooling/tracer).
 

@@ -42,7 +42,7 @@ FullValueRecord = Struct.new(:variable_id, :value) do
     {variable_id: self.variable_id, value: value.to_data_for_json}
   end
 end
- 
+
 
 ValueRecord = Struct.new(:kind, :type_id, :i, :b, :text, :r, :msg, :elements, :is_slice, :field_values, keyword_init: true) do
   def to_data_for_json
@@ -108,7 +108,7 @@ $STEP_COUNT = 0
 class TraceRecord
   # part of the final trace
   attr_accessor :steps, :calls, :variables, :events, :types, :flow, :paths
-  
+
   # internal helpers
   attr_accessor :stack, :step_stack, :exprs, :tracing
   attr_accessor :t1, :t2, :t3, :t4 # tracepoints
@@ -166,7 +166,7 @@ class TraceRecord
       path_id
     end
   end
-  
+
   def register_step(path, line)
     step_record = StepRecord.new(self.path_id(path), line)
     @events << [:Step, step_record] # because we convert later to {Step: step-record}: default enum json format in serde/rust
@@ -245,7 +245,7 @@ class TraceRecord
     {}
   end
 
-  def serialize(program)
+  def serialize(program, out_dir = nil)
     if ENV["CODETRACER_RUBY_TRACER_DEBUG"] == "1"
       pp @events
     end
@@ -258,22 +258,25 @@ class TraceRecord
       workdir: Dir.pwd
     }
     # pp output
-    
+
     json_output = JSON.pretty_generate(output)
     metadata_json_output = JSON.pretty_generate(metadata_output)
     paths_json_output = JSON.pretty_generate($codetracer_record.paths)
 
-    trace_path = ENV["CODETRACER_DB_TRACE_PATH"] || "trace.json"
-    trace_folder = File.dirname(trace_path)
+    out_dir = out_dir.nil? || out_dir.empty? ?
+      (ENV["CODETRACER_RUBY_RECORDER_OUT_DIR"] || ".") : out_dir
+
+    trace_folder = out_dir
     FileUtils.mkdir_p(trace_folder)
-    trace_metadata_path = File.join(trace_folder , "trace_metadata.json")
-    trace_paths_path = File.join(trace_folder , "trace_paths.json")
-    
+    trace_path = File.join(trace_folder, "trace.json")
+    trace_metadata_path = File.join(trace_folder, "trace_metadata.json")
+    trace_paths_path = File.join(trace_folder, "trace_paths.json")
+
     # p trace_path, json_output
     File.write(trace_path, json_output)
     File.write(trace_metadata_path, metadata_json_output)
     File.write(trace_paths_path, paths_json_output)
-    
+
     $stderr.write("=================================================\n")
     $stderr.write("codetracer ruby tracer: saved trace to #{trace_folder}\n")
   end

@@ -14,13 +14,14 @@ unless HASHES.key?(BENCHMARK)
   abort("Unknown benchmark '#{BENCHMARK}'")
 end
 
-PROGRAM = File.expand_path("programs/#{BENCHMARK}.rb", __dir__)
+PROGRAM = File.join('test', 'benchmarks', 'programs', "#{BENCHMARK}.rb")
 FIXTURE = File.expand_path("fixtures/#{BENCHMARK}_trace.json", __dir__)
 TMP_DIR = File.expand_path('tmp', __dir__)
-OUTPUT = File.join(TMP_DIR, "#{BENCHMARK}_trace.json")
+OUTPUT_DIR = File.join(TMP_DIR, BENCHMARK)
 EXPECTED_HASH = HASHES[BENCHMARK]
 
 FileUtils.mkdir_p(TMP_DIR)
+FileUtils.mkdir_p(OUTPUT_DIR)
 
 unless File.exist?(FIXTURE) && Digest::SHA256.file(FIXTURE).hexdigest == EXPECTED_HASH
   warn "Reference trace missing or corrupt. Attempting to fetch via git lfs..."
@@ -31,8 +32,7 @@ raise 'reference trace unavailable' unless File.exist?(FIXTURE)
 raise 'reference trace hash mismatch' unless Digest::SHA256.file(FIXTURE).hexdigest == EXPECTED_HASH
 
 elapsed = Benchmark.realtime do
-  env = { 'CODETRACER_DB_TRACE_PATH' => OUTPUT }
-  system(env, 'ruby', File.expand_path('../../src/trace.rb', __dir__), PROGRAM)
+  system('ruby', File.expand_path('../../src/trace.rb', __dir__), '--out-dir', OUTPUT_DIR, PROGRAM)
   raise 'trace failed' unless $?.success?
 end
 puts "Benchmark runtime: #{(elapsed * 1000).round} ms"
@@ -43,7 +43,8 @@ def files_identical?(a, b)
   File.binread(a) == File.binread(b)
 end
 
-if files_identical?(FIXTURE, OUTPUT)
+OUTPUT_TRACE = File.join(OUTPUT_DIR, 'trace.json')
+if files_identical?(FIXTURE, OUTPUT_TRACE)
   puts 'Trace matches reference.'
 else
   warn 'Trace differs from reference!'

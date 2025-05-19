@@ -3,6 +3,7 @@
 # See LICENSE file in the project root for full license information.
 
 require 'json'
+require 'optparse'
 require_relative 'recorder'
 
 # Warning:
@@ -172,7 +173,7 @@ class Tracer
       old_puts "return"
       return_value = to_value(tp.return_value)
       @record.register_step(tp.path, tp.lineno)
-      # return value support inspired by existing IDE-s/envs like 
+      # return value support inspired by existing IDE-s/envs like
       # Visual Studio/JetBrains IIRC
       # (Nikola Gamzakov showed me some examples)
       @record.register_variable("<return_value>", return_value)
@@ -192,7 +193,7 @@ class Tracer
     def record_event(caller, content)
       # reason/effect are on different steps:
       # reason: before `p` is called;
-      # effect: now, when the args are evaluated 
+      # effect: now, when the args are evaluated
       # which can happen after many calls/steps;
       # maybe add a step for this call?
       begin
@@ -200,10 +201,10 @@ class Tracer
         path, line = location[0], location[1].to_i
         @record.register_step(path, line)
       rescue
-        # ignore for now: we'll just jump to last previous step 
+        # ignore for now: we'll just jump to last previous step
         # which might be from args
       end
-      # start is last step on this level: log for reason: the previous step on this level 
+      # start is last step on this level: log for reason: the previous step on this level
       @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content, "")]
     end
 
@@ -231,7 +232,7 @@ class Tracer
   end
 
   private
-  
+
   def load_variables(binding)
     if !binding.nil?
       # $stdout.write binding.local_variables
@@ -243,19 +244,31 @@ class Tracer
     else
       []
     end
-  end  
+  end
 end
 
 
 $tracer = Tracer.new($codetracer_record)
 
 if __FILE__ == $PROGRAM_NAME
-  if ARGV[0].nil?
-    $stderr.puts('ruby trace.rb <program> [<args>]')
-    exit(1)
+  options = {}
+  parser = OptionParser.new do |opts|
+    opts.banner = "usage: ruby trace.rb [options] <program> [args]"
+    opts.on('-o DIR', '--out-dir DIR', 'Directory to write trace files') do |dir|
+      options[:out_dir] = dir
+    end
+    opts.on('-h', '--help', 'Print this help') do
+      puts opts
+      exit
+    end
   end
+  parser.order!
 
-  program = ARGV[0]
+  program = ARGV.shift
+  if program.nil?
+    $stderr.puts parser
+    exit 1
+  end
 
   $tracer.record.register_call('', 1, '<top-level>', [])
   $tracer.ignore('lib/ruby')
@@ -264,8 +277,6 @@ if __FILE__ == $PROGRAM_NAME
   $tracer.ignore('<internal:')
   $tracer.ignore('gems/')
 
-  trace_args = ARGV
-  ARGV = ARGV[1..-1]
   $tracer.activate
   begin
     Kernel.load(program)
@@ -278,9 +289,9 @@ if __FILE__ == $PROGRAM_NAME
     old_puts '====================='
     old_puts ''
   end
-  ARGV = trace_args
 
   $tracer.stop_tracing
 
-  $tracer.record.serialize(program)
+  out_dir = options[:out_dir] || ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pwd
+  $tracer.record.serialize(program, out_dir)
 end
