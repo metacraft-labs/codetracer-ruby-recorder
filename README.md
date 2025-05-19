@@ -24,8 +24,8 @@ ruby src/native_trace.rb <path to ruby file>
 ```
 
 however you probably want to use it in combination with CodeTracer, which would be released soon.
+
 ### env variables
-For maintainer instructions, see [MAINTANERS.md](MAINTANERS.md).
 
 * if you pass `CODETRACER_RUBY_TRACER_DEBUG=1`, you enables some additional debug-related logging
 * `CODETRACER_DB_TRACE_PATH` can be used to override the path to `trace.json` (it's used internally by codetracer as well)
@@ -71,6 +71,8 @@ We'd be very happy if the community finds this useful, and if anyone wants to:
 * Cooperate with us on supporting/advancing the Ruby support of [CodeTracer](https://github.com/metacraft-labs/CodeTracer).
 * Provide feedback and discuss alternative implementation ideas: in the issue tracker, or in our [discord](https://discord.gg/qSDCAFMP).
 * Provide [sponsorship](https://opencollective.com/codetracer), so we can hire dedicated full-time maintainers for this project.
+
+For maintainer instructions, see [MAINTANERS.md](MAINTANERS.md).
 
 ### Legal info
 
