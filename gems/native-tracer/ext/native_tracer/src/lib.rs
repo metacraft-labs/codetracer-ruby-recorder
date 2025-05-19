@@ -16,6 +16,7 @@ use rb_sys::{
     rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path,
     rb_cObject, VALUE, ID, RUBY_EVENT_LINE,
     RSTRING_PTR, RSTRING_LEN,
+    rb_raise, rb_eIOError,
 };
 use runtime_tracing::{Tracer, Line};
 
@@ -112,7 +113,7 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     rb_sys::Qnil.into()
 }
 
-fn flush_to_dir(tracer: &Tracer, dir: &Path) -> std::io::Result<()> {
+fn flush_to_dir(tracer: &Tracer, dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(dir)?;
     let events = dir.join("trace.json");
     let metadata = dir.join("trace_metadata.json");
