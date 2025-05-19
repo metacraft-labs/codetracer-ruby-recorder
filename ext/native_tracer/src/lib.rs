@@ -1,23 +1,45 @@
-use std::ffi::CStr;
-use std::os::raw::{c_char, c_int};
-use rb_sys::{VALUE, ID, rb_add_event_hook2, rb_event_flag_t, RUBY_EVENT_LINE, rb_sourcefile, rb_sourceline, RUBY_EVENT_HOOK_FLAG_RAW_ARG};
-use runtime_tracing::{TraceWriter, StepRecord};
+#![allow(clippy::missing_safety_doc)]
 
-static mut WRITER: Option<TraceWriter<std::fs::File>> = None;
+use std::{ffi::CStr, mem::transmute, os::raw::c_char};
 
-extern "C" fn event_hook(ev: rb_event_flag_t, _data: VALUE, _self: VALUE, _mid: ID, _klass: VALUE) {
-    if ev & RUBY_EVENT_LINE as rb_event_flag_t != 0 {
-        unsafe {
-            if let Some(writer) = WRITER.as_mut() {
-                let line: u32 = rb_sourceline() as u32;
-                let file_ptr: *const c_char = rb_sourcefile();
-                if !file_ptr.is_null() {
-                    if let Ok(path) = CStr::from_ptr(file_ptr).to_str() {
-                        let rec = StepRecord { path: path.into(), line };
-                        let _ = writer.write_step(&rec);
-                    }
-                }
-            }
+use rb_sys::{
+    // frequently used public items
+    rb_add_event_hook2, rb_event_flag_t,
+    rb_event_hook_flag_t::RUBY_EVENT_HOOK_FLAG_RAW_ARG,
+    ID, VALUE, RUBY_EVENT_LINE,
+
+    // the raw-trace-API symbols live in the generated `bindings` module
+    bindings::{
+        rb_trace_arg_t,             // struct rb_trace_arg
+        rb_tracearg_event_flag,     // event kind helpers
+        rb_tracearg_lineno,
+        rb_tracearg_path,
+    },
+};
+
+/// Raw-argument callback (Ruby will call it when we set
+/// `RUBY_EVENT_HOOK_FLAG_RAW_ARG`).
+///
+/// C prototype:
+/// ```c
+/// void (*)(VALUE data, rb_trace_arg_t *arg);
+/// ```
+unsafe extern "C" fn event_hook_raw(_data: VALUE, arg: *mut rb_trace_arg_t) {
+    if arg.is_null() {
+        return;
+    }
+
+    let ev: rb_event_flag_t = rb_tracearg_event_flag(arg);
+    if (ev & RUBY_EVENT_LINE) == 0 {
+        return;
+    }
+
+    let path_ptr = rb_tracearg_path(arg) as *const c_char;
+    let line = rb_tracearg_lineno(arg) as u32;
+
+    if !path_ptr.is_null() {
+        if let Ok(path) = CStr::from_ptr(path_ptr).to_str() {
+            println!("Path: {path}, Line: {line}");
         }
     }
 }
@@ -25,9 +47,18 @@ extern "C" fn event_hook(ev: rb_event_flag_t, _data: VALUE, _self: VALUE, _mid: 
 #[no_mangle]
 pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
-        let out = std::env::var("CODETRACER_DB_TRACE_PATH").unwrap_or_else(|_| "trace.json".to_string());
-        let file = std::fs::File::create(out).expect("failed to create trace output");
-        WRITER = Some(TraceWriter::new(file));
-        rb_add_event_hook2(Some(event_hook), RUBY_EVENT_LINE as rb_event_flag_t, 0 as VALUE, RUBY_EVENT_HOOK_FLAG_RAW_ARG as i32);
+        // rb_add_event_hook2’s first parameter is a function pointer with the
+        // classic five-argument signature.  We cast our raw callback to that
+        // type via an intermediate variable so the sizes match.
+        let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
+        let cb: unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE) =
+            transmute(raw_cb);
+
+        rb_add_event_hook2(
+            Some(cb),                 // callback (now cast)
+            RUBY_EVENT_LINE,          // which events
+            0,                        // user data
+            RUBY_EVENT_HOOK_FLAG_RAW_ARG,
+        );
     }
 }
