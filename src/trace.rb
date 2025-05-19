@@ -5,13 +5,6 @@
 require 'json'
 require_relative 'recorder'
 
-if ARGV[0].nil?
-  $stderr.puts("ruby trace.rb <program> [<args>]")
-  exit(1)
-end
-
-program = ARGV[0]
-
 # Warning:
 # probably related to our development env:
 # if we hit an `incompatible library version` error, like
@@ -82,6 +75,7 @@ class Tracer
     @trace_stopped = false
     @record = record
     @ignore_list = []
+    setup_tracepoints
   end
 
   def stop_tracing
@@ -95,6 +89,32 @@ class Tracer
 
   def ignore(path)
     @ignore_list << path
+  end
+
+  def setup_tracepoints
+    @calls_tracepoint = TracePoint.new(:call) do |tp|
+      deactivate
+      record_call(tp)
+      activate
+    end
+
+    @return_tracepoint = TracePoint.new(:return) do |tp|
+      deactivate
+      record_return(tp)
+      activate
+    end
+
+    @line_tracepoint = TracePoint.new(:line) do |tp|
+      deactivate
+      record_step(tp)
+      activate
+    end
+
+    @raise_tracepoint = TracePoint.new(:raise) do |tp|
+      deactivate
+      record_exception(tp)
+      activate
+    end
   end
 
   def prepare_args(tp)
@@ -229,64 +249,38 @@ end
 
 $tracer = Tracer.new($codetracer_record)
 
-# also possible :c_call, :b_call: for now record ruby calls (:call)
-# c_call: c lang
-# b_call: block entry
-# https://rubyapi.org/3.4/o/tracepoint
-$tracer.calls_tracepoint = TracePoint.new(:call) do |tp|
-  $tracer.deactivate
-  $tracer.record_call(tp)
+if __FILE__ == $PROGRAM_NAME
+  if ARGV[0].nil?
+    $stderr.puts('ruby trace.rb <program> [<args>]')
+    exit(1)
+  end
+
+  program = ARGV[0]
+
+  $tracer.record.register_call('', 1, '<top-level>', [])
+  $tracer.ignore('lib/ruby')
+  $tracer.ignore('trace.rb')
+  $tracer.ignore('recorder.rb')
+  $tracer.ignore('<internal:')
+  $tracer.ignore('gems/')
+
+  trace_args = ARGV
+  ARGV = ARGV[1..-1]
   $tracer.activate
+  begin
+    Kernel.load(program)
+  rescue Exception => e
+    old_puts ''
+    old_puts '==== trace.rb error while tracing program ==='
+    old_puts 'ERROR'
+    old_puts e
+    old_puts e.backtrace
+    old_puts '====================='
+    old_puts ''
+  end
+  ARGV = trace_args
+
+  $tracer.stop_tracing
+
+  $tracer.record.serialize(program)
 end
-
-$tracer.return_tracepoint = TracePoint.new(:return) do |tp|
-  $tracer.deactivate
-  $tracer.record_return(tp)
-  $tracer.activate
-end
-
-$tracer.line_tracepoint = TracePoint.new(:line) do |tp|
-  $tracer.deactivate
-  $tracer.record_step(tp)
-  $tracer.activate
-end
-
-$tracer.raise_tracepoint = TracePoint.new(:raise) do |tp|
-  $tracer.deactivate
-  $tracer.record_exception(tp)
-  $tracer.activate
-end
-
-$tracer.record.register_call("", 1, "<top-level>", [])
-$tracer.ignore('lib/ruby')
-$tracer.ignore('trace.rb')
-$tracer.ignore('recorder.rb')
-$tracer.ignore('<internal:')
-$tracer.ignore('gems/')
-  
-
-trace_args = ARGV
-ARGV = ARGV[1..-1]
-$tracer.activate
-begin
-  Kernel.load(program)
-rescue Exception => e
-  # important: rescue Exception,
-  # not just rescue as we originally did
-  # because a simple `rescue` doesn't catch some errors
-  # like SystemExit and others
-  # (when we call `exit` in the trace program and others)
-  # https://stackoverflow.com/questions/5118745/is-systemexit-a-special-kind-of-exception
-  old_puts ""
-  old_puts "==== trace.rb error while tracing program ==="
-  old_puts "ERROR"
-  old_puts e
-  old_puts e.backtrace
-  old_puts "====================="
-  old_puts ""
-end
-ARGV = trace_args
-
-$tracer.stop_tracing
-
-$tracer.record.serialize(program)

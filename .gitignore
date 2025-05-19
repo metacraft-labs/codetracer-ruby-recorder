@@ -5,3 +5,7 @@
 test/tmp/
 .direnv/
 pkg/
+
+# Offline dependency sources
+.codex/deps_src/
+.codex/internet_resources/
