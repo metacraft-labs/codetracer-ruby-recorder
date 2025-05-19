@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+require 'rbconfig'
+script = File.expand_path('../lib/native_trace.rb', __dir__)
+exec RbConfig.ruby, script, *ARGV
+
