@@ -16,7 +16,7 @@ class TraceTest < Minitest::Test
       program = File.join('test', 'programs', program_name)
       out_dir = File.join('test', 'tmp', base)
       FileUtils.mkdir_p(out_dir)
-      system('ruby', 'src/trace.rb', '--out-dir', out_dir, program)
+      system('ruby', 'gems/pure-ruby-tracer/lib/trace.rb', '--out-dir', out_dir, program)
       raise "trace failed" unless $?.success?
       JSON.parse(File.read(File.join(out_dir, 'trace.json')))
     end

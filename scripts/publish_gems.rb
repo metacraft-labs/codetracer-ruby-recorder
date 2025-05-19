@@ -28,7 +28,7 @@ TARGETS.each do |target|
 end
 
 # Build and publish pure Ruby gem
-run('gem build codetracer_pure_ruby_recorder.gemspec')
+run('gem build gems/pure-ruby-tracer/codetracer_pure_ruby_recorder.gemspec')
 pure_gem = Dir['codetracer_pure_ruby_recorder-*.gem'].max_by { |f| File.mtime(f) }
 run("gem push #{pure_gem}")
 FileUtils.rm_f(pure_gem)

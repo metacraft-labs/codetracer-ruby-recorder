@@ -32,7 +32,7 @@ raise 'reference trace unavailable' unless File.exist?(FIXTURE)
 raise 'reference trace hash mismatch' unless Digest::SHA256.file(FIXTURE).hexdigest == EXPECTED_HASH
 
 elapsed = Benchmark.realtime do
-  system('ruby', File.expand_path('../../src/trace.rb', __dir__), '--out-dir', OUTPUT_DIR, PROGRAM)
+  system('ruby', File.expand_path('../../gems/pure-ruby-tracer/lib/trace.rb', __dir__), '--out-dir', OUTPUT_DIR, PROGRAM)
   raise 'trace failed' unless $?.success?
 end
 puts "Benchmark runtime: #{(elapsed * 1000).round} ms"
