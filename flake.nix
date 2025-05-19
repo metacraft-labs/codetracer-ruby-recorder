@@ -19,8 +19,9 @@
               rustc
               cargo
               libiconv # required as a dependency when building the rb-sys Rust crate
-
+              
               # For build automation
+              libclang # required for building the rb-sys-env build tools
               just
               git-lfs
             ];
