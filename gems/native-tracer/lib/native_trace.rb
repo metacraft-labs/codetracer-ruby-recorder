@@ -26,14 +26,26 @@ out_dir = options[:out_dir] || ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pw
 ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] = out_dir
 
 # Path to the compiled native extension
-ext_path = File.expand_path('../ext/native_tracer/target/release/libcodetracer_ruby_recorder', __dir__)
-require ext_path
+ext_dir = File.expand_path('../ext/native_tracer/target/release', __dir__)
+target_path = File.join(ext_dir, 'codetracer_ruby_recorder.so')
+unless File.exist?(target_path)
+  alt_path = File.join(ext_dir, 'libcodetracer_ruby_recorder.so')
+  target_path = alt_path if File.exist?(alt_path)
+end
 
-recorder = RubyRecorder.new
-recorder.enable_tracing
+recorder = nil
+begin
+  require target_path
+  recorder = RubyRecorder.new
+  recorder.enable_tracing
+rescue Exception => e
+  warn "native tracer unavailable: #{e}"
+end
 
 program = ARGV.shift
 load program
-recorder.disable_tracing
-recorder.flush_trace(out_dir)
+if recorder
+  recorder.disable_tracing
+  recorder.flush_trace(out_dir)
+end
 

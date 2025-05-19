@@ -4,8 +4,10 @@ name = "codetracer_ruby_recorder"
 description = "Native Ruby module for generating CodeTracer trace files"
 version = "0.1.0"
 edition = "2021"
-crate-type = ["cdylib"]
 build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
 
 [dependencies]
 rb-sys = "0.9"
