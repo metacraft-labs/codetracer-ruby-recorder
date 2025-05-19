@@ -50,11 +50,18 @@ class TraceTest < Minitest::Test
     base = File.basename(fixture, '_trace.json')
     define_method("test_#{base}") do
       pure_trace, pure_out = run_trace('gems/pure-ruby-tracer/lib/trace.rb', "#{base}.rb", *program_args(base))
-      _native_trace, native_out = run_trace('gems/native-tracer/lib/native_trace.rb', "#{base}.rb", *program_args(base))
+      native_trace, native_out = run_trace('gems/native-tracer/lib/native_trace.rb', "#{base}.rb", *program_args(base))
+
       assert_equal expected_trace("#{base}.rb"), pure_trace
       expected = expected_output("#{base}.rb")
       assert_equal expected, pure_out
       assert_equal expected, native_out
+
+      # The native tracer doesn't yet match the pure Ruby tracer, but it should
+      # still generate some trace output. Fail early if the trace is empty to
+      # ensure the extension was loaded correctly.
+      refute_nil native_trace, 'native tracer did not produce a trace file'
+      refute_empty native_trace, 'native tracer produced an empty trace'
     end
   end
 end
