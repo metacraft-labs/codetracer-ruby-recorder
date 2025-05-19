@@ -29,6 +29,11 @@ ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] = out_dir
 ext_path = File.expand_path('../ext/native_tracer/target/release/libcodetracer_ruby_recorder', __dir__)
 require ext_path
 
+recorder = RubyRecorder.new
+recorder.enable_tracing
+
 program = ARGV.shift
 load program
+recorder.disable_tracing
+recorder.flush_trace(out_dir)
 
