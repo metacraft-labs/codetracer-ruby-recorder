@@ -20,8 +20,9 @@ The produced shared library can be required from Ruby:
 require_relative 'target/release/libcodetracer_ruby_recorder'
 ```
 
-Once loaded, the tracer starts writing a trace to `trace.json` or the
-path specified via the `CODETRACER_DB_TRACE_PATH` environment variable.
+Once loaded, the tracer starts writing a trace to `trace.json` in the
+directory specified via the `CODETRACER_RUBY_RECORDER_OUT_DIR` environment
+variable (defaults to the current directory).
 
 ## Publishing platform-specific gems
 

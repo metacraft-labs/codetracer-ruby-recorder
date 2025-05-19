@@ -14,12 +14,12 @@ class TraceTest < Minitest::Test
     base = File.basename(program_name, '.rb')
     Dir.chdir(File.expand_path('..', __dir__)) do
       program = File.join('test', 'programs', program_name)
-      output = File.join('test', 'tmp', "#{base}_trace.json")
-      env = { 'CODETRACER_DB_TRACE_PATH' => output }
-      system(env, 'ruby', 'src/trace.rb', program)
+      out_dir = File.join('test', 'tmp', base)
+      FileUtils.mkdir_p(out_dir)
+      system('ruby', 'src/trace.rb', '--out-dir', out_dir, program)
       raise "trace failed" unless $?.success?
+      JSON.parse(File.read(File.join(out_dir, 'trace.json')))
     end
-    JSON.parse(File.read(File.join(TMP_DIR, "#{base}_trace.json")))
   end
 
   def expected_trace(program_name)
