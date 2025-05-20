@@ -6,6 +6,8 @@ require 'json'
 require 'optparse'
 require_relative 'recorder'
 
+DEBUG_TRACER = ENV['CODETRACER_RUBY_TRACER_DEBUG'] == '1'
+
 # Warning:
 # probably related to our development env:
 # if we hit an `incompatible library version` error, like
@@ -158,7 +160,7 @@ class Tracer
       method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
       method_name = "#{method_name_prefix}#{tp.method_id}"
 
-      old_puts "call #{method_name} with #{tp.parameters}"
+      old_puts "call #{method_name} with #{tp.parameters}" if DEBUG_TRACER
 
       arg_records = prepare_args(tp)
 
@@ -170,7 +172,7 @@ class Tracer
 
   def record_return(tp)
     if self.tracks_call?(tp)
-      old_puts "return"
+      old_puts "return" if DEBUG_TRACER
       return_value = to_value(tp.return_value)
       @record.register_step(tp.path, tp.lineno)
       # return value support inspired by existing IDE-s/envs like
@@ -281,13 +283,15 @@ if __FILE__ == $PROGRAM_NAME
   begin
     Kernel.load(program)
   rescue Exception => e
-    old_puts ''
-    old_puts '==== trace.rb error while tracing program ==='
-    old_puts 'ERROR'
-    old_puts e
-    old_puts e.backtrace
-    old_puts '====================='
-    old_puts ''
+    if DEBUG_TRACER
+      old_puts ''
+      old_puts '==== trace.rb error while tracing program ==='
+      old_puts 'ERROR'
+      old_puts e
+      old_puts e.backtrace
+      old_puts '====================='
+      old_puts ''
+    end
   end
 
   $tracer.stop_tracing

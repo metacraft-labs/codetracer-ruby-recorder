@@ -4,6 +4,8 @@
 
 require 'fileutils'
 
+DEBUG_TRACER = ENV['CODETRACER_RUBY_TRACER_DEBUG'] == '1'
+
 CallRecord = Struct.new(:function_id, :args) do
   def to_data_for_json
     res = to_h
@@ -246,9 +248,7 @@ class TraceRecord
   end
 
   def serialize(program, out_dir = nil)
-    if ENV["CODETRACER_RUBY_TRACER_DEBUG"] == "1"
-      pp @events
-    end
+    pp @events if DEBUG_TRACER
 
     output = @events.map { |kind, event| [[kind, event.to_data_for_json]].to_h }
 
@@ -277,8 +277,10 @@ class TraceRecord
     File.write(trace_metadata_path, metadata_json_output)
     File.write(trace_paths_path, paths_json_output)
 
-    $stderr.write("=================================================\n")
-    $stderr.write("codetracer ruby tracer: saved trace to #{trace_folder}\n")
+    if DEBUG_TRACER
+      $stderr.write("=================================================\n")
+      $stderr.write("codetracer ruby tracer: saved trace to #{trace_folder}\n")
+    end
   end
 end
 
@@ -353,7 +355,7 @@ def to_value(v, depth=10)
   end
   $VALUE_COUNT += 1
   if $VALUE_COUNT % 10_000 == 0
-    $stderr.write("value #{$VALUE_COUNT}\n")
+    $stderr.write("value #{$VALUE_COUNT}\n") if DEBUG_TRACER
   end
   case v
   when Integer
