@@ -39,7 +39,13 @@ the generated traces with the fixtures under `test/fixtures`.
 Benchmarks can be executed with:
 
 ```bash
-just bench
+just bench heavy_work
+```
+
+Passing a second argument writes a report instead of printing the runtime:
+
+```bash
+just bench heavy_work reports/bench.svg
 ```
 
 ## Publishing gems
