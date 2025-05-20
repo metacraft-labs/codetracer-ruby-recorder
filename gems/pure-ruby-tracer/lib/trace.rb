@@ -6,7 +6,6 @@ require 'json'
 require 'optparse'
 require_relative 'recorder'
 
-DEBUG_TRACER = ENV['CODETRACER_RUBY_TRACER_DEBUG'] == '1'
 
 # Warning:
 # probably related to our development env:
@@ -71,13 +70,15 @@ class Tracer
   attr_accessor :calls_tracepoint, :return_tracepoint,
                 :line_tracepoint, :raise_tracepoint, :tracing
 
-  attr_reader :ignore_list, :record
+  attr_reader :ignore_list, :record, :debug
 
-  def initialize(record)
+  def initialize(record, debug: ENV['CODETRACER_RUBY_TRACER_DEBUG'] == '1')
     @tracing = false
     @trace_stopped = false
     @record = record
     @ignore_list = []
+    @debug = debug
+    @record.debug = debug if @record.respond_to?(:debug=)
     setup_tracepoints
   end
 
@@ -160,7 +161,7 @@ class Tracer
       method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
       method_name = "#{method_name_prefix}#{tp.method_id}"
 
-      old_puts "call #{method_name} with #{tp.parameters}" if DEBUG_TRACER
+      old_puts "call #{method_name} with #{tp.parameters}" if @debug
 
       arg_records = prepare_args(tp)
 
@@ -172,7 +173,7 @@ class Tracer
 
   def record_return(tp)
     if self.tracks_call?(tp)
-      old_puts "return" if DEBUG_TRACER
+      old_puts "return" if @debug
       return_value = to_value(tp.return_value)
       @record.register_step(tp.path, tp.lineno)
       # return value support inspired by existing IDE-s/envs like
@@ -283,7 +284,7 @@ if __FILE__ == $PROGRAM_NAME
   begin
     Kernel.load(program)
   rescue Exception => e
-    if DEBUG_TRACER
+    if @debug
       old_puts ''
       old_puts '==== trace.rb error while tracing program ==='
       old_puts 'ERROR'
