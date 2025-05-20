@@ -30,7 +30,7 @@ however you probably want to use it in combination with CodeTracer, which would 
 
 ### ENV variables
 
-* if you pass `CODETRACER_RUBY_TRACER_DEBUG=1`, you enables some additional debug-related logging
+* if you pass `CODETRACER_RUBY_RECORDER_DEBUG=1`, you enables some additional debug-related logging
 * `CODETRACER_RUBY_RECORDER_OUT_DIR` can be used to specify the directory for trace files
 
 ## Future directions

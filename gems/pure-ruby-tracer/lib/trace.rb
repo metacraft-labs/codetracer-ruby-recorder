@@ -72,7 +72,7 @@ class Tracer
 
   attr_reader :ignore_list, :record, :debug
 
-  def initialize(record, debug: ENV['CODETRACER_RUBY_TRACER_DEBUG'] == '1')
+  def initialize(record, debug: false)
     @tracing = false
     @trace_stopped = false
     @record = record
@@ -250,10 +250,9 @@ class Tracer
   end
 end
 
-
-$tracer = Tracer.new($codetracer_record)
-
 if __FILE__ == $PROGRAM_NAME
+  $tracer = Tracer.new($codetracer_record, debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
+
   options = {}
   parser = OptionParser.new do |opts|
     opts.banner = "usage: ruby trace.rb [options] <program> [args]"

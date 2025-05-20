@@ -17,7 +17,7 @@ def primes(n)
 end
 
 def compute
-  arr = primes(100)
+  arr = primes(500)
   hash = arr.each_with_index.to_h
   sum = arr.reduce(:+)
   str = arr.map(&:to_s).join(',')

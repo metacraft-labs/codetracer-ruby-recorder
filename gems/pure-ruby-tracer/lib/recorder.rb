@@ -103,8 +103,6 @@ NONE = 30
 
 NONE_TYPE_SPECIFIC_INFO = {kind: 'None'}
 
-$STEP_COUNT = 0
-
 class TraceRecord
   # part of the final trace
   attr_accessor :steps, :calls, :variables, :events, :types, :flow, :paths
@@ -139,6 +137,8 @@ class TraceRecord
     @t3 = nil
     @codetracer_id = 0
     @debug = false
+
+    @step_count = 0
   end
 
   def load_flow(path, line, binding)
@@ -173,9 +173,9 @@ class TraceRecord
     step_record = StepRecord.new(self.path_id(path), line)
     @events << [:Step, step_record] # because we convert later to {Step: step-record}: default enum json format in serde/rust
     # $stderr.write path, "\n"
-    $STEP_COUNT += 1
-    if $STEP_COUNT % 1_000 == 0
-      $stdout.write "steps ", $STEP_COUNT, "\n"
+    if @debug
+      @step_count += 1
+      $stdout.write "steps ", $STEP_COUNT, "\n" if $STEP_COUNT % 1_000 == 0
     end
   end
 
