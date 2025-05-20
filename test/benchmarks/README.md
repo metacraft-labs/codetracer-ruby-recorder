@@ -5,3 +5,5 @@ These benchmarks are **not** executed in CI because they may take longer to run 
 The reference traces are stored via Git LFS so the repository stays lightweight. `run_benchmark.rb` verifies the SHA-256 hash of each fixture and downloads it with `git lfs` on demand if missing.
 
 At the moment there is a single benchmark (`heavy_work`) that exercises a mixture of array and hash operations while computing prime numbers. More benchmarks will be added as we expand the suite.
+
+Use `run_benchmark.rb --write-report=console BENCHMARK` to execute a single benchmark and print the runtime. Passing a path ending with `.json` or `.svg` will run all benchmarks and write a report in the chosen format.

@@ -37,8 +37,43 @@ jobs:
         uses: extractions/setup-just@v1
       - name: Build extension
         run: just build-extension
-      - name: Run benchmark
-        run: just bench
+      - name: Run benchmarks and generate report
+        run: just bench heavy_work reports/benchmark_report.svg
+      - name: Post or update PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = 'reports/benchmark_report.svg';
+            let content = fs.readFileSync(path, 'utf8');
+            content = '<details>\n<summary>Benchmark Report</summary>\n\n' +
+                      content + '\n</details>';
+            const issue_number = context.payload.pull_request.number;
+            const header = '<!-- benchmark-report -->\n';
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number
+            });
+            const existing = comments.data.find(c => c.body.startsWith(header));
+            const body = header + content;
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner:      context.repo.owner,
+                repo:       context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number,
+                body
+              });
+            }
 
   nix:
     runs-on: ubuntu-latest
