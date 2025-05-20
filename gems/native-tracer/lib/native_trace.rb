@@ -49,12 +49,44 @@ recorder = nil
 begin
   require target_path
   recorder = RubyRecorder.new
-  recorder.enable_tracing
+  $recorder = recorder
+
+  module Kernel
+    alias :old_p :p
+    alias :old_puts :puts
+    alias :old_print :print
+
+    def p(*args)
+      if $recorder
+        loc = caller_locations(1,1).first
+        $recorder.record_event(loc.path, loc.lineno, args.join("\n"))
+      end
+      old_p(*args)
+    end
+
+    def puts(*args)
+      if $recorder
+        loc = caller_locations(1,1).first
+        $recorder.record_event(loc.path, loc.lineno, args.join("\n"))
+      end
+      old_puts(*args)
+    end
+
+    def print(*args)
+      if $recorder
+        loc = caller_locations(1,1).first
+        $recorder.record_event(loc.path, loc.lineno, args.join("\n"))
+      end
+      old_print(*args)
+    end
+  end
+
 rescue Exception => e
   warn "native tracer unavailable: #{e}"
 end
 
 program = ARGV.shift
+recorder.enable_tracing if recorder
 load program
 if recorder
   recorder.disable_tracing
