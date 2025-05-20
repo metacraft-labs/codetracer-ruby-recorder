@@ -25,6 +25,21 @@ jobs:
       - name: Run tests
         run: just test
 
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+      - name: Setup just
+        uses: extractions/setup-just@v1
+      - name: Build extension
+        run: just build-extension
+      - name: Run benchmark
+        run: just bench
+
   nix:
     runs-on: ubuntu-latest
     steps:
