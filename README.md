@@ -46,7 +46,7 @@ You can also invoke a lightweight CLI that loads the native tracer extension
 directly:
 
 ```bash
-ruby src/native_trace.rb [--out-dir DIR] <path to ruby file>
+ruby gems/native-tracer/lib/native_trace.rb [--out-dir DIR] <path to ruby file>
 # Uses DIR or `$CODETRACER_RUBY_RECORDER_OUT_DIR` to choose where traces are saved.
 ```
 
