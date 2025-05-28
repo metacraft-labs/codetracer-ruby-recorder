@@ -27,6 +27,12 @@ TARGETS.each do |target|
   FileUtils.rm_f(gem_file)
 end
 
+# Build and publish fallback gem for generic Ruby platform
+run('rake build')
+generic_gem = Dir['pkg/codetracer-ruby-recorder-*.gem'].max_by { |f| File.mtime(f) }
+run("gem push #{generic_gem}")
+FileUtils.rm_f(generic_gem)
+
 # Build and publish pure Ruby gem
 run('gem build gems/pure-ruby-tracer/codetracer_pure_ruby_recorder.gemspec')
 pure_gem = Dir['codetracer_pure_ruby_recorder-*.gem'].max_by { |f| File.mtime(f) }
