@@ -161,7 +161,7 @@ class Tracer
       method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
       method_name = "#{method_name_prefix}#{tp.method_id}"
 
-      old_puts "call #{method_name} with #{tp.parameters}" if @debug
+      old_puts "call #{method_name} with #{tp.parameters}" if $tracer.debug
 
       arg_records = prepare_args(tp)
 
@@ -173,7 +173,7 @@ class Tracer
 
   def record_return(tp)
     if self.tracks_call?(tp)
-      old_puts "return" if @debug
+      old_puts "return" if $tracer.debug
       return_value = to_value(tp.return_value)
       @record.register_step(tp.path, tp.lineno)
       # return value support inspired by existing IDE-s/envs like
@@ -283,7 +283,7 @@ if __FILE__ == $PROGRAM_NAME
   begin
     Kernel.load(program)
   rescue Exception => e
-    if @debug
+    if $tracer.debug
       old_puts ''
       old_puts '==== trace.rb error while tracing program ==='
       old_puts 'ERROR'
