@@ -2,6 +2,7 @@ require 'minitest/autorun'
 require 'json'
 require 'fileutils'
 require 'open3'
+require 'rbconfig'
 require 'tmpdir'
 
 class TraceTest < Minitest::Test
@@ -22,7 +23,7 @@ class TraceTest < Minitest::Test
       program = File.join('test', 'programs', program_name)
       out_dir = File.join('test', 'tmp', base, tracer_name)
       FileUtils.mkdir_p(out_dir)
-      stdout, stderr, status = Open3.capture3('ruby', tracer_script, '--out-dir', out_dir, program, *args)
+      stdout, stderr, status = Open3.capture3(RbConfig.ruby, tracer_script, '--out-dir', out_dir, program, *args)
       raise "trace failed: #{stderr}" unless status.success?
       trace_file = File.join(out_dir, 'trace.json')
       trace = JSON.parse(File.read(trace_file)) if File.exist?(trace_file)
@@ -84,7 +85,7 @@ class TraceTest < Minitest::Test
 
         out_dir = File.join('test', 'tmp', "gem_install_#{gem_bin.tr('-', '_')}")
         FileUtils.rm_rf(out_dir)
-        stdout, stderr, status = Open3.capture3(env, 'ruby', '-S', gem_bin, '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
+        stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, '-S', gem_bin, '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
         raise "#{gem_bin} failed: #{stderr}" unless status.success?
         assert_equal "3\n", stdout
         assert File.exist?(File.join(out_dir, 'trace.json'))
@@ -105,7 +106,7 @@ class TraceTest < Minitest::Test
         RUBY
         script_path = File.join('test', 'tmp', "use_#{gem_bin.tr('-', '_')}.rb")
         File.write(script_path, script)
-        stdout, stderr, status = Open3.capture3(env, 'ruby', script_path)
+        stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, script_path)
         raise "#{gem_module} library failed: #{stderr}" unless status.success?
         expected_out = <<~OUT
           start trace
@@ -132,7 +133,7 @@ class TraceTest < Minitest::Test
       env = { 'CODETRACER_RUBY_RECORDER_DEBUG' => '1' }
       out_dir = File.join('test', 'tmp', 'debug_smoke')
       FileUtils.rm_rf(out_dir)
-      stdout, stderr, status = Open3.capture3(env, 'ruby', 'gems/codetracer-pure-ruby-recorder/lib/trace.rb', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
+      stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, 'gems/codetracer-pure-ruby-recorder/lib/trace.rb', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
       raise "trace failed: #{stderr}" unless status.success?
 
       lines = stdout.lines.map(&:chomp)
