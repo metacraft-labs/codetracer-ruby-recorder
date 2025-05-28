@@ -36,7 +36,7 @@ recorder.flush_trace(Dir.pwd)
 you can currently use it directly with
 
 ```bash
-ruby trace.rb [--out-dir DIR] <path to ruby file>
+ruby gems/pure-ruby-tracer/lib/trace.rb [--out-dir DIR] <path to ruby file>
 # produces several trace json files in DIR,
 # or in `$CODETRACER_RUBY_RECORDER_OUT_DIR` if DIR is not provided.
 # Defaults to the current directory.
@@ -60,7 +60,7 @@ however you probably want to use it in combination with CodeTracer, which would 
 
 ## Future directions
 
-The current Ruby support is a prototype. In the future, it may be expanded to function in a way to similar to the more complete implementations, e.g. [Noir](https://github.com/blocksense-network/noir/tree/blocksense/tooling/tracer).
+The current Ruby support is a prototype. In the future, it may be expanded to function in a way similar to the more complete implementations, e.g. [Noir](https://github.com/blocksense-network/noir/tree/blocksense/tooling/tracer).
 
 ### Current approach: TracePoint API
 
@@ -77,7 +77,7 @@ For other languages, we've used a more deeply integrated approach: patching the 
 
 #### Create a C extension for the VM, based on the `rb_add_event_hook2`
 
-This would be a straigh-forward port of the current code, but developed as a native extension (e.g. in C/C++ or Rust). The expected speedup will be significant.
+This would be a straight-forward port of the current code, but developed as a native extension (e.g. in C/C++ or Rust). The expected speedup will be significant.
 
 #### Patching the VM
 
@@ -88,7 +88,7 @@ The patching can be done either directly in the source code of the VM or through
 #### Filtering
 
 It would be useful to have a way to record only certain intervals within the program execution, or certain functions or modules:
-we plan on expanding the [trace format](https://github.com/metacraft-labs/runtime_tracing/) and CodeTracer' support, so that this is possible. It would let one be able to record interesting
+we plan on expanding the [trace format](https://github.com/metacraft-labs/runtime_tracing/) and CodeTracer's support, so that this is possible. It would let one be able to record interesting
 parts of even long-running or more heavy programs.
 
 ### Contributing
