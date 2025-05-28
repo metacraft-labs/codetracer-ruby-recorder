@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.license       = 'MIT'
   spec.homepage      = 'https://github.com/metacraft-labs/codetracer-ruby-recorder'
 
-  spec.files         = Dir['lib/**/*', 'bin/*', '../../README.md', '../../LICENSE']
+  spec.files         = Dir['lib/**/*', 'bin/*']
   spec.require_paths = ['lib']
   spec.bindir        = 'bin'
   spec.executables   = ['codetracer-pure-ruby-recorder']
