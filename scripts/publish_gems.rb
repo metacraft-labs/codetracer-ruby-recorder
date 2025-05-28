@@ -2,6 +2,25 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'rubygems'
+
+def gem_version(path)
+  Gem::Specification.load(path).version.to_s
+end
+
+def ensure_tag_matches_version
+  tag = ENV['GITHUB_REF_NAME'] || ENV['RELEASE_TAG'] || `git describe --tags --exact-match`.strip
+  tag = tag.sub(/^v/, '')
+
+  native_version = gem_version(File.join('gems', 'native-tracer', 'codetracer-ruby-recorder.gemspec'))
+  pure_version   = gem_version(File.join('gems', 'pure-ruby-tracer', 'codetracer_pure_ruby_recorder.gemspec'))
+
+  unless tag == native_version && tag == pure_version
+    abort("Tag #{tag} does not match gem versions #{native_version} and #{pure_version}")
+  end
+end
+
+ensure_tag_matches_version
 
 def load_targets
   return ARGV unless ARGV.empty?

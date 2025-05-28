@@ -1,0 +1,24 @@
+name: Publish Gems
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+      - name: Install dependencies
+        run: bundle install --jobs 4 --retry 3
+      - name: Setup just
+        uses: extractions/setup-just@v1
+      - name: Publish gems
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: ruby scripts/publish_gems.rb

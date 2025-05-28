@@ -120,3 +120,23 @@ packages can be used interchangeably.
 
 All the above steps are automated by `scripts/publish_gems.rb` which
 builds and publishes the pure Ruby gem and all native variants.
+
+### Automated publishing via GitHub Actions
+
+Gems are published automatically when a tag matching `v<version>` is
+pushed. The workflow defined in `.github/workflows/publish.yml` checks
+that the tag version equals the versions in both gemspecs and then runs
+`scripts/publish_gems.rb`.
+
+The workflow requires a RubyGems API key stored as a repository secret
+named `RUBYGEMS_API_KEY`. Obtain the key with `gem signin` and copy the
+`rubygems_api_key` value from `~/.gem/credentials`. Add it under
+`Settings → Secrets and variables → Actions` in the repository so the
+workflow can authenticate with RubyGems.
+
+To release a new version:
+
+1. Update the `version` field in both gemspecs.
+2. Commit the changes and create an annotated tag `v<version>`.
+3. Push the tag to GitHub. The workflow will build and publish the
+   gems if the tag matches the versions.
