@@ -157,5 +157,378 @@
         "kind": "None"
       }
     }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#1)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 0,
+      "lang_type": "Hash",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 0,
+      "lang_type": "Set",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Time (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "sec",
+            "type_id": 0
+          },
+          {
+            "name": "nsec",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Point (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "x",
+            "type_id": 0
+          },
+          {
+            "name": "y",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#2)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#3)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 0,
+      "lang_type": "Array",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 16,
+        "elements": [
+          {
+            "kind": "Float",
+            "type_id": 5,
+            "f": 1.5
+          },
+          {
+            "kind": "Sequence",
+            "type_id": 8,
+            "elements": [
+              {
+                "kind": "Struct",
+                "type_id": 6,
+                "field_values": [
+                  {
+                    "kind": "String",
+                    "type_id": 3,
+                    "text": "a"
+                  },
+                  {
+                    "kind": "Int",
+                    "type_id": 0,
+                    "i": 1
+                  }
+                ]
+              },
+              {
+                "kind": "Struct",
+                "type_id": 7,
+                "field_values": [
+                  {
+                    "kind": "String",
+                    "type_id": 3,
+                    "text": "b"
+                  },
+                  {
+                    "kind": "Int",
+                    "type_id": 0,
+                    "i": 2
+                  }
+                ]
+              }
+            ],
+            "is_slice": false
+          },
+          {
+            "kind": "Struct",
+            "type_id": 9,
+            "field_values": [
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 1
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 3
+              }
+            ]
+          },
+          {
+            "kind": "Sequence",
+            "type_id": 10,
+            "elements": [
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 1
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 2
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 3
+              }
+            ],
+            "is_slice": false
+          },
+          {
+            "kind": "Struct",
+            "type_id": 11,
+            "field_values": [
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 0
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 0
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 12,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ab"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 0
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 13,
+            "field_values": [
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 5
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 6
+              }
+            ]
+          },
+          {
+            "kind": "Sequence",
+            "type_id": 8,
+            "elements": [
+              {
+                "kind": "Struct",
+                "type_id": 14,
+                "field_values": [
+                  {
+                    "kind": "String",
+                    "type_id": 3,
+                    "text": "foo"
+                  },
+                  {
+                    "kind": "Int",
+                    "type_id": 0,
+                    "i": 7
+                  }
+                ]
+              },
+              {
+                "kind": "Struct",
+                "type_id": 15,
+                "field_values": [
+                  {
+                    "kind": "String",
+                    "type_id": 3,
+                    "text": "bar"
+                  },
+                  {
+                    "kind": "Int",
+                    "type_id": 0,
+                    "i": 8
+                  }
+                ]
+              }
+            ],
+            "is_slice": false
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "1.5\n{:a=>1, :b=>2}\n1..3\n#<Set: {1, 2, 3}>\n1970-01-01 00:00:00 +0000\n(?-mix:ab)\n#<struct Point x=5, y=6>\n#<OpenStruct foo=7, bar=8>",
+      "metadata": ""
+    }
   }
 ]
