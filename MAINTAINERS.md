@@ -25,7 +25,7 @@ This compiles the extension in release mode using Cargo. The resulting
 shared library is placed under
 `ext/native_tracer/target/release/` and is loaded by `src/native_trace.rb`.
 
-## Running tests and benchmarks
+## Running tests
 
 Execute the full test suite with:
 
@@ -33,16 +33,20 @@ Execute the full test suite with:
 just test
 ```
 
+
 The tests run several sample programs from `test/programs` and compare
 the generated traces with the fixtures under `test/fixtures`.
 
-Benchmarks can be executed with:
+## Benchmarking
+
+Run the heavy\_work benchmark with:
 
 ```bash
 just bench heavy_work
 ```
 
-Passing a second argument writes a report instead of printing the runtime:
+Provide a path as a second argument to write a report instead of
+printing the runtime:
 
 ```bash
 just bench heavy_work reports/bench.svg
