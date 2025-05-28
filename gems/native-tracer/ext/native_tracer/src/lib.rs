@@ -84,7 +84,7 @@ struct Recorder {
     inst_meth_id: ID,
     parameters_id: ID,
     class_id: ID,
-    struct_types: HashMap<String, runtime_tracing::TypeId>,
+    struct_type_versions: HashMap<String, usize>,
 }
 
 fn value_type_id(val: &ValueRecord) -> runtime_tracing::TypeId {
@@ -119,26 +119,26 @@ unsafe fn struct_value(
         vals.push(to_value(recorder, *v, depth - 1, to_s_id));
     }
 
-    let type_id = if let Some(id) = recorder.struct_types.get(class_name) {
-        *id
-    } else {
-        let field_types: Vec<FieldTypeRecord> = field_names
-            .iter()
-            .zip(&vals)
-            .map(|(n, v)| FieldTypeRecord {
-                name: (*n).to_string(),
-                type_id: value_type_id(v),
-            })
-            .collect();
-        let typ = TypeRecord {
-            kind: TypeKind::Struct,
-            lang_type: class_name.to_string(),
-            specific_info: TypeSpecificInfo::Struct { fields: field_types },
-        };
-        let id = recorder.tracer.ensure_raw_type_id(typ);
-        recorder.struct_types.insert(class_name.to_string(), id);
-        id
+    let version_entry = recorder
+        .struct_type_versions
+        .entry(class_name.to_string())
+        .or_insert(0);
+    let name_version = format!("{} (#{})", class_name, *version_entry);
+    *version_entry += 1;
+    let field_types: Vec<FieldTypeRecord> = field_names
+        .iter()
+        .zip(&vals)
+        .map(|(n, v)| FieldTypeRecord {
+            name: (*n).to_string(),
+            type_id: value_type_id(v),
+        })
+        .collect();
+    let typ = TypeRecord {
+        kind: TypeKind::Struct,
+        lang_type: name_version,
+        specific_info: TypeSpecificInfo::Struct { fields: field_types },
     };
+    let type_id = recorder.tracer.ensure_raw_type_id(typ);
 
     ValueRecord::Struct {
         field_values: vals,
@@ -197,7 +197,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         inst_meth_id,
         parameters_id,
         class_id,
-        struct_types: HashMap::new(),
+        struct_type_versions: HashMap::new(),
     });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
     rb_data_typed_object_wrap(klass, Box::into_raw(recorder) as *mut c_void, ty)
@@ -577,7 +577,13 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         String::from_utf8_lossy(std::slice::from_raw_parts(ptr as *const u8, len)).to_string()
     };
     let line = rb_num2long(line_val) as i64;
-    if path.contains("native_trace.rb") {
+    if path.contains("native_trace.rb")
+        || path.contains("lib/ruby")
+        || path.contains("recorder.rb")
+        || path.contains("trace.rb")
+        || path.contains("gems/")
+        || path.starts_with("<internal:")
+    {
         return;
     }
 
@@ -594,9 +600,9 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         let mid_sym = rb_tracearg_callee_id(arg);
         let mid = rb_sym2id(mid_sym);
         let defined_class = rb_funcall(self_val, recorder.class_id, 0);
-        let mut args = Vec::new();
         if !NIL_P(binding) {
-            args = record_parameters(recorder, binding, defined_class, mid, true);
+            // ensure parameter types are registered before self
+            let _ = record_parameters(recorder, binding, defined_class, mid, false);
         }
         let class_name = cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
         let text = value_to_string_safe(self_val, recorder.to_s_id).unwrap_or_default();
@@ -605,6 +611,12 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         recorder
             .tracer
             .register_variable_with_full_value("self", self_rec.clone());
+
+        let mut args = if NIL_P(binding) {
+            Vec::new()
+        } else {
+            record_parameters(recorder, binding, defined_class, mid, true)
+        };
 
         args.insert(0, recorder.tracer.arg("self", self_rec));
         recorder.tracer.register_step(Path::new(&path), Line(line));

@@ -46,7 +46,7 @@ FullValueRecord = Struct.new(:variable_id, :value) do
 end
 
 
-ValueRecord = Struct.new(:kind, :type_id, :i, :b, :text, :r, :msg, :elements, :is_slice, :field_values, keyword_init: true) do
+ValueRecord = Struct.new(:kind, :type_id, :i, :f, :b, :text, :r, :msg, :elements, :is_slice, :field_values, keyword_init: true) do
   def to_data_for_json
     res = to_h.compact
     if !res[:elements].nil?
@@ -402,7 +402,7 @@ def to_value(v, depth=10)
     end
   when Range
     struct_value('Range', ['begin', 'end'], [v.begin, v.end], depth)
-  when defined?(Set) && v.is_a?(Set)
+  when ->(o) { defined?(Set) && o.is_a?(Set) }
     if v.size > MAX_COUNT
       NOT_SUPPORTED_VALUE
     else
@@ -414,7 +414,7 @@ def to_value(v, depth=10)
     struct_value('Regexp', ['source', 'options'], [v.source, v.options], depth)
   when Struct
     struct_value(v.class.name, v.members.map(&:to_s), v.values, depth)
-  when defined?(OpenStruct) && v.is_a?(OpenStruct)
+  when ->(o) { defined?(OpenStruct) && o.is_a?(OpenStruct) }
     h = v.to_h
     pairs = h.map do |k, val|
       struct_value('Pair', ['k', 'v'], [k, val], depth)
