@@ -9,10 +9,14 @@ Gem::Specification.new do |spec|
   spec.license       = 'MIT'
   spec.homepage      = 'https://github.com/metacraft-labs/codetracer-ruby-recorder'
 
-  spec.files         = Dir['lib/**/*', 'ext/native_tracer/**/{Cargo.toml,*.rs}',
-                          'ext/native_tracer/extconf.rb', '../../README.md', '../../LICENSE']
+  spec.files         = Dir[
+    'lib/**/*',
+    'ext/native_tracer/**/{Cargo.toml,*.rs}',
+    'ext/native_tracer/extconf.rb',
+    'ext/native_tracer/target/release/*'
+  ]
   spec.require_paths = ['lib']
-  spec.extensions    = ['ext/native_tracer/extconf.rb']
+  spec.extensions    = []
   spec.bindir        = 'bin'
   spec.executables   = ['codetracer-ruby-recorder']
 
