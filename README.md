@@ -6,6 +6,30 @@ A recorder of Ruby programs that produces [CodeTracer](https://github.com/metacr
 > Currently it is in a very early phase: we're welcoming contribution and discussion!
 
 
+### Installing as a gem
+
+```bash
+gem install codetracer-ruby-recorder
+```
+
+The command downloads a prebuilt native extension when available and falls back
+to building it from source. If this fails, install the pure Ruby version:
+
+```bash
+gem install codetracer_pure_ruby_recorder
+```
+
+After installing, load the tracer:
+
+```ruby
+require 'codetracer_ruby_recorder'
+
+recorder = RubyRecorder.new
+recorder.enable_tracing
+# ... your code ...
+recorder.flush_trace(Dir.pwd)
+```
+
 ### Usage
 
 you can currently use it directly with
