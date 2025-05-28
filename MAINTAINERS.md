@@ -64,6 +64,10 @@ A helper script is available to build and push all gems in one go:
 ruby scripts/publish_gems.rb
 ```
 
+The list of target triples used by the script lives in
+`scripts/targets.txt`. You can override it by passing targets as
+arguments to the helper script.
+
 ### Native extension gem
 
 1. Install the development dependencies:

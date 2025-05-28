@@ -3,14 +3,20 @@
 
 require 'fileutils'
 
-TARGETS = [
-  'x86_64-unknown-linux-gnu',
-  'aarch64-unknown-linux-gnu',
-  'x86_64-apple-darwin',
-  'aarch64-apple-darwin',
-  'x86_64-pc-windows-msvc'
-].freeze
+def load_targets
+  return ARGV unless ARGV.empty?
 
+  config_path = File.join(__dir__, 'targets.txt')
+  unless File.exist?(config_path)
+    abort("No targets specified and #{config_path} is missing")
+  end
+
+  File.readlines(config_path, chomp: true)
+      .map { |l| l.strip }
+      .reject { |l| l.empty? || l.start_with?('#') }
+end
+
+TARGETS = load_targets.freeze
 
 def run(cmd, env = {})
   command = env.map { |k, v| "#{k}=#{v}" }.join(' ')
