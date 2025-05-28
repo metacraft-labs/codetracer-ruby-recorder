@@ -4,7 +4,11 @@
 !test/benchmarks/fixtures/*.json
 test/tmp/
 .direnv/
-pkg/
+pkg/ 
+
+# Built ruby gems
+
+**/*.gem
 
 # Offline dependency sources
 .codex/deps_src/
