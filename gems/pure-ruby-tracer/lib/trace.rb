@@ -182,38 +182,38 @@ class Tracer
       @record.register_variable("<return_value>", return_value)
       @record.events << [:Return, ReturnRecord.new(return_value)]
     end
+  end
 
-    def record_step(tp)
-      if self.tracks_call?(tp)
-        @record.register_step(tp.path, tp.lineno)
-        variables = self.load_variables(tp.binding)
-        variables.each do |(name, value)|
-          @record.register_variable(name, value)
-        end
+  def record_step(tp)
+    if self.tracks_call?(tp)
+      @record.register_step(tp.path, tp.lineno)
+      variables = self.load_variables(tp.binding)
+      variables.each do |(name, value)|
+        @record.register_variable(name, value)
       end
     end
+  end
 
-    def record_event(caller, content)
-      # reason/effect are on different steps:
-      # reason: before `p` is called;
-      # effect: now, when the args are evaluated
-      # which can happen after many calls/steps;
-      # maybe add a step for this call?
-      begin
-        location = caller[0].split[0].split(':')[0..1]
-        path, line = location[0], location[1].to_i
-        @record.register_step(path, line)
-      rescue
-        # ignore for now: we'll just jump to last previous step
-        # which might be from args
-      end
-      # start is last step on this level: log for reason: the previous step on this level
-      @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content, "")]
+  def record_event(caller, content)
+    # reason/effect are on different steps:
+    # reason: before `p` is called;
+    # effect: now, when the args are evaluated
+    # which can happen after many calls/steps;
+    # maybe add a step for this call?
+    begin
+      location = caller[0].split[0].split(':')[0..1]
+      path, line = location[0], location[1].to_i
+      @record.register_step(path, line)
+    rescue
+      # ignore for now: we'll just jump to last previous step
+      # which might be from args
     end
+    # start is last step on this level: log for reason: the previous step on this level
+    @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content, "")]
+  end
 
-    def record_exception(tp)
-      @record.events << [:Event, RecordEvent.new(EVENT_KIND_ERROR, tp.raised_exception.to_s, "")]
-    end
+  def record_exception(tp)
+    @record.events << [:Event, RecordEvent.new(EVENT_KIND_ERROR, tp.raised_exception.to_s, "")]
   end
 
   def activate
