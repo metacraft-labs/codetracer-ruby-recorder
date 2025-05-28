@@ -75,7 +75,7 @@ We'd be very happy if the community finds this useful, and if anyone wants to:
 * Provide feedback and discuss alternative implementation ideas: in the issue tracker, or in our [discord](https://discord.gg/qSDCAFMP).
 * Provide [sponsorship](https://opencollective.com/codetracer), so we can hire dedicated full-time maintainers for this project.
 
-For maintainer instructions, see [MAINTANERS.md](MAINTANERS.md).
+For maintainer instructions, see [MAINTAINERS.md](MAINTAINERS.md).
 
 ### Legal info
 
