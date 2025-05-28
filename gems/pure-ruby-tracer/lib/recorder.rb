@@ -3,6 +3,8 @@
 # See LICENSE file in the project root for full license information.
 
 require 'fileutils'
+require 'set'
+require 'ostruct'
 
 CallRecord = Struct.new(:function_id, :args) do
   def to_data_for_json
@@ -231,6 +233,10 @@ class TraceRecord
     type_id
   end
 
+  def type_id_for(name)
+    @type_map[name]
+  end
+
   def load_variable_id(name)
     variable_id = @variable_map[name]
     if variable_id.nil?
@@ -303,6 +309,11 @@ def int_value(i)
   ValueRecord.new(kind: 'Int', type_id: INT_TYPE_INDEX, i: i)
 end
 
+def float_value(f)
+  ti = $codetracer_record.load_type_id(FLOAT, 'Float')
+  ValueRecord.new(kind: 'Float', type_id: ti, f: f)
+end
+
 def string_value(text)
   ValueRecord.new(kind: 'String', type_id: STRING_TYPE_INDEX, text: text)
 end
@@ -317,25 +328,24 @@ def raw_obj_value(raw, class_name)
   ValueRecord.new(kind: 'Raw', type_id: ti, r: raw)
 end
 
-def sequence_value(elements)
-  ti = $codetracer_record.load_type_id(SEQ, "Array")
+def sequence_value(elements, class_name = "Array")
+  ti = $codetracer_record.load_type_id(SEQ, class_name)
   ValueRecord.new(kind: 'Sequence', type_id: ti, elements: elements, is_slice: false)
 end
 
 # fields: Array of [String, TypeRecord]
 def struct_value(class_name, field_names, field_values, depth)
   field_ct_values = field_values.map { |value| to_value(value, depth - 1) }
-  specific_info = {
-    kind: "Struct",
-    fields: field_names.zip(field_ct_values).map do |(name, value)|
-      {name: name, type_id: value.type_id}
-    end
-  }
-  # for now: unique type for each struct instance, because
-  # fields can change (dynamic language)
-  # we can still reuse a single type most of the time
-  # or make it more flexible, but TODO for now
-  ti = $codetracer_record.register_struct_type(class_name, specific_info)
+  ti = $codetracer_record.type_id_for(class_name)
+  if ti.nil?
+    specific_info = {
+      kind: "Struct",
+      fields: field_names.zip(field_ct_values).map do |(name, value)|
+        {name: name, type_id: value.type_id}
+      end
+    }
+    ti = $codetracer_record.register_struct_type(class_name, specific_info)
+  end
   ValueRecord.new(kind: 'Struct', type_id: ti, field_values: field_ct_values)
 end
 
@@ -360,6 +370,8 @@ def to_value(v, depth=10)
   case v
   when Integer
     int_value(v)
+  when Float
+    float_value(v)
   when String
     string_value(v)
   when Symbol
@@ -379,13 +391,48 @@ def to_value(v, depth=10)
         to_value(element, depth - 1)
       end)
     end
+  when Hash
+    if v.count > MAX_COUNT
+      NOT_SUPPORTED_VALUE
+    else
+      pairs = v.map do |k, val|
+        struct_value('Pair', ['k', 'v'], [k, val], depth)
+      end
+      sequence_value(pairs, 'Hash')
+    end
+  when Range
+    struct_value('Range', ['begin', 'end'], [v.begin, v.end], depth)
+  when defined?(Set) && v.is_a?(Set)
+    if v.size > MAX_COUNT
+      NOT_SUPPORTED_VALUE
+    else
+      sequence_value(v.to_a.map { |e| to_value(e, depth - 1) }, 'Set')
+    end
+  when Time
+    struct_value('Time', ['sec', 'nsec'], [v.to_i, v.nsec], depth)
+  when Regexp
+    struct_value('Regexp', ['source', 'options'], [v.source, v.options], depth)
+  when Struct
+    struct_value(v.class.name, v.members.map(&:to_s), v.values, depth)
+  when defined?(OpenStruct) && v.is_a?(OpenStruct)
+    h = v.to_h
+    pairs = h.map do |k, val|
+      struct_value('Pair', ['k', 'v'], [k, val], depth)
+    end
+    sequence_value(pairs, 'Hash')
   when Object
     # NOT_SUPPORTED_VALUE
-    field_names = v.instance_variables.map { |name| name.to_s[1..] }
+    class_name = v.class.name
     field_values = v.instance_variables.map do |name|
       v.instance_variable_get(name)
     end
-    struct_value(v.class.name, field_names, field_values, depth)
+    field_names = nil
+    if $codetracer_record.type_id_for(class_name).nil?
+      field_names = v.instance_variables.map { |name| name.to_s[1..] }
+    else
+      field_names = []
+    end
+    struct_value(class_name, field_names, field_values, depth)
   else
     NOT_SUPPORTED_VALUE
   end
