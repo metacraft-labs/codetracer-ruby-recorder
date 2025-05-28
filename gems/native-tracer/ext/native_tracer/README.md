@@ -54,3 +54,11 @@ To publish prebuilt binaries:
    ```
 
 Repeat these steps for each platform to provide platform-specific gems.
+
+After building the platform-specific variants, build a generic gem that
+compiles the extension when installed:
+
+```bash
+rake build
+gem push pkg/codetracer-ruby-recorder-<version>.gem
+```

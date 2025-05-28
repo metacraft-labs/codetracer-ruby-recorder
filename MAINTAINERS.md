@@ -89,6 +89,14 @@ ruby scripts/publish_gems.rb
 
 Repeat these steps for each supported platform.
 
+Afterwards build a generic gem for the `ruby` platform which installs the
+extension at install time:
+
+```bash
+rake build
+gem push pkg/codetracer-ruby-recorder-<version>.gem
+```
+
 ### Pure Ruby gem
 
 The pure Ruby tracer is packaged from the files under `src/`. Build and
