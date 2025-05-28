@@ -23,10 +23,10 @@ just bench
 # You don't have access to the internet
 
 During development, certain commands will fail because you don't have
-access to the intenet.
+access to the internet.
 
 The script `.codex/internet_resources/download.sh` is executed before
-your development session stars while your computer is still connected
+your development session starts while your computer is still connected
 to the internet.
 
 You can examine this script to see what kind of internet resources
