@@ -23,7 +23,7 @@ just build-extension
 
 This compiles the extension in release mode using Cargo. The resulting
 shared library is placed under
-`ext/native_tracer/target/release/` and is loaded by `gems/native-tracer/lib/native_trace.rb`.
+`ext/native_tracer/target/release/` and is loaded by `gems/codetracer-ruby-recorder/lib/native_trace.rb`.
 
 ## Running tests
 
@@ -59,7 +59,7 @@ Two Ruby gems are published from this repository:
 * **codetracer-ruby-recorder** – the tracer with the compiled native
   extension. Prebuilt gems are produced per target platform using
   [`rb_sys`](https://github.com/oxidize-rb/rb-sys).
-* **codetracer_pure_ruby_recorder** – a pure Ruby fallback without the
+* **codetracer-pure-ruby-recorder** – a pure Ruby fallback without the
   native extension.
 
 A helper script is available to build and push all gems in one go:

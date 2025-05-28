@@ -12,11 +12,10 @@ def ensure_tag_matches_version
   tag = ENV['GITHUB_REF_NAME'] || ENV['RELEASE_TAG'] || `git describe --tags --exact-match`.strip
   tag = tag.sub(/^v/, '')
 
-  native_version = gem_version(File.join('gems', 'native-tracer', 'codetracer-ruby-recorder.gemspec'))
-  pure_version   = gem_version(File.join('gems', 'pure-ruby-tracer', 'codetracer_pure_ruby_recorder.gemspec'))
+  version = File.read(File.expand_path('../version.txt', __dir__)).strip
 
-  unless tag == native_version && tag == pure_version
-    abort("Tag #{tag} does not match gem versions #{native_version} and #{pure_version}")
+  unless tag == version
+    abort("Tag #{tag} does not match gem version #{version}")
   end
 end
 
@@ -59,7 +58,7 @@ run("gem push #{generic_gem}")
 FileUtils.rm_f(generic_gem)
 
 # Build and publish pure Ruby gem
-run('gem build gems/pure-ruby-tracer/codetracer_pure_ruby_recorder.gemspec')
+run('gem build gems/codetracer-pure-ruby-recorder/codetracer_pure_ruby_recorder.gemspec')
 pure_gem = Dir['codetracer_pure_ruby_recorder-*.gem'].max_by { |f| File.mtime(f) }
 run("gem push #{pure_gem}")
 FileUtils.rm_f(pure_gem)
