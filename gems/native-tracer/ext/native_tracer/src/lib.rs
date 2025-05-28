@@ -22,8 +22,9 @@ use rb_sys::{
     rb_raise, rb_eIOError,
     rb_sym2id, rb_id2name, rb_id2sym, rb_obj_classname, rb_num2long
 };
-use rb_sys::{RARRAY_LEN, RARRAY_CONST_PTR, RSTRING_LEN, RSTRING_PTR, RB_INTEGER_TYPE_P, RB_TYPE_P, RB_SYMBOL_P, RB_FLOAT_TYPE_P, NIL_P};
+use rb_sys::{RARRAY_LEN, RARRAY_CONST_PTR, RSTRING_LEN, RSTRING_PTR, RB_INTEGER_TYPE_P, RB_TYPE_P, RB_SYMBOL_P, RB_FLOAT_TYPE_P, NIL_P, rb_protect};
 use rb_sys::{Qtrue, Qfalse, Qnil};
+use std::os::raw::c_int;
 use runtime_tracing::{
     Tracer, Line, ValueRecord, TypeKind, TypeSpecificInfo, TypeRecord, FieldTypeRecord, TypeId,
     EventLogKind, TraceLowLevelEvent, CallRecord, FullValueRecord, ReturnRecord, RecordEvent,
@@ -71,6 +72,7 @@ extern "C" {
     static rb_cRegexp: VALUE;
     static rb_cStruct: VALUE;
     static rb_cRange: VALUE;
+    fn rb_method_boundp(klass: VALUE, mid: ID, ex: c_int) -> VALUE;
 }
 
 struct Recorder {
@@ -260,6 +262,30 @@ unsafe fn value_to_string(val: VALUE, to_s_id: ID) -> Option<String> {
     Some(String::from_utf8_lossy(slice).to_string())
 }
 
+unsafe extern "C" fn call_to_s(arg: VALUE) -> VALUE {
+    let data = &*(arg as *const (VALUE, ID));
+    rb_funcall(data.0, data.1, 0)
+}
+
+unsafe fn value_to_string_safe(val: VALUE, to_s_id: ID) -> Option<String> {
+    if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
+        let ptr = RSTRING_PTR(val);
+        let len = RSTRING_LEN(val) as usize;
+        let slice = std::slice::from_raw_parts(ptr as *const u8, len);
+        return Some(String::from_utf8_lossy(slice).to_string());
+    }
+    let mut state: c_int = 0;
+    let data = (val, to_s_id);
+    let str_val = rb_protect(Some(call_to_s), &data as *const _ as VALUE, &mut state);
+    if state != 0 {
+        return None;
+    }
+    let ptr = RSTRING_PTR(str_val);
+    let len = RSTRING_LEN(str_val) as usize;
+    let slice = std::slice::from_raw_parts(ptr as *const u8, len);
+    Some(String::from_utf8_lossy(slice).to_string())
+}
+
 unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: ID) -> ValueRecord {
     if depth == 0 {
         let type_id = recorder.tracer.ensure_type_id(TypeKind::Error, "No type");
@@ -314,7 +340,9 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         let mut elements = Vec::new();
         for i in 0..len {
             let pair = *ptr.add(i);
-            if RARRAY_LEN(pair) < 2 { continue; }
+            if !RB_TYPE_P(pair, rb_sys::ruby_value_type::RUBY_T_ARRAY) || RARRAY_LEN(pair) < 2 {
+                continue;
+            }
             let pair_ptr = RARRAY_CONST_PTR(pair);
             let key = *pair_ptr.add(0);
             let val_elem = *pair_ptr.add(1);
@@ -333,15 +361,17 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         let set_cls = rb_const_get(rb_cObject, set_id);
         if rb_obj_is_kind_of(val, set_cls) != 0 {
             let arr = rb_funcall(val, rb_intern(b"to_a\0".as_ptr() as *const c_char), 0);
-            let len = RARRAY_LEN(arr) as usize;
-            let ptr = RARRAY_CONST_PTR(arr);
-            let mut elements = Vec::new();
-            for i in 0..len {
-                let elem = *ptr.add(i);
-                elements.push(to_value(recorder, elem, depth - 1, to_s_id));
+            if RB_TYPE_P(arr, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+                let len = RARRAY_LEN(arr) as usize;
+                let ptr = RARRAY_CONST_PTR(arr);
+                let mut elements = Vec::new();
+                for i in 0..len {
+                    let elem = *ptr.add(i);
+                    elements.push(to_value(recorder, elem, depth - 1, to_s_id));
+                }
+                let type_id = recorder.tracer.ensure_type_id(TypeKind::Seq, "Set");
+                return ValueRecord::Sequence { elements, is_slice: false, type_id };
             }
-            let type_id = recorder.tracer.ensure_type_id(TypeKind::Seq, "Set");
-            return ValueRecord::Sequence { elements, is_slice: false, type_id };
         }
     }
     if rb_obj_is_kind_of(val, rb_cTime) != 0 {
@@ -358,6 +388,11 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         let class_name = cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Struct".to_string());
         let members = rb_funcall(val, rb_intern(b"members\0".as_ptr() as *const c_char), 0);
         let values = rb_funcall(val, rb_intern(b"values\0".as_ptr() as *const c_char), 0);
+        if !RB_TYPE_P(members, rb_sys::ruby_value_type::RUBY_T_ARRAY) || !RB_TYPE_P(values, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+            let text = value_to_string(val, to_s_id).unwrap_or_default();
+            let type_id = recorder.tracer.ensure_type_id(TypeKind::Raw, &class_name);
+            return ValueRecord::Raw { r: text, type_id };
+        }
         let len = RARRAY_LEN(values) as usize;
         let mem_ptr = RARRAY_CONST_PTR(members);
         let val_ptr = RARRAY_CONST_PTR(values);
@@ -384,6 +419,11 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
     let class_name = cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Object".to_string());
     // generic object
     let ivars = rb_funcall(val, rb_intern(b"instance_variables\0".as_ptr() as *const c_char), 0);
+    if !RB_TYPE_P(ivars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+        let text = value_to_string(val, to_s_id).unwrap_or_default();
+        let type_id = recorder.tracer.ensure_type_id(TypeKind::Raw, &class_name);
+        return ValueRecord::Raw { r: text, type_id };
+    }
     let len = RARRAY_LEN(ivars) as usize;
     let ptr = RARRAY_CONST_PTR(ivars);
     let mut names: Vec<&str> = Vec::new();
@@ -408,6 +448,9 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
 unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullValueRecord> {
     let mut result = Vec::new();
     let vars = rb_funcall(binding, recorder.locals_id, 0);
+    if !RB_TYPE_P(vars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+        return result;
+    }
     let len = RARRAY_LEN(vars) as usize;
     let ptr = RARRAY_CONST_PTR(vars);
     for i in 0..len {
@@ -426,13 +469,19 @@ unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullV
 unsafe fn record_parameters(recorder: &mut Recorder, binding: VALUE, defined_class: VALUE, mid: ID, register: bool) -> Vec<FullValueRecord> {
     let mut result = Vec::new();
     let method_sym = rb_id2sym(mid);
+    if rb_method_boundp(defined_class, mid, 0) == 0 {
+        return result;
+    }
     let method_obj = rb_funcall(defined_class, recorder.inst_meth_id, 1, method_sym);
     let params_ary = rb_funcall(method_obj, recorder.parameters_id, 0);
+    if !RB_TYPE_P(params_ary, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+        return result;
+    }
     let params_len = RARRAY_LEN(params_ary) as usize;
     let params_ptr = RARRAY_CONST_PTR(params_ary);
     for i in 0..params_len {
         let pair = *params_ptr.add(i);
-        if RARRAY_LEN(pair) < 2 {
+        if !RB_TYPE_P(pair, rb_sys::ruby_value_type::RUBY_T_ARRAY) || RARRAY_LEN(pair) < 2 {
             continue;
         }
         let pair_ptr = RARRAY_CONST_PTR(pair);
@@ -545,20 +594,18 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         let mid_sym = rb_tracearg_callee_id(arg);
         let mid = rb_sym2id(mid_sym);
         let defined_class = rb_funcall(self_val, recorder.class_id, 0);
+        let mut args = Vec::new();
         if !NIL_P(binding) {
-            // register parameter types first
-            let _ = record_parameters(recorder, binding, defined_class, mid, false);
+            args = record_parameters(recorder, binding, defined_class, mid, true);
         }
-        let self_rec = to_value(recorder, self_val, 10, recorder.to_s_id);
+        let class_name = cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
+        let text = value_to_string_safe(self_val, recorder.to_s_id).unwrap_or_default();
+        let self_type = recorder.tracer.ensure_type_id(TypeKind::Raw, &class_name);
+        let self_rec = ValueRecord::Raw { r: text, type_id: self_type };
         recorder
             .tracer
             .register_variable_with_full_value("self", self_rec.clone());
 
-        let mut args = if NIL_P(binding) {
-            vec![]
-        } else {
-            record_parameters(recorder, binding, defined_class, mid, true)
-        };
         args.insert(0, recorder.tracer.arg("self", self_rec));
         recorder.tracer.register_step(Path::new(&path), Line(line));
         let name_c = rb_id2name(mid);
@@ -567,7 +614,6 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         } else {
             String::new()
         };
-        let class_name = cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
         if class_name != "Object" {
             name = format!("{}#{}", class_name, name);
         }
