@@ -126,4 +126,19 @@ class TraceTest < Minitest::Test
   def test_pure_gem_installation
     run_gem_installation_test('codetracer-pure-ruby-recorder', 'codetracer_pure_ruby_recorder')
   end
+
+  def test_pure_debug_smoke
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      env = { 'CODETRACER_RUBY_RECORDER_DEBUG' => '1' }
+      out_dir = File.join('test', 'tmp', 'debug_smoke')
+      FileUtils.rm_rf(out_dir)
+      stdout, stderr, status = Open3.capture3(env, 'ruby', 'gems/codetracer-pure-ruby-recorder/lib/trace.rb', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
+      raise "trace failed: #{stderr}" unless status.success?
+
+      lines = stdout.lines.map(&:chomp)
+      assert lines.any? { |l| l.start_with?('call ') }, 'missing debug output'
+      assert lines.include?('3'), 'missing program output'
+      assert File.exist?(File.join(out_dir, 'trace.json'))
+    end
+  end
 end

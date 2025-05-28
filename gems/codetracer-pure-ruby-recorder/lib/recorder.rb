@@ -5,6 +5,7 @@
 require 'fileutils'
 require 'set'
 require 'ostruct'
+require 'pp'
 
 CallRecord = Struct.new(:function_id, :args) do
   def to_data_for_json
