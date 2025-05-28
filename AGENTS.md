@@ -22,7 +22,7 @@ Their outputs are compared structurally to known good outputs stored
 in `test/fixtures`.
 
 When `just test` fails, I suggest running the two tracers directly and
-analyzing where their outputs differs.
+analyzing where their outputs differ.
 
 Please note that only the codetracer-pure-ruby-recorder formats the output json for
 human readability. Thus, you must use `jq -S` when comparing the outputs.
