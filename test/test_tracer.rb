@@ -2,6 +2,7 @@ require 'minitest/autorun'
 require 'json'
 require 'fileutils'
 require 'open3'
+require 'tmpdir'
 
 class TraceTest < Minitest::Test
   TMP_DIR = File.expand_path('tmp', __dir__)
@@ -58,6 +59,52 @@ class TraceTest < Minitest::Test
       expected = expected_output("#{base}.rb")
       assert_equal expected, pure_out
       assert_equal expected, native_out
+    end
+  end
+
+  def test_gem_installation
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      system('just', 'build-extension', exception: true)
+
+      dlext = RbConfig::CONFIG['DLEXT']
+      ext_path = File.join('gems', 'native-tracer', 'ext', 'native_tracer', 'target', 'release', "codetracer_ruby_recorder.#{dlext}")
+      FileUtils.rm_f(ext_path)
+
+      Dir.mktmpdir('gemhome') do |gem_home|
+        gem_build = IO.popen(%w[gem -C gems/native-tracer build codetracer-ruby-recorder.gemspec], err: [:child, :out]) { |io| io.read }
+        gem_file = gem_build.lines.grep(/File:/).first.split.last
+        gem_file = File.expand_path(File.join('gems/native-tracer', gem_file))
+
+        env = { 'GEM_HOME' => gem_home, 'GEM_PATH' => gem_home, 'PATH' => "#{gem_home}/bin:#{ENV['PATH']}" }
+        system(env, 'gem', 'install', '--local', gem_file, exception: true)
+
+        out_dir = File.join('test', 'tmp', 'gem_install')
+        FileUtils.rm_rf(out_dir)
+        stdout, stderr, status = Open3.capture3(env, 'ruby', '-S', 'codetracer-ruby-recorder', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
+        raise "native_trace failed: #{stderr}" unless status.success?
+        assert_equal "3\n", stdout
+        assert File.exist?(File.join(out_dir, 'trace.json'))
+      end
+    end
+  end
+
+  def test_pure_gem_installation
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      Dir.mktmpdir('gemhome') do |gem_home|
+        gem_build = IO.popen(%w[gem -C gems/pure-ruby-tracer build codetracer_pure_ruby_recorder.gemspec], err: [:child, :out]) { |io| io.read }
+        gem_file = gem_build.lines.grep(/File:/).first.split.last
+        gem_file = File.expand_path(File.join('gems/pure-ruby-tracer', gem_file))
+
+        env = { 'GEM_HOME' => gem_home, 'GEM_PATH' => gem_home, 'PATH' => "#{gem_home}/bin:#{ENV['PATH']}" }
+        system(env, 'gem', 'install', '--local', gem_file, exception: true)
+
+        out_dir = File.join('test', 'tmp', 'gem_install_pure')
+        FileUtils.rm_rf(out_dir)
+        stdout, stderr, status = Open3.capture3(env, 'ruby', '-S', 'codetracer-pure-ruby-recorder', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
+        raise "pure_trace failed: #{stderr}" unless status.success?
+        assert_equal "3\n", stdout
+        assert File.exist?(File.join(out_dir, 'trace.json'))
+      end
     end
   end
 end
