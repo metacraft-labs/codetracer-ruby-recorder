@@ -18,39 +18,44 @@ require_relative 'recorder'
 # however this seems as a risky solution, as it clears global gem state!
 # BE CAREFUL if you have other ruby projects/data there!
 
-# override some of the IO methods to record them for event log
-module Kernel
-  alias :old_p :p
-  alias :old_puts :puts
-  alias :old_print :print
+# instrumentation helpers for recording IO calls
+module CodetracerKernelPatches
+  def self.install(tracer)
+    Kernel.module_eval do
+      unless method_defined?(:old_p)
+        alias :old_p :p
+        alias :old_puts :puts
+        alias :old_print :print
+      end
 
-  def p(*args)
-    if $tracer.tracing
-      $tracer.deactivate
-      $tracer.record_event(caller, args.join("\n"))
-      $tracer.activate
+      define_method(:p) do |*args|
+        if tracer.tracing
+          tracer.deactivate
+          tracer.record_event(caller, args.join("\n"))
+          tracer.activate
+        end
+        old_p(*args)
+      end
+
+      define_method(:puts) do |*args|
+        if tracer.tracing
+          tracer.deactivate
+          tracer.record_event(caller, args.join("\n"))
+          tracer.activate
+        end
+        old_puts(*args)
+      end
+
+      define_method(:print) do |*args|
+        if tracer.tracing
+          tracer.deactivate
+          tracer.record_event(caller, args.join("\n"))
+          tracer.activate
+        end
+        old_print(*args)
+      end
     end
-    old_p(*args)
   end
-
-  def puts(*args)
-    if $tracer.tracing
-      $tracer.deactivate
-      $tracer.record_event(caller, args.join("\n"))
-      $tracer.activate
-    end
-    old_puts(*args)
-  end
-
-  def print(*args)
-    if $tracer.tracing
-      $tracer.deactivate
-      $tracer.record_event(caller, args.join("\n"))
-      $tracer.activate
-    end
-    old_print(*args)
-  end
-
 end
 
 # class IO
@@ -252,6 +257,7 @@ end
 
 if __FILE__ == $PROGRAM_NAME
   $tracer = Tracer.new($codetracer_record, debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
+  CodetracerKernelPatches.install($tracer)
 
   options = {}
   parser = OptionParser.new do |opts|

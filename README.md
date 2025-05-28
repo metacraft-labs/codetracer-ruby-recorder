@@ -22,7 +22,8 @@ gem install codetracer_pure_ruby_recorder
 After installing, load the tracer:
 
 ```ruby
-require 'codetracer_ruby_recorder'
+require 'codetracer_ruby_recorder' # native implementation
+# require 'codetracer_pure_ruby_recorder' # pure Ruby implementation
 
 recorder = RubyRecorder.new
 recorder.enable_tracing
