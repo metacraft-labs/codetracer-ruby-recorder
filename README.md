@@ -16,7 +16,7 @@ The command downloads a prebuilt native extension when available and falls back
 to building it from source. If this fails, install the pure Ruby version:
 
 ```bash
-gem install codetracer_pure_ruby_recorder
+gem install codetracer-pure-ruby-recorder
 ```
 
 After installing, load the tracer:
@@ -36,7 +36,7 @@ recorder.flush_trace(Dir.pwd)
 you can currently use it directly with
 
 ```bash
-ruby gems/pure-ruby-tracer/lib/trace.rb [--out-dir DIR] <path to ruby file>
+ruby gems/codetracer-pure-ruby-recorder/lib/trace.rb [--out-dir DIR] <path to ruby file>
 # produces several trace json files in DIR,
 # or in `$CODETRACER_RUBY_RECORDER_OUT_DIR` if DIR is not provided.
 # Defaults to the current directory.
@@ -47,7 +47,7 @@ You can also invoke a lightweight CLI that loads the native tracer extension
 directly:
 
 ```bash
-ruby gems/native-tracer/lib/native_trace.rb [--out-dir DIR] <path to ruby file>
+ruby gems/codetracer-ruby-recorder/lib/native_trace.rb [--out-dir DIR] <path to ruby file>
 # Uses DIR or `$CODETRACER_RUBY_RECORDER_OUT_DIR` to choose where traces are saved.
 ```
 

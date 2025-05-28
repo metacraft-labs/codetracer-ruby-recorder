@@ -7,4 +7,4 @@ bench pattern="*" write_report="console":
     ruby test/benchmarks/run_benchmarks.rb '{{pattern}}' --write-report={{write_report}}
 
 build-extension:
-    cargo build --release --manifest-path gems/native-tracer/ext/native_tracer/Cargo.toml
+    cargo build --release --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml

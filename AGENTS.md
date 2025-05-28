@@ -15,8 +15,8 @@ just test
 The test suite executes a number of sample programs in `test/programs` under
 the two separate recorders/tracers:
 
-* One based on a Ruby native extension in `gems/native-tracer`
-* Another based on pure Ruby code in `gems/pure-ruby-tracer`
+* One based on a Ruby native extension in `gems/codetracer-ruby-recorder`
+* Another based on pure Ruby code in `gems/codetracer-pure-ruby-recorder`
 
 Their outputs are compared structurally to known good outputs stored
 in `test/fixtures`.
@@ -24,7 +24,7 @@ in `test/fixtures`.
 When `just test` fails, I suggest running the two tracers directly and
 analyzing where their outputs differs.
 
-Please note that only the pure-ruby-tracer formats the output json for
+Please note that only the codetracer-pure-ruby-recorder formats the output json for
 human readability. Thus, you must use `jq -S` when comparing the outputs.
 
 To run the benchmark, execute:

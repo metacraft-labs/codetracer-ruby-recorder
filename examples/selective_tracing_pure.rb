@@ -2,7 +2,7 @@
 
 # Load the pure Ruby tracer library if RubyRecorder is not already defined
 unless defined?(RubyRecorder)
-  lib_base = File.expand_path('../gems/pure-ruby-tracer/lib/codetracer_pure_ruby_recorder', __dir__)
+  lib_base = File.expand_path('../gems/codetracer-pure-ruby-recorder/lib/codetracer_pure_ruby_recorder', __dir__)
   require lib_base
 end
 

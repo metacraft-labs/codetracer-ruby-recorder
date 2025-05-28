@@ -50,8 +50,8 @@ class TraceTest < Minitest::Test
   Dir.glob(File.join(FIXTURE_DIR, '*_trace.json')).each do |fixture|
     base = File.basename(fixture, '_trace.json')
     define_method("test_#{base}") do
-      pure_trace, pure_out = run_trace('gems/pure-ruby-tracer/lib/trace.rb', "#{base}.rb", *program_args(base))
-      native_trace, native_out = run_trace('gems/native-tracer/lib/native_trace.rb', "#{base}.rb", *program_args(base))
+      pure_trace, pure_out = run_trace('gems/codetracer-pure-ruby-recorder/lib/trace.rb', "#{base}.rb", *program_args(base))
+      native_trace, native_out = run_trace('gems/codetracer-ruby-recorder/lib/native_trace.rb', "#{base}.rb", *program_args(base))
 
       expected = expected_trace("#{base}.rb")
       assert_equal expected, pure_trace
@@ -64,14 +64,7 @@ class TraceTest < Minitest::Test
 
   def run_gem_installation_test(gem_bin, gem_module)
     Dir.chdir(File.expand_path('..', __dir__)) do
-      gem_dir = case gem_bin
-                when 'codetracer-ruby-recorder'
-                  File.join('gems', 'native-tracer')
-                when 'codetracer-pure-ruby-recorder'
-                  File.join('gems', 'pure-ruby-tracer')
-                else
-                  raise ArgumentError, "unknown gem #{gem_bin}"
-                end
+      gem_dir = File.join('gems', gem_bin)
 
       if gem_bin == 'codetracer-ruby-recorder'
         system('just', 'build-extension', exception: true)

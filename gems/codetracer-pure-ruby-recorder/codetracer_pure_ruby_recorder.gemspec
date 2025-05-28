@@ -1,6 +1,7 @@
 Gem::Specification.new do |spec|
-  spec.name          = 'codetracer_pure_ruby_recorder'
-  spec.version       = '0.1.0'
+  spec.name          = 'codetracer-pure-ruby-recorder'
+  version_file = File.expand_path('../../version.txt', __dir__)
+  spec.version       = File.read(version_file).strip
   spec.authors       = ['Metacraft Labs']
   spec.email         = ['info@metacraft-labs.com']
 
