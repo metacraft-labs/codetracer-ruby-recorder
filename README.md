@@ -55,7 +55,7 @@ however you probably want to use it in combination with CodeTracer, which would 
 
 ### ENV variables
 
-* if you pass `CODETRACER_RUBY_RECORDER_DEBUG=1`, you enables some additional debug-related logging
+* if you pass `CODETRACER_RUBY_RECORDER_DEBUG=1`, you enable some additional debug-related logging
 * `CODETRACER_RUBY_RECORDER_OUT_DIR` can be used to specify the directory for trace files
 
 ## Future directions
@@ -65,7 +65,7 @@ The current Ruby support is a prototype. In the future, it may be expanded to fu
 ### Current approach: TracePoint API
 
 Currently we're using the TracePoint API: https://rubyapi.org/3.4/o/tracepoint .
-This is very flexible and can function with probably multiple Ruby versions out of the box. 
+This is very flexible and can function with probably multiple Ruby versions out of the box.
 However, this is limited:
 
 * it's not optimal
@@ -87,7 +87,7 @@ The patching can be done either directly in the source code of the VM or through
 
 #### Filtering
 
-It would be useful to have a way to record only certain intervals within the program execution, or certain functions or modules: 
+It would be useful to have a way to record only certain intervals within the program execution, or certain functions or modules:
 we plan on expanding the [trace format](https://github.com/metacraft-labs/runtime_tracing/) and CodeTracer' support, so that this is possible. It would let one be able to record interesting
 parts of even long-running or more heavy programs.
 
