@@ -175,7 +175,7 @@ class TraceRecord
     # $stderr.write path, "\n"
     if @debug
       @step_count += 1
-      $stdout.write "steps ", $STEP_COUNT, "\n" if $STEP_COUNT % 1_000 == 0
+      $stdout.write "steps ", @step_count, "\n" if @step_count % 1_000 == 0
     end
   end
 
