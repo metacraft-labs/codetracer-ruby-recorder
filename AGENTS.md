@@ -38,7 +38,7 @@ just bench
 During development, certain commands will fail because you don't have
 access to the internet.
 
-The script `.codex/internet_resources/download.sh` is executed before
+The script `.agents/download_internet_resources.sh` is executed before
 your development session starts while your computer is still connected
 to the internet.
 
@@ -49,7 +49,7 @@ can always propose a PR that modifies the download.sh script instead
 of completing your main task.
 
 Downloading development dependencies may also fail due to the lack of
-internet connectivity. We are trying to maintain the script `.codex/build_all_targets.sh`
+internet connectivity. We are trying to maintain the script `.agents/codex-setup`
 that is also executed before your development session starts while
 your computer is still connected to the internet. It tries to run
 all build commands that need development dependencies in order to
@@ -63,29 +63,39 @@ the file system (i.e. depending on the programming language, the
 operating system and the package manager being used, they should
 be in their standard location).
 
+# Keeping notes
+
+In the `.agents/codebase-insights.txt` file, we try to maintain useful tips that may help
+you in your development tasks. When you discover something important or surprising about
+the codebase, add a remark in a comment near the relevant code or in the codebase-insights
+file. ALWAYS remove older remarks if they are no longer true.
+
+You can consult this file before starting your coding tasks.
+
 # Code quality guidelines
 
-- Strive to achieve high code quality.
-- Write secure code.
-- Make sure the code is well tested and edge cases are covered. Design the code for testability.
-- Write defensive code and make sure all potential errors are handled.
-- Strive to write highly reusable code with routines that have high fan in and low fan out.
-- Keep the code DRY.
+- ALWAYS strive to achieve high code quality.
+- ALWAYS write secure code.
+- ALWAYS make sure the code is well tested and edge cases are covered. Design the code for testability and be extremely thorough.
+- ALWAYS write defensive code and make sure all potential errors are handled.
+- ALWAYS strive to write highly reusable code with routines that have high fan in and low fan out.
+- ALWAYS keep the code DRY.
 - Aim for low coupling and high cohesion. Encapsulate and hide implementation details.
+- When creating executable, ALWAYS make sure the functionality can also be used as a library.
+  To achieve this, avoid global variables, raise/return errors instead of terminating the program, and think whether the use case of the library requires more control over logging and metrics from the application that integrates the library.
 
 # Code commenting guidelines
 
-- Document public APIs and complex modules.
+- Document public APIs and complex modules using standard code documentation conventions.
+- Comment the intention behind you code extensively. Omit comments only for very obvious
+  facts that almost any developer would know.
 - Maintain the comments together with the code to keep them meaningful and current.
-- Comment intention and rationale, not obvious facts. Write self-documenting code.
-- When implementing specific formats, standards or other specifications, make sure to
-  link to the relevant spec URLs.
+- When the code is based on specific formats, standards or well-specified behavior of
+  other software, always make sure to include relevant links (URLs) that provide the
+  necessary technical details.
 
 # Writing git commit messages
 
-The first line of the commit message should follow the "conventional commits" style:
-https://www.conventionalcommits.org/en/v1.0.0/
-
-In the remaining lines, provide a short description of the implemented functionality.
-Provide sufficient details for the justification of each design decision if multiple
-approaches were considered.
+- You MUST use multiline git commit messages.
+- Use the convential commits style for the first line of the commit message.
+- Use the summary section of your final response as the remaining lines in the commit message.
