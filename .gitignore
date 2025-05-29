@@ -13,3 +13,5 @@ pkg/
 # Offline dependency sources
 .codex/deps_src/
 .codex/internet_resources/
+
+agents-workflow/
