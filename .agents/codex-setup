@@ -4,7 +4,7 @@ AGENTS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd $AGENTS_DIR
 
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends just ruby-full
+sudo apt-get install -y --no-install-recommends just ruby-full libclang-dev
 
 pushd ..
   just build-extension
