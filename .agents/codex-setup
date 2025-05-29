@@ -3,8 +3,8 @@
 AGENTS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd $AGENTS_DIR
 
-apt-get update
-apt-get install -y --no-install-recommends just
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends just
 
 pushd ..
   just build-extension
