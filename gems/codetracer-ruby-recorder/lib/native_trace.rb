@@ -5,6 +5,7 @@
 require 'optparse'
 require 'fileutils'
 require 'rbconfig'
+require_relative '../../../codetracer/kernel_patches'
 
 options = {}
 parser = OptionParser.new do |opts|
@@ -50,36 +51,7 @@ begin
   require target_path
   recorder = RubyRecorder.new
   $recorder = recorder
-
-  module Kernel
-    alias :old_p :p
-    alias :old_puts :puts
-    alias :old_print :print
-
-    def p(*args)
-      if $recorder
-        loc = caller_locations(1,1).first
-        $recorder.record_event(loc.path, loc.lineno, args.join("\n"))
-      end
-      old_p(*args)
-    end
-
-    def puts(*args)
-      if $recorder
-        loc = caller_locations(1,1).first
-        $recorder.record_event(loc.path, loc.lineno, args.join("\n"))
-      end
-      old_puts(*args)
-    end
-
-    def print(*args)
-      if $recorder
-        loc = caller_locations(1,1).first
-        $recorder.record_event(loc.path, loc.lineno, args.join("\n"))
-      end
-      old_print(*args)
-    end
-  end
+  ::Codetracer::KernelPatches.install(recorder)
 
 rescue Exception => e
   warn "native tracer unavailable: #{e}"
@@ -90,6 +62,7 @@ recorder.enable_tracing if recorder
 load program
 if recorder
   recorder.disable_tracing
+  ::Codetracer::KernelPatches.uninstall(recorder)
   recorder.flush_trace(out_dir)
 end
 

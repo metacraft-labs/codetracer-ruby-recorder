@@ -5,6 +5,7 @@
 require 'json'
 require 'optparse'
 require_relative 'recorder'
+require_relative '../../../codetracer/kernel_patches'
 
 
 # Warning:
@@ -17,46 +18,6 @@ require_relative 'recorder'
 # it seems clearing `~/.local/share/gem` fixes things up
 # however this seems as a risky solution, as it clears global gem state!
 # BE CAREFUL if you have other ruby projects/data there!
-
-# instrumentation helpers for recording IO calls
-module CodetracerKernelPatches
-  def self.install(tracer)
-    Kernel.module_eval do
-      unless method_defined?(:old_p)
-        alias :old_p :p
-        alias :old_puts :puts
-        alias :old_print :print
-      end
-
-      define_method(:p) do |*args|
-        if tracer.tracing
-          tracer.deactivate
-          tracer.record_event(caller, args.join("\n"))
-          tracer.activate
-        end
-        old_p(*args)
-      end
-
-      define_method(:puts) do |*args|
-        if tracer.tracing
-          tracer.deactivate
-          tracer.record_event(caller, args.join("\n"))
-          tracer.activate
-        end
-        old_puts(*args)
-      end
-
-      define_method(:print) do |*args|
-        if tracer.tracing
-          tracer.deactivate
-          tracer.record_event(caller, args.join("\n"))
-          tracer.activate
-        end
-        old_print(*args)
-      end
-    end
-  end
-end
 
 # class IO
 #   alias :old_write :write
@@ -257,7 +218,7 @@ end
 
 if __FILE__ == $PROGRAM_NAME
   $tracer = Tracer.new($codetracer_record, debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
-  CodetracerKernelPatches.install($tracer)
+  ::Codetracer::KernelPatches.install($tracer)
 
   options = {}
   parser = OptionParser.new do |opts|
@@ -286,6 +247,9 @@ if __FILE__ == $PROGRAM_NAME
   $tracer.ignore('gems/')
 
   $tracer.activate
+  at_exit do
+    ::Codetracer::KernelPatches.uninstall($tracer)
+  end
   begin
     Kernel.load(program)
   rescue Exception => e
