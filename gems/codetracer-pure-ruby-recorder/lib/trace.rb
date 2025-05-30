@@ -58,6 +58,7 @@ class Tracer
     @debug = debug
     @record.debug = debug if @record.respond_to?(:debug=)
     setup_tracepoints
+    ::Codetracer::KernelPatches.install(self)
   end
 
   def stop_tracing
@@ -229,10 +230,10 @@ class Tracer
   end
 end
 
+<<<<<<< HEAD
 if __FILE__ == $PROGRAM_NAME
   $tracer = Tracer.new($codetracer_record, debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
-  ::Codetracer::KernelPatches.install($tracer)
-
+  
   options = {}
   parser = OptionParser.new do |opts|
     opts.banner = "usage: ruby trace.rb [options] <program> [args]"

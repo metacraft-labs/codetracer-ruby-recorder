@@ -1,4 +1,52 @@
 #!/usr/bin/env ruby
-require 'rbconfig'
-script = File.expand_path('../lib/trace.rb', __dir__)
-exec RbConfig.ruby, script, *ARGV
+# SPDX-License-Identifier: MIT
+# CLI for the pure Ruby tracer
+
+require 'optparse'
+lib_dir = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
+require 'codetracer_pure_ruby_recorder'
+
+$tracer = Tracer.new($codetracer_record, debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
+CodetracerKernelPatches.install($tracer)
+
+options = {}
+parser = OptionParser.new do |opts|
+  opts.banner = "usage: codetracer-pure-ruby-recorder [options] <program> [args]"
+  opts.on('-o DIR', '--out-dir DIR', 'Directory to write trace files') { |dir| options[:out_dir] = dir }
+  opts.on('-h', '--help', 'Print this help') { puts opts; exit }
+end
+parser.order!
+
+program = ARGV.shift
+if program.nil?
+  $stderr.puts parser
+  exit 1
+end
+
+$tracer.record.register_call('', 1, '<top-level>', [])
+$tracer.ignore('lib/ruby')
+$tracer.ignore('trace.rb')
+$tracer.ignore('recorder.rb')
+$tracer.ignore('<internal:')
+$tracer.ignore('gems/')
+
+$tracer.activate
+begin
+  Kernel.load(program)
+rescue Exception => e
+  if $tracer.debug
+    old_puts ''
+    old_puts '==== trace.rb error while tracing program ==='
+    old_puts 'ERROR'
+    old_puts e
+    old_puts e.backtrace
+    old_puts '====================='
+    old_puts ''
+  end
+end
+
+$tracer.stop_tracing
+
+out_dir = options[:out_dir] || ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pwd
+$tracer.record.serialize(program, out_dir)

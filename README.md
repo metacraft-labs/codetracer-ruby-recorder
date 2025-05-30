@@ -36,7 +36,7 @@ recorder.flush_trace(Dir.pwd)
 you can currently use it directly with
 
 ```bash
-ruby gems/codetracer-pure-ruby-recorder/lib/trace.rb [--out-dir DIR] <path to ruby file>
+ruby gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder [--out-dir DIR] <path to ruby file>
 # produces several trace json files in DIR,
 # or in `$CODETRACER_RUBY_RECORDER_OUT_DIR` if DIR is not provided.
 # Defaults to the current directory.
@@ -47,7 +47,7 @@ You can also invoke a lightweight CLI that loads the native tracer extension
 directly:
 
 ```bash
-ruby gems/codetracer-ruby-recorder/lib/native_trace.rb [--out-dir DIR] <path to ruby file>
+ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder [--out-dir DIR] <path to ruby file>
 # Uses DIR or `$CODETRACER_RUBY_RECORDER_OUT_DIR` to choose where traces are saved.
 ```
 
