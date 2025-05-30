@@ -5,7 +5,19 @@
 require 'json'
 require 'optparse'
 require_relative 'recorder'
-require_relative '../../../codetracer/kernel_patches'
+require_relative 'codetracer/kernel_patches'
+
+# Helper to access the original +puts+ implementation when kernel
+# methods are patched by {Codetracer::KernelPatches}. This avoids
+# tracing debug output while still functioning even if the patches
+# are not installed.
+def codetracer_puts_no_trace(*args)
+  if Kernel.private_method_defined?(:codetracer_original_puts)
+    Kernel.send(:codetracer_original_puts, *args)
+  else
+    Kernel.puts(*args)
+  end
+end
 
 
 # Warning:
@@ -127,7 +139,7 @@ class Tracer
       method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
       method_name = "#{method_name_prefix}#{tp.method_id}"
 
-      old_puts "call #{method_name} with #{tp.parameters}" if $tracer.debug
+      codetracer_puts_no_trace "call #{method_name} with #{tp.parameters}" if $tracer.debug
 
       arg_records = prepare_args(tp)
 
@@ -139,7 +151,7 @@ class Tracer
 
   def record_return(tp)
     if self.tracks_call?(tp)
-      old_puts "return" if $tracer.debug
+      codetracer_puts_no_trace "return" if $tracer.debug
       return_value = to_value(tp.return_value)
       @record.register_step(tp.path, tp.lineno)
       # return value support inspired by existing IDE-s/envs like
@@ -160,22 +172,23 @@ class Tracer
     end
   end
 
-  def record_event(caller, content)
-    # reason/effect are on different steps:
-    # reason: before `p` is called;
-    # effect: now, when the args are evaluated
-    # which can happen after many calls/steps;
-    # maybe add a step for this call?
-    begin
-      location = caller[0].split[0].split(':')[0..1]
-      path, line = location[0], location[1].to_i
-      @record.register_step(path, line)
-    rescue
-      # ignore for now: we'll just jump to last previous step
-      # which might be from args
+  def record_event(*args)
+    if args.length == 2
+      caller, content = args
+      begin
+        location = caller[0].split[0].split(':')[0..1]
+        path, line = location[0], location[1].to_i
+        @record.register_step(path, line)
+      rescue
+        # ignore for now
+      end
+      @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content, "")]
+    elsif args.length == 3
+      path, line, content = args
+      record_event(["#{path}:#{line}"], content)
+    else
+      raise ArgumentError, "wrong number of arguments"
     end
-    # start is last step on this level: log for reason: the previous step on this level
-    @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content, "")]
   end
 
   def record_exception(tp)
@@ -254,13 +267,13 @@ if __FILE__ == $PROGRAM_NAME
     Kernel.load(program)
   rescue Exception => e
     if $tracer.debug
-      old_puts ''
-      old_puts '==== trace.rb error while tracing program ==='
-      old_puts 'ERROR'
-      old_puts e
-      old_puts e.backtrace
-      old_puts '====================='
-      old_puts ''
+      codetracer_puts_no_trace ''
+      codetracer_puts_no_trace '==== trace.rb error while tracing program ==='
+      codetracer_puts_no_trace 'ERROR'
+      codetracer_puts_no_trace e
+      codetracer_puts_no_trace e.backtrace
+      codetracer_puts_no_trace '====================='
+      codetracer_puts_no_trace ''
     end
   end
 
