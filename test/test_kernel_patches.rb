@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 
 require 'minitest/autorun'
-require_relative '../codetracer/kernel_patches' # Adjust path as necessary
+require_relative '../gems/codetracer-pure-ruby-recorder/lib/codetracer/kernel_patches'
 
 class MockTracer
   attr_reader :events, :name
