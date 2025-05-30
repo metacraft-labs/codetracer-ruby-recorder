@@ -42,11 +42,11 @@ module Codetracer
     end
 
     def self.trace_ruby_file(program, out_dir, program_args = [])
-      tracer = PureRubyRecorder.new($codetracer_record, debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
+      tracer = PureRubyRecorder.new(debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
 
       tracer.record.register_call('', 1, '<top-level>', [])
       tracer.ignore('lib/ruby')
-      tracer.ignore('trace.rb')
+      tracer.ignore('codetracer_pure_ruby_recoreder.rb')
       tracer.ignore('recorder.rb')
       tracer.ignore('<internal:')
       tracer.ignore('gems/')
@@ -61,13 +61,23 @@ module Codetracer
           Kernel.load(program)
         rescue Exception => e
           if tracer.debug
-            codetracer_original_puts ''
-            codetracer_original_puts '==== trace.rb error while tracing program ==='
-            codetracer_original_puts 'ERROR'
-            codetracer_original_puts e
-            codetracer_original_puts e.backtrace
-            codetracer_original_puts '====================='
-            codetracer_original_puts ''
+            if Kernel.respond_to?(:codetracer_original_puts, true)
+              Kernel.codetracer_original_puts ''
+              Kernel.codetracer_original_puts '==== trace.rb error while tracing program ==='
+              Kernel.codetracer_original_puts 'ERROR'
+              Kernel.codetracer_original_puts e
+              Kernel.codetracer_original_puts e.backtrace
+              Kernel.codetracer_original_puts '====================='
+              Kernel.codetracer_original_puts ''
+            else
+              puts ''
+              puts '==== trace.rb error while tracing program ==='
+              puts 'ERROR'
+              puts e
+              puts e.backtrace
+              puts '====================='
+              puts ''
+            end
           end
         ensure
           # Restore original ARGV
@@ -80,9 +90,9 @@ module Codetracer
       0
     end
 
-    def initialize(record, debug: false)
+    def initialize(debug: false)
       @tracing = false
-      @record = record
+      @record = TraceRecord.new
       @ignore_list = []
       @debug = debug
       @record.debug = debug if @record.respond_to?(:debug=)
@@ -126,12 +136,12 @@ module Codetracer
     def prepare_args(tp)
       args_after_self = tp.parameters.map do |(kind, name)|
         value = if tp.binding.nil? || name.nil?
-            NIL_VALUE
+            @record.nil_value
           else
             begin
-              to_value(tp.binding.local_variable_get(name))
+              @record.to_value(tp.binding.local_variable_get(name))
             rescue
-              NIL_VALUE
+              @record.nil_value
             end
           end
         [name.to_sym, value]
@@ -140,7 +150,7 @@ module Codetracer
       # can be class or module
       module_name = tp.self.class.name
       begin
-        args = [[:self, raw_obj_value(tp.self.to_s, module_name)]] + args_after_self
+        args = [[:self, @record.raw_obj_value(tp.self.to_s, module_name)]] + args_after_self
       rescue
         # $stderr.write("error args\n")
         args = []
@@ -163,7 +173,11 @@ module Codetracer
         method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
         method_name = "#{method_name_prefix}#{tp.method_id}"
 
-        codetracer_original_puts "call #{method_name} with #{tp.parameters}" if $tracer.debug
+        if @debug && Kernel.respond_to?(:codetracer_original_puts, true)
+          Kernel.codetracer_original_puts "call #{method_name} with #{tp.parameters}"
+        elsif @debug
+          puts "call #{method_name} with #{tp.parameters}"
+        end
 
         arg_records = prepare_args(tp)
 
@@ -175,8 +189,12 @@ module Codetracer
 
     def record_return(tp)
       if self.tracks_call?(tp)
-        codetracer_original_puts "return" if $tracer.debug
-        return_value = to_value(tp.return_value)
+        if @debug && Kernel.respond_to?(:codetracer_original_puts, true)
+          Kernel.codetracer_original_puts 'return'
+        elsif @debug
+          puts 'return'
+        end
+        return_value = @record.to_value(tp.return_value)
         @record.register_step(tp.path, tp.lineno)
         # return value support inspired by existing IDE-s/envs like
         # Visual Studio/JetBrains IIRC
@@ -248,6 +266,11 @@ module Codetracer
       end
     end
 
+    # Flush trace to output directory - compatible with native recorder API
+    def flush_trace(out_dir)
+      @record.serialize('', out_dir)
+    end
+
     private
 
     def load_variables(binding)
@@ -255,7 +278,7 @@ module Codetracer
         # $stdout.write binding.local_variables
         binding.local_variables.map do |name|
           v = binding.local_variable_get(name)
-          out = to_value(v)
+          out = @record.to_value(v)
           [name, out]
         end
       else

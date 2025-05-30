@@ -142,6 +142,15 @@ class TraceRecord
     @debug = false
 
     @step_count = 0
+    @value_count = 0
+
+    # Initialize type indices for this record instance
+    @int_type_index = load_type_id(INT, "Integer")
+    @string_type_index = load_type_id(STRING, "String")
+    @bool_type_index = load_type_id(BOOL, "Bool")
+    @symbol_type_index = load_type_id(STRING, "Symbol")
+    @no_type_index = load_type_id(ERROR, "No type")
+    @float_type_index = load_type_id(FLOAT, "Float")
   end
 
   def load_flow(path, line, binding)
@@ -268,7 +277,7 @@ class TraceRecord
 
     json_output = JSON.pretty_generate(output)
     metadata_json_output = JSON.pretty_generate(metadata_output)
-    paths_json_output = JSON.pretty_generate($codetracer_record.paths)
+    paths_json_output = JSON.pretty_generate(@paths)
 
     out_dir = out_dir.nil? || out_dir.empty? ?
       (ENV["CODETRACER_RUBY_RECORDER_OUT_DIR"] || ".") : out_dir
@@ -289,155 +298,154 @@ class TraceRecord
       $stderr.write("codetracer ruby tracer: saved trace to #{trace_folder}\n")
     end
   end
+
+  # Value creation methods - now instance methods
+  def int_value(i)
+    ValueRecord.new(kind: 'Int', type_id: @int_type_index, i: i)
+  end
+
+  def float_value(f)
+    ValueRecord.new(kind: 'Float', type_id: @float_type_index, f: f)
+  end
+
+  def string_value(text)
+    ValueRecord.new(kind: 'String', type_id: @string_type_index, text: text)
+  end
+
+  def symbol_value(text)
+     # TODO store symbol in a more special way?
+     ValueRecord.new(kind: 'String', type_id: @symbol_type_index, text: text)
+  end
+
+  def raw_obj_value(raw, class_name)
+    ti = load_type_id(RAW, class_name)
+    ValueRecord.new(kind: 'Raw', type_id: ti, r: raw)
+  end
+
+  def sequence_value(elements, class_name = "Array")
+    ti = load_type_id(SEQ, class_name)
+    ValueRecord.new(kind: 'Sequence', type_id: ti, elements: elements, is_slice: false)
+  end
+
+  # fields: Array of [String, TypeRecord]
+  def struct_value(class_name, field_names, field_values, depth)
+    field_ct_values = field_values.map { |value| to_value(value, depth - 1) }
+    ti = type_id_for(class_name)
+    if ti.nil?
+      specific_info = {
+        kind: "Struct",
+        fields: field_names.zip(field_ct_values).map do |(name, value)|
+          {name: name, type_id: value.type_id}
+        end
+      }
+      ti = register_struct_type(class_name, specific_info)
+    end
+    ValueRecord.new(kind: 'Struct', type_id: ti, field_values: field_ct_values)
+  end
+
+  def true_value
+    @true_value ||= ValueRecord.new(kind: 'Bool', type_id: @bool_type_index, b: true)
+  end
+
+  def false_value
+    @false_value ||= ValueRecord.new(kind: 'Bool', type_id: @bool_type_index, b: false)
+  end
+
+  def not_supported_value
+    @not_supported_value ||= ValueRecord.new(kind: 'Error', type_id: @no_type_index, msg: "not supported")
+  end
+
+  def nil_value
+    @nil_value ||= ValueRecord.new(kind: 'None', type_id: @no_type_index)
+  end
+
+  MAX_COUNT = 5000
+
+  def to_value(v, depth=10)
+    if depth <= 0
+      return nil_value
+    end
+    @value_count += 1
+    if @value_count % 10_000 == 0
+      $stderr.write("value #{@value_count}\n") if @debug
+    end
+    case v
+    when Integer
+      int_value(v)
+    when Float
+      float_value(v)
+    when String
+      string_value(v)
+    when Symbol
+      symbol_value(v)
+    when true
+      true_value
+    when false
+      false_value
+    when nil
+      nil_value
+    when Array
+      if v.count > MAX_COUNT
+        # $stderr.write "array count ", v.count, "\n"
+        not_supported_value # TODO: non-expanded/other hint?
+      else
+        sequence_value(v.map do |element|
+          to_value(element, depth - 1)
+        end)
+      end
+    when Hash
+      if v.count > MAX_COUNT
+        not_supported_value
+      else
+        pairs = v.map do |k, val|
+          struct_value('Pair', ['k', 'v'], [k, val], depth)
+        end
+        sequence_value(pairs, 'Hash')
+      end
+    when Range
+      struct_value('Range', ['begin', 'end'], [v.begin, v.end], depth)
+    when ->(o) { defined?(Set) && o.is_a?(Set) }
+      if v.size > MAX_COUNT
+        not_supported_value
+      else
+        sequence_value(v.to_a.map { |e| to_value(e, depth - 1) }, 'Set')
+      end
+    when Time
+      struct_value('Time', ['sec', 'nsec'], [v.to_i, v.nsec], depth)
+    when Regexp
+      struct_value('Regexp', ['source', 'options'], [v.source, v.options], depth)
+    when Struct
+      struct_value(v.class.name, v.members.map(&:to_s), v.values, depth)
+    when ->(o) { defined?(OpenStruct) && o.is_a?(OpenStruct) }
+      h = v.to_h
+      pairs = h.map do |k, val|
+        struct_value('Pair', ['k', 'v'], [k, val], depth)
+      end
+      sequence_value(pairs, 'Hash')
+    when Object
+      # not_supported_value
+      class_name = v.class.name
+      field_values = v.instance_variables.map do |name|
+        v.instance_variable_get(name)
+      end
+      field_names = nil
+      if type_id_for(class_name).nil?
+        field_names = v.instance_variables.map { |name| name.to_s[1..] }
+      else
+        field_names = []
+      end
+      struct_value(class_name, field_names, field_values, depth)
+    else
+      not_supported_value
+    end
+  end
 end
 
 ##################
 
-record = TraceRecord.new
-$codetracer_record = record
-
-INT_TYPE_INDEX = record.load_type_id(INT, "Integer")
-STRING_TYPE_INDEX = record.load_type_id(STRING, "String")
-BOOL_TYPE_INDEX = record.load_type_id(BOOL, "Bool")
-SYMBOL_TYPE_INDEX = record.load_type_id(STRING, "Symbol")
-NO_TYPE_INDEX = record.load_type_id(ERROR, "No type")
-
 # IMPORTANT: sync with common_types.nim / runtime_tracing EventLogKind
 EVENT_KIND_WRITE = 0
 EVENT_KIND_ERROR = 11
-
-def int_value(i)
-  ValueRecord.new(kind: 'Int', type_id: INT_TYPE_INDEX, i: i)
-end
-
-def float_value(f)
-  ti = $codetracer_record.load_type_id(FLOAT, 'Float')
-  ValueRecord.new(kind: 'Float', type_id: ti, f: f)
-end
-
-def string_value(text)
-  ValueRecord.new(kind: 'String', type_id: STRING_TYPE_INDEX, text: text)
-end
-
-def symbol_value(text)
-   # TODO store symbol in a more special way?
-   ValueRecord.new(kind: 'String', type_id: SYMBOL_TYPE_INDEX, text: text)
-end
-
-def raw_obj_value(raw, class_name)
-  ti = $codetracer_record.load_type_id(RAW, class_name)
-  ValueRecord.new(kind: 'Raw', type_id: ti, r: raw)
-end
-
-def sequence_value(elements, class_name = "Array")
-  ti = $codetracer_record.load_type_id(SEQ, class_name)
-  ValueRecord.new(kind: 'Sequence', type_id: ti, elements: elements, is_slice: false)
-end
-
-# fields: Array of [String, TypeRecord]
-def struct_value(class_name, field_names, field_values, depth)
-  field_ct_values = field_values.map { |value| to_value(value, depth - 1) }
-  ti = $codetracer_record.type_id_for(class_name)
-  if ti.nil?
-    specific_info = {
-      kind: "Struct",
-      fields: field_names.zip(field_ct_values).map do |(name, value)|
-        {name: name, type_id: value.type_id}
-      end
-    }
-    ti = $codetracer_record.register_struct_type(class_name, specific_info)
-  end
-  ValueRecord.new(kind: 'Struct', type_id: ti, field_values: field_ct_values)
-end
-
-TRUE_VALUE = ValueRecord.new(kind: 'Bool', type_id: BOOL_TYPE_INDEX, b: true)
-FALSE_VALUE = ValueRecord.new(kind: 'Bool', type_id: BOOL_TYPE_INDEX, b: false)
-NOT_SUPPORTED_VALUE = ValueRecord.new(kind: 'Error', type_id: NO_TYPE_INDEX, msg: "not supported")
-NIL_VALUE = ValueRecord.new(kind: 'None', type_id: NO_TYPE_INDEX)
-
-
-$VALUE_COUNT = 0
-
-MAX_COUNT = 5000
-
-def to_value(v, depth=10)
-  if depth <= 0
-    return NIL_VALUE
-  end
-  $VALUE_COUNT += 1
-  if $VALUE_COUNT % 10_000 == 0
-    $stderr.write("value #{$VALUE_COUNT}\n") if $codetracer_record.debug
-  end
-  case v
-  when Integer
-    int_value(v)
-  when Float
-    float_value(v)
-  when String
-    string_value(v)
-  when Symbol
-    symbol_value(v)
-  when true
-    TRUE_VALUE
-  when false
-    FALSE_VALUE
-  when nil
-    NIL_VALUE
-  when Array
-    if v.count > MAX_COUNT
-      # $stderr.write "array count ", v.count, "\n"
-      NOT_SUPPORTED_VALUE # TODO: non-expanded/other hint?
-    else
-      sequence_value(v.map do |element|
-        to_value(element, depth - 1)
-      end)
-    end
-  when Hash
-    if v.count > MAX_COUNT
-      NOT_SUPPORTED_VALUE
-    else
-      pairs = v.map do |k, val|
-        struct_value('Pair', ['k', 'v'], [k, val], depth)
-      end
-      sequence_value(pairs, 'Hash')
-    end
-  when Range
-    struct_value('Range', ['begin', 'end'], [v.begin, v.end], depth)
-  when ->(o) { defined?(Set) && o.is_a?(Set) }
-    if v.size > MAX_COUNT
-      NOT_SUPPORTED_VALUE
-    else
-      sequence_value(v.to_a.map { |e| to_value(e, depth - 1) }, 'Set')
-    end
-  when Time
-    struct_value('Time', ['sec', 'nsec'], [v.to_i, v.nsec], depth)
-  when Regexp
-    struct_value('Regexp', ['source', 'options'], [v.source, v.options], depth)
-  when Struct
-    struct_value(v.class.name, v.members.map(&:to_s), v.values, depth)
-  when ->(o) { defined?(OpenStruct) && o.is_a?(OpenStruct) }
-    h = v.to_h
-    pairs = h.map do |k, val|
-      struct_value('Pair', ['k', 'v'], [k, val], depth)
-    end
-    sequence_value(pairs, 'Hash')
-  when Object
-    # NOT_SUPPORTED_VALUE
-    class_name = v.class.name
-    field_values = v.instance_variables.map do |name|
-      v.instance_variable_get(name)
-    end
-    field_names = nil
-    if $codetracer_record.type_id_for(class_name).nil?
-      field_names = v.instance_variables.map { |name| name.to_s[1..] }
-    else
-      field_names = []
-    end
-    struct_value(class_name, field_names, field_values, depth)
-  else
-    NOT_SUPPORTED_VALUE
-  end
-end
 
 NO_KEY = -1
 NO_STEP = -1

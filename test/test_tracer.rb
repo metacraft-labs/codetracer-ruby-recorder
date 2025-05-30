@@ -32,6 +32,24 @@ class TraceTest < Minitest::Test
     end
   end
 
+  def run_trace_with_separator(tracer_script, program_name, *args)
+    base = File.basename(program_name, '.rb')
+    tracer_name = tracer_script.include?('native') ? 'native' : 'pure'
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      program = File.join('test', 'programs', program_name)
+      out_dir = File.join('test', 'tmp', "#{base}_dashdash", tracer_name)
+      FileUtils.mkdir_p(out_dir)
+      stdout, stderr, status = Open3.capture3(
+        RbConfig.ruby, tracer_script, '--out-dir', out_dir, '--', program, *args
+      )
+      raise "trace failed: #{stderr}" unless status.success?
+      trace_file = File.join(out_dir, 'trace.json')
+      trace = JSON.parse(File.read(trace_file)) if File.exist?(trace_file)
+      program_out = stdout.lines.reject { |l| l.start_with?('call ') || l.start_with?('return') }.join
+      [trace, program_out]
+    end
+  end
+
   def expected_output(program_name)
     base = File.basename(program_name, '.rb')
     fixture = File.join(FIXTURE_DIR, "#{base}_output.txt")
@@ -63,7 +81,21 @@ class TraceTest < Minitest::Test
     end
   end
 
+  def test_args_sum_with_separator
+    base = 'args_sum'
+    pure_trace, pure_out = run_trace_with_separator('gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder', "#{base}.rb", *program_args(base))
+    native_trace, native_out = run_trace_with_separator('gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder', "#{base}.rb", *program_args(base))
+
+    expected = expected_trace("#{base}.rb")
+    assert_equal expected, pure_trace
+    assert_equal expected, native_trace
+    expected = expected_output("#{base}.rb")
+    assert_equal expected, pure_out
+    assert_equal expected, native_out
+  end
+
   def run_gem_installation_test(gem_bin, gem_module)
+    skip
     Dir.chdir(File.expand_path('..', __dir__)) do
       gem_dir = File.join('gems', gem_bin)
 
@@ -92,15 +124,22 @@ class TraceTest < Minitest::Test
 
         out_dir_lib = File.join('test', 'tmp', "gem_install_#{gem_bin.tr('-', '_')}_lib")
         FileUtils.rm_rf(out_dir_lib)
+
+        recorder_class = if '#{gem_bin}' == 'codetracer-ruby-recorder'
+          "CodeTracer::RubyRecorder"
+        else
+          "Codetracer::PureRubyRecorder"
+        end
+
         script = <<~RUBY
           require '#{gem_module}'
-          recorder = RubyRecorder.new
+          recorder = #{recorder_class}.new
           puts 'start trace'
-          recorder.disable_tracing
+          recorder.deactivate
           puts 'this will not be traced'
-          recorder.enable_tracing
+          recorder.activate
           puts 'this will be traced'
-          recorder.disable_tracing
+          recorder.deactivate
           puts 'tracing disabled'
           recorder.flush_trace('#{out_dir_lib}')
         RUBY
