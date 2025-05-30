@@ -1,0 +1,19 @@
+A previous developer got the following task:
+
+> Make sure the functionality of both gems is usable as a library. The gem binaries
+> should just call into methods exported by the gem libraries. Make command-line
+> handling consistent between the two gems. Use class names that are derived from
+> the gem names.
+
+He made really good progress in commit d007872908d4fb5dbe862549f825eec98e7721f0, but
+he hasn't tested his code.
+
+Please test his changes and fix any issues that you find.
+
+He tried to implement one new feature:
+
+Both gem binaries now allow the standard "--" separator that specifies where
+the arguments of the executed program begin.
+
+Please add a test case that uses this notation to make sure its works correctly.
+Of course, keep the existing tests that don't use this notation.

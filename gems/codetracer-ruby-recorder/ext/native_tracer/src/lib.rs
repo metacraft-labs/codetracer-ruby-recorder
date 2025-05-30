@@ -613,10 +613,10 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         String::from_utf8_lossy(std::slice::from_raw_parts(ptr as *const u8, len)).to_string()
     };
     let line = rb_num2long(line_val) as i64;
-    if path.contains("native_trace.rb")
+    if path.contains("codetracer_ruby_recorder.rb")
         || path.contains("lib/ruby")
         || path.contains("recorder.rb")
-        || path.contains("trace.rb")
+        || path.contains("codetracer_pure_ruby_recorder.rb")
         || path.contains("gems/")
         || path.starts_with("<internal:")
     {
@@ -688,7 +688,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 #[no_mangle]
 pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
-        let class = rb_define_class(b"RubyRecorder\0".as_ptr() as *const c_char, rb_cObject);
+        let class = rb_define_class(b"CodeTracerNativeRecorder\0".as_ptr() as *const c_char, rb_cObject);
         rb_define_alloc_func(class, Some(ruby_recorder_alloc));
         
         rb_define_method(

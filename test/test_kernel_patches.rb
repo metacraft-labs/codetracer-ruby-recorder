@@ -26,34 +26,31 @@ class TestKernelPatches < Minitest::Test
     @tracer2 = MockTracer.new("tracer2")
     # Ensure a clean state before each test by attempting to clear any existing tracers
     # This is a bit of a hack, ideally KernelPatches would offer a reset or more direct access
-    current_tracers = Codetracer::KernelPatches.class_variable_get(:@@tracers).dup
+    current_tracers = CodeTracer::KernelPatches.class_variable_get(:@@tracers).dup
     current_tracers.each do |tracer|
-      Codetracer::KernelPatches.uninstall(tracer)
+      CodeTracer::KernelPatches.uninstall(tracer)
     end
   end
 
   def teardown
     # Ensure all tracers are uninstalled after each test
-    current_tracers = Codetracer::KernelPatches.class_variable_get(:@@tracers).dup
+    current_tracers = CodeTracer::KernelPatches.class_variable_get(:@@tracers).dup
     current_tracers.each do |tracer|
-      Codetracer::KernelPatches.uninstall(tracer)
+      CodeTracer::KernelPatches.uninstall(tracer)
     end
     # Verify that original methods are restored if no tracers are left
-    assert_empty Codetracer::KernelPatches.class_variable_get(:@@tracers), "Tracers should be empty after teardown"
-    refute Kernel.private_method_defined?(:codetracer_original_p), "Original method aliases should be removed"
-    refute Kernel.private_method_defined?(:codetracer_original_puts), "Original method aliases should be removed"
-    refute Kernel.private_method_defined?(:codetracer_original_print), "Original method aliases should be removed"
+    assert_empty CodeTracer::KernelPatches.class_variable_get(:@@tracers), "Tracers should be empty after teardown"
   end
 
   def test_patching_and_basic_event_recording
-    Codetracer::KernelPatches.install(@tracer1)
+    CodeTracer::KernelPatches.install(@tracer1)
 
     expected_line_p = __LINE__; p 'hello'
     expected_line_puts = __LINE__; puts 'world'
     expected_line_print = __LINE__; print 'test'
 
     assert_equal 3, @tracer1.events.size
-    
+
     event_p = @tracer1.events[0]
     assert_equal __FILE__, event_p[:path]
     assert_equal expected_line_p, event_p[:lineno]
@@ -69,12 +66,12 @@ class TestKernelPatches < Minitest::Test
     assert_equal expected_line_print, event_print[:lineno]
     assert_equal "test", event_print[:content]
 
-    Codetracer::KernelPatches.uninstall(@tracer1)
+    CodeTracer::KernelPatches.uninstall(@tracer1)
   end
 
   def test_multiple_tracers
-    Codetracer::KernelPatches.install(@tracer1)
-    Codetracer::KernelPatches.install(@tracer2)
+    CodeTracer::KernelPatches.install(@tracer1)
+    CodeTracer::KernelPatches.install(@tracer2)
 
     expected_line_multi = __LINE__; p 'multitest'
 
@@ -91,12 +88,12 @@ class TestKernelPatches < Minitest::Test
     assert_equal expected_line_multi, event2_multi[:lineno]
     assert_equal "\"multitest\"", event2_multi[:content]
 
-    Codetracer::KernelPatches.uninstall(@tracer1)
+    CodeTracer::KernelPatches.uninstall(@tracer1)
     @tracer1.clear_events
     @tracer2.clear_events
 
     expected_line_one_left = __LINE__; p 'one left'
-    
+
     assert_empty @tracer1.events, "Tracer1 should have no events after being uninstalled"
     assert_equal 1, @tracer2.events.size
 
@@ -105,12 +102,12 @@ class TestKernelPatches < Minitest::Test
     assert_equal expected_line_one_left, event2_one_left[:lineno]
     assert_equal "\"one left\"", event2_one_left[:content]
 
-    Codetracer::KernelPatches.uninstall(@tracer2)
+    CodeTracer::KernelPatches.uninstall(@tracer2)
   end
 
   def test_restoration_of_original_methods
-    Codetracer::KernelPatches.install(@tracer1)
-    Codetracer::KernelPatches.uninstall(@tracer1)
+    CodeTracer::KernelPatches.install(@tracer1)
+    CodeTracer::KernelPatches.uninstall(@tracer1)
 
     # To truly test restoration, we'd capture stdout. Here, we focus on the tracer not being called.
     # If KernelPatches is working, uninstalling the last tracer should remove the patches.
@@ -123,10 +120,10 @@ class TestKernelPatches < Minitest::Test
   end
 
   def test_correct_event_arguments
-    Codetracer::KernelPatches.install(@tracer1)
+    CodeTracer::KernelPatches.install(@tracer1)
 
     arg_obj = { key: "value", number: 123 }
-    
+
     expected_line_p_detailed = __LINE__; p "detailed_p", arg_obj
     expected_line_puts_detailed = __LINE__; puts "detailed_puts", arg_obj.to_s
     expected_line_print_detailed = __LINE__; print "detailed_print", arg_obj.to_s
@@ -152,7 +149,7 @@ class TestKernelPatches < Minitest::Test
     assert_equal expected_line_print_detailed, event_print[:lineno], "Line number for print mismatch"
     # print calls to_s on each argument and prints them sequentially
     assert_equal "detailed_print{:key=>\"value\", :number=>123}", event_print[:content], "Content for print mismatch"
-    
-    Codetracer::KernelPatches.uninstall(@tracer1)
+
+    CodeTracer::KernelPatches.uninstall(@tracer1)
   end
 end

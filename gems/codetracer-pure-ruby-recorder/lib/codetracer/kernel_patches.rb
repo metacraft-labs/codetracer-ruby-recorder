@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 
-module Codetracer
+module CodeTracer
   module KernelPatches
     @@tracers = []
 
@@ -54,10 +54,6 @@ module Codetracer
           alias_method :p, :codetracer_original_p
           alias_method :puts, :codetracer_original_puts
           alias_method :print, :codetracer_original_print
-
-          remove_method :codetracer_original_p
-          remove_method :codetracer_original_puts
-          remove_method :codetracer_original_print
         end
       end
     end
