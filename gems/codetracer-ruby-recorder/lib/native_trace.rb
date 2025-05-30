@@ -120,7 +120,7 @@ module CodeTracer
                     .find { |path| File.exist?(path) }
           if alt_path
             begin
-              File.symlink(alt_path, target_path)path, target_path)
+              File.symlink(alt_path, target_path)
             rescue StandardError
               FileUtils.cp(alt_path, target_path)
             end
@@ -128,7 +128,7 @@ module CodeTracer
         end
 
         require target_path
-        @recorder = RubyRecorder.new
+        @recorder = CodeTracerNativeRecorder.new
       rescue Exception => e
         warn "native tracer unavailable: #{e}"
         @recorder = nil

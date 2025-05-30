@@ -61,13 +61,23 @@ module Codetracer
           Kernel.load(program)
         rescue Exception => e
           if tracer.debug
-            codetracer_original_puts ''
-            codetracer_original_puts '==== trace.rb error while tracing program ==='
-            codetracer_original_puts 'ERROR'
-            codetracer_original_puts e
-            codetracer_original_puts e.backtrace
-            codetracer_original_puts '====================='
-            codetracer_original_puts ''
+            if Kernel.respond_to?(:codetracer_original_puts, true)
+              Kernel.codetracer_original_puts ''
+              Kernel.codetracer_original_puts '==== trace.rb error while tracing program ==='
+              Kernel.codetracer_original_puts 'ERROR'
+              Kernel.codetracer_original_puts e
+              Kernel.codetracer_original_puts e.backtrace
+              Kernel.codetracer_original_puts '====================='
+              Kernel.codetracer_original_puts ''
+            else
+              puts ''
+              puts '==== trace.rb error while tracing program ==='
+              puts 'ERROR'
+              puts e
+              puts e.backtrace
+              puts '====================='
+              puts ''
+            end
           end
         ensure
           # Restore original ARGV
@@ -163,7 +173,11 @@ module Codetracer
         method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
         method_name = "#{method_name_prefix}#{tp.method_id}"
 
-        codetracer_original_puts "call #{method_name} with #{tp.parameters}" if $tracer.debug
+        if @debug && Kernel.respond_to?(:codetracer_original_puts, true)
+          Kernel.codetracer_original_puts "call #{method_name} with #{tp.parameters}"
+        elsif @debug
+          puts "call #{method_name} with #{tp.parameters}"
+        end
 
         arg_records = prepare_args(tp)
 
@@ -175,7 +189,11 @@ module Codetracer
 
     def record_return(tp)
       if self.tracks_call?(tp)
-        codetracer_original_puts "return" if $tracer.debug
+        if @debug && Kernel.respond_to?(:codetracer_original_puts, true)
+          Kernel.codetracer_original_puts 'return'
+        elsif @debug
+          puts 'return'
+        end
         return_value = to_value(tp.return_value)
         @record.register_step(tp.path, tp.lineno)
         # return value support inspired by existing IDE-s/envs like
