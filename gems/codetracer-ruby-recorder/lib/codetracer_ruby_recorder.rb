@@ -42,7 +42,7 @@ module CodeTracer
 
       ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] = out_dir
 
-      recorder.activate
+      recorder.start
       begin
         # Set ARGV to contain the program arguments
         original_argv = ARGV.dup
@@ -55,7 +55,7 @@ module CodeTracer
         ARGV.clear
         ARGV.concat(original_argv)
 
-        recorder.deactivate
+        recorder.stop
         recorder.flush_trace(out_dir)
       end
       0
@@ -72,20 +72,20 @@ module CodeTracer
       load_native_recorder
     end
 
-    # Activate the recorder and install kernel patches
-    def activate
+    # Start the recorder and install kernel patches
+    def start
       return if @active || @recorder.nil?
 
       @recorder.enable_tracing
-      Codetracer::KernelPatches.install(self)
+      CodeTracer::KernelPatches.install(self)
       @active = true
     end
 
-    # Deactivate the recorder and remove kernel patches
-    def deactivate
+    # Stop the recorder and remove kernel patches
+    def stop
       return unless @active
 
-      Codetracer::KernelPatches.uninstall(self)
+      CodeTracer::KernelPatches.uninstall(self)
       @recorder.disable_tracing if @recorder
       @active = false
     end

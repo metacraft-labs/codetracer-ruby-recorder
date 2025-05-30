@@ -7,7 +7,7 @@ require 'optparse'
 require_relative 'recorder'
 require_relative 'codetracer/kernel_patches'
 
-module Codetracer
+module CodeTracer
   class PureRubyRecorder
     attr_accessor :calls_tracepoint, :return_tracepoint,
                   :line_tracepoint, :raise_tracepoint, :tracing
@@ -61,23 +61,13 @@ module Codetracer
           Kernel.load(program)
         rescue Exception => e
           if tracer.debug
-            if Kernel.respond_to?(:codetracer_original_puts, true)
-              Kernel.codetracer_original_puts ''
-              Kernel.codetracer_original_puts '==== trace.rb error while tracing program ==='
-              Kernel.codetracer_original_puts 'ERROR'
-              Kernel.codetracer_original_puts e
-              Kernel.codetracer_original_puts e.backtrace
-              Kernel.codetracer_original_puts '====================='
-              Kernel.codetracer_original_puts ''
-            else
-              puts ''
-              puts '==== trace.rb error while tracing program ==='
-              puts 'ERROR'
-              puts e
-              puts e.backtrace
-              puts '====================='
-              puts ''
-            end
+            codetracer_original_puts ''
+            codetracer_original_puts '==== trace.rb error while tracing program ==='
+            codetracer_original_puts 'ERROR'
+            codetracer_original_puts e
+            codetracer_original_puts e.backtrace
+            codetracer_original_puts '====================='
+            codetracer_original_puts ''
           end
         ensure
           # Restore original ARGV
@@ -109,27 +99,27 @@ module Codetracer
 
     def setup_tracepoints
       @calls_tracepoint = TracePoint.new(:call) do |tp|
-        deactivate
+        disable_tracepoints
         record_call(tp)
-        activate
+        enable_tracepoints
       end
 
       @return_tracepoint = TracePoint.new(:return) do |tp|
-        deactivate
+        disable_tracepoints
         record_return(tp)
-        activate
+        enable_tracepoints
       end
 
       @line_tracepoint = TracePoint.new(:line) do |tp|
-        deactivate
+        disable_tracepoints
         record_step(tp)
-        activate
+        enable_tracepoints
       end
 
       @raise_tracepoint = TracePoint.new(:raise) do |tp|
-        deactivate
+        disable_tracepoints
         record_exception(tp)
-        activate
+        enable_tracepoints
       end
     end
 
@@ -172,15 +162,10 @@ module Codetracer
         module_name = tp.self.class.name
         method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
         method_name = "#{method_name_prefix}#{tp.method_id}"
-
-        if @debug && Kernel.respond_to?(:codetracer_original_puts, true)
-          Kernel.codetracer_original_puts "call #{method_name} with #{tp.parameters}"
-        elsif @debug
-          puts "call #{method_name} with #{tp.parameters}"
+        if @debug
+          codetracer_original_puts "call #{method_name} with #{tp.parameters}"
         end
-
         arg_records = prepare_args(tp)
-
         @record.register_step(tp.path, tp.lineno)
         @record.register_call(tp.path, tp.lineno, method_name, arg_records)
       else
@@ -189,10 +174,8 @@ module Codetracer
 
     def record_return(tp)
       if self.tracks_call?(tp)
-        if @debug && Kernel.respond_to?(:codetracer_original_puts, true)
-          Kernel.codetracer_original_puts 'return'
-        elsif @debug
-          puts 'return'
+        if @debug
+          codetracer_original_puts 'return'
         end
         return_value = @record.to_value(tp.return_value)
         @record.register_step(tp.path, tp.lineno)
@@ -237,32 +220,24 @@ module Codetracer
       @record.events << [:Event, RecordEvent.new(EVENT_KIND_ERROR, tp.raised_exception.to_s, "")]
     end
 
-    def activate
-      @calls_tracepoint.enable
-      @return_tracepoint.enable
-      @line_tracepoint.enable
-      @raise_tracepoint.enable
-      @tracing = true
-      ::Codetracer::KernelPatches.install(self)
+    def start
+      ::CodeTracer::KernelPatches.install(self)
+      enable_tracepoints
     end
 
-    def deactivate
-      ::Codetracer::KernelPatches.uninstall(self)
-      @tracing = false
-      @calls_tracepoint.disable
-      @return_tracepoint.disable
-      @line_tracepoint.disable
-      @raise_tracepoint.disable
+    def stop
+      disable_tracepoints
+      ::CodeTracer::KernelPatches.uninstall(self)
     end
 
     def trace_block(&block)
       raise ArgumentError, "no block given" unless block_given?
 
-      activate
+      start
       begin
         yield
       ensure
-        deactivate
+        stop
       end
     end
 
@@ -272,6 +247,26 @@ module Codetracer
     end
 
     private
+
+    def enable_tracepoints
+      @calls_tracepoint.enable
+      @return_tracepoint.enable
+      @raise_tracepoint.enable
+      @tracing = true
+      # We intentionally enable the line tracepoint after the other tracepoints
+      # to avoid recording the initial activation call as a line event.
+      @line_tracepoint.enable
+    end
+
+    def disable_tracepoints
+      # We disable the line tracepoint first to avoid recording the deactivation
+      # call as a line event.
+      @line_tracepoint.disable
+      @calls_tracepoint.disable
+      @return_tracepoint.disable
+      @raise_tracepoint.disable
+      @tracing = false
+    end
 
     def load_variables(binding)
       if !binding.nil?

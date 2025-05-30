@@ -362,6 +362,7 @@ class TraceRecord
   MAX_COUNT = 5000
 
   def to_value(v, depth=10)
+    codetracer_original_p v
     if depth <= 0
       return nil_value
     end
@@ -394,7 +395,7 @@ class TraceRecord
         end)
       end
     when Hash
-      if v.count > MAX_COUNT
+      if true or v.count > MAX_COUNT
         not_supported_value
       else
         pairs = v.map do |k, val|

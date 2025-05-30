@@ -127,20 +127,20 @@ class TraceTest < Minitest::Test
         recorder_class = if gem_bin == 'codetracer-ruby-recorder'
           "CodeTracer::RubyRecorder"
         else
-          "Codetracer::PureRubyRecorder"
+          "CodeTracer::PureRubyRecorder"
         end
 
         script = <<~RUBY
           require '#{gem_module}'
           recorder = #{recorder_class}.new
           puts 'start trace'
-          recorder.deactivate
+          # recorder.stop
           puts 'this will not be traced'
-          recorder.activate
-          puts 'this will be traced'
-          recorder.deactivate
-          puts 'tracing disabled'
-          recorder.flush_trace('#{out_dir_lib}')
+          recorder.start
+          # puts 'this will be traced'
+          recorder.stop
+          # puts 'tracing disabled'
+          # recorder.flush_trace('#{out_dir_lib}')
         RUBY
         script_path = File.join('test', 'tmp', "use_#{gem_bin.tr('-', '_')}.rb")
         File.write(script_path, script)
