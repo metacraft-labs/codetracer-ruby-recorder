@@ -20,7 +20,7 @@ values = [
   {a: 1, b: 2},
   (1..3),
   Set.new([1, 2, 3]),
-  Time.at(0),
+  Time.at(0).utc,
   /ab/,
   Point.new(5, 6),
   OpenStruct.new(foo: 7, bar: 8)
