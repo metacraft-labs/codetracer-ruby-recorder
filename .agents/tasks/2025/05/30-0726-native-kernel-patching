@@ -1,0 +1,14 @@
+The codetracer/kernel_patches.rb module should be moved within the 
+pure recorder gem.
+
+Instead of using the module in the native gem, implement the same
+kernel patching logic within the native extension (gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs)
+
+Make sure the pure Ruby kernel patches and the native extension can
+play well together by virtue of reusing the same state variables.
+
+Make sure the interaction between the native extension and the
+pure ruby kernel patches is tested in the kernel patches test.
+
+Think hard of potential edge cases and implement matching tests
+for them.
