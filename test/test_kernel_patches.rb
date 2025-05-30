@@ -46,9 +46,9 @@ class TestKernelPatches < Minitest::Test
   def test_patching_and_basic_event_recording
     Codetracer::KernelPatches.install(@tracer1)
 
-    expected_line_p = __LINE__ + 1; p 'hello'
-    expected_line_puts = __LINE__ + 1; puts 'world'
-    expected_line_print = __LINE__ + 1; print 'test'
+    expected_line_p = __LINE__; p 'hello'
+    expected_line_puts = __LINE__; puts 'world'
+    expected_line_print = __LINE__; print 'test'
 
     assert_equal 3, @tracer1.events.size
     
@@ -74,7 +74,7 @@ class TestKernelPatches < Minitest::Test
     Codetracer::KernelPatches.install(@tracer1)
     Codetracer::KernelPatches.install(@tracer2)
 
-    expected_line_multi = __LINE__ + 1; p 'multitest'
+    expected_line_multi = __LINE__; p 'multitest'
 
     assert_equal 1, @tracer1.events.size
     assert_equal 1, @tracer2.events.size
@@ -93,7 +93,7 @@ class TestKernelPatches < Minitest::Test
     @tracer1.clear_events
     @tracer2.clear_events
 
-    expected_line_one_left = __LINE__ + 1; p 'one left'
+    expected_line_one_left = __LINE__; p 'one left'
     
     assert_empty @tracer1.events, "Tracer1 should have no events after being uninstalled"
     assert_equal 1, @tracer2.events.size
@@ -122,9 +122,9 @@ class TestKernelPatches < Minitest::Test
 
     arg_obj = { key: "value", number: 123 }
     
-    expected_line_p_detailed = __LINE__ + 1; p "detailed_p", arg_obj
-    expected_line_puts_detailed = __LINE__ + 1; puts "detailed_puts", arg_obj.to_s
-    expected_line_print_detailed = __LINE__ + 1; print "detailed_print", arg_obj.to_s
+    expected_line_p_detailed = __LINE__; p "detailed_p", arg_obj
+    expected_line_puts_detailed = __LINE__; puts "detailed_puts", arg_obj.to_s
+    expected_line_print_detailed = __LINE__; print "detailed_print", arg_obj.to_s
 
     assert_equal 3, @tracer1.events.size
 
@@ -132,7 +132,7 @@ class TestKernelPatches < Minitest::Test
     assert_equal __FILE__, event_p[:path], "Path for p mismatch"
     assert_equal expected_line_p_detailed, event_p[:lineno], "Line number for p mismatch"
     # p calls inspect on each argument and joins with newline if multiple, but here it's one string then obj
-    assert_equal "\"detailed_p\"\n{key: \"value\", number: 123}", event_p[:content], "Content for p mismatch"
+    assert_equal "\"detailed_p\"\n{:key=>\"value\", :number=>123}", event_p[:content], "Content for p mismatch"
 
 
     event_puts = @tracer1.events[1]

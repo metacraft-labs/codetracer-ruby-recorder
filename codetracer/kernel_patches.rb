@@ -14,6 +14,10 @@ module Codetracer
         @@original_methods[:print] = Kernel.instance_method(:print)
 
         Kernel.module_eval do
+          alias_method :old_p, :p unless method_defined?(:old_p)
+          alias_method :old_puts, :puts unless method_defined?(:old_puts)
+          alias_method :old_print, :print unless method_defined?(:old_print)
+
           define_method(:p) do |*args|
             loc = caller_locations(1,1).first
             @@tracers.each do |t|
@@ -33,7 +37,7 @@ module Codetracer
           define_method(:print) do |*args|
             loc = caller_locations(1,1).first
             @@tracers.each do |t|
-              t.record_event(loc.path, loc.lineno, args.join("\n"))
+              t.record_event(loc.path, loc.lineno, args.join)
             end
             @@original_methods[:print].bind(self).call(*args)
           end
