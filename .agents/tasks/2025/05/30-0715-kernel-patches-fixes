@@ -1,0 +1,10 @@
+Make the following changes in codetracer/kernel_patches.rb
+
+1) Instead of storing the original methods in @@original_methods, just use alias_method
+in reverse to restore the originals
+
+2) To avoid polluting the global namespace, instead of using names such
+as old_p and old_puts, use names such as codetracer_original_p, codetracer_original_puts.
+
+In `test/test_kernel_patches.rb`, make sure that the original methods are restored
+when the last tracer is uninstalled.
