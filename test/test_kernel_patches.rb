@@ -40,7 +40,9 @@ class TestKernelPatches < Minitest::Test
     end
     # Verify that original methods are restored if no tracers are left
     assert_empty Codetracer::KernelPatches.class_variable_get(:@@tracers), "Tracers should be empty after teardown"
-    assert_empty Codetracer::KernelPatches.class_variable_get(:@@original_methods), "Original methods should be cleared if no tracers are left"
+    refute Kernel.private_method_defined?(:codetracer_original_p), "Original method aliases should be removed"
+    refute Kernel.private_method_defined?(:codetracer_original_puts), "Original method aliases should be removed"
+    refute Kernel.private_method_defined?(:codetracer_original_print), "Original method aliases should be removed"
   end
 
   def test_patching_and_basic_event_recording
@@ -115,6 +117,9 @@ class TestKernelPatches < Minitest::Test
     p 'original restored' # This line's output will go to actual stdout
 
     assert_empty @tracer1.events, "Tracer should not record events after being uninstalled and patches removed"
+    refute Kernel.private_method_defined?(:codetracer_original_p), "Original method aliases should be removed"
+    refute Kernel.private_method_defined?(:codetracer_original_puts), "Original method aliases should be removed"
+    refute Kernel.private_method_defined?(:codetracer_original_print), "Original method aliases should be removed"
   end
 
   def test_correct_event_arguments
