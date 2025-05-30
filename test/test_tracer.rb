@@ -95,7 +95,6 @@ class TraceTest < Minitest::Test
   end
 
   def run_gem_installation_test(gem_bin, gem_module)
-    skip
     Dir.chdir(File.expand_path('..', __dir__)) do
       gem_dir = File.join('gems', gem_bin)
 
@@ -125,7 +124,7 @@ class TraceTest < Minitest::Test
         out_dir_lib = File.join('test', 'tmp', "gem_install_#{gem_bin.tr('-', '_')}_lib")
         FileUtils.rm_rf(out_dir_lib)
 
-        recorder_class = if '#{gem_bin}' == 'codetracer-ruby-recorder'
+        recorder_class = if gem_bin == 'codetracer-ruby-recorder'
           "CodeTracer::RubyRecorder"
         else
           "Codetracer::PureRubyRecorder"
