@@ -1,12 +1,12 @@
 #!/usr/bin/env ruby
 
 # Load the pure Ruby tracer library if RubyRecorder is not already defined
-unless defined?(RubyRecorder)
+unless defined?(CodeTracerNativeRecorder)
   lib_base = File.expand_path('../gems/codetracer-pure-ruby-recorder/lib/codetracer_pure_ruby_recorder', __dir__)
   require lib_base
 end
 
-recorder = RubyRecorder.new
+recorder = CodeTracerNativeRecorder.new
 
 puts 'start trace'
 recorder.disable_tracing
