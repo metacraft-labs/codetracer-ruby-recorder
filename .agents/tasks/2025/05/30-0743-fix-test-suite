@@ -1,0 +1,5 @@
+In 536eadb3930b6f1a0cebdaae8113a2bfd0e41b3b, you've accidentally
+broken the test suite by not disabling the execution of the majority
+of the tests.
+
+Look at the current test breakages and fix them.
