@@ -150,7 +150,6 @@ class TraceRecord
     @bool_type_index = load_type_id(BOOL, "Bool")
     @symbol_type_index = load_type_id(STRING, "Symbol")
     @no_type_index = load_type_id(ERROR, "No type")
-    @float_type_index = load_type_id(FLOAT, "Float")
   end
 
   def load_flow(path, line, binding)
@@ -305,7 +304,8 @@ class TraceRecord
   end
 
   def float_value(f)
-    ValueRecord.new(kind: 'Float', type_id: @float_type_index, f: f)
+    ti = load_type_id(FLOAT, 'Float')
+    ValueRecord.new(kind: 'Float', type_id: ti, f: f)
   end
 
   def string_value(text)
