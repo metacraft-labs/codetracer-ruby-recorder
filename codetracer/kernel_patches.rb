@@ -5,6 +5,7 @@ module Codetracer
     @@tracers = []
 
     def self.install(tracer)
+      return if @@tracers.include?(tracer)
       @@tracers << tracer
 
       if @@tracers.length == 1

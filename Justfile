@@ -1,7 +1,7 @@
 alias t := test
 
 test:
-    ruby -Itest test/test_kernel_patches.rb test/test_tracer.rb
+    ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
 
 bench pattern="*" write_report="console":
     ruby test/benchmarks/run_benchmarks.rb '{{pattern}}' --write-report={{write_report}}
