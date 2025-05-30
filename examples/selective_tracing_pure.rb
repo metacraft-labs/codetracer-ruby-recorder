@@ -9,6 +9,7 @@ puts 'start trace'
 recorder.stop
 puts 'this will not be traced'
 recorder.start
+puts 'this will be traced'
 recorder.stop
 puts 'tracing disabled'
 recorder.flush_trace(Dir.pwd)
