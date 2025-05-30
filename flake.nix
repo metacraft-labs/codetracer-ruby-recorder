@@ -12,6 +12,8 @@
   in {
     devShells = forEachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
+      isLinux = pkgs.stdenv.isLinux;
+      isDarwin = pkgs.stdenv.isDarwin;
     in {
       default = pkgs.mkShell {
         packages = with pkgs; [
@@ -28,21 +30,27 @@
           llvmPackages.clang # Clang compiler used by bindgen for parsing C headers
           pkg-config # Used by build scripts to find library paths
 
-          # C standard library headers required for Ruby C extension compilation
-          # Without this, build fails with "stdarg.h file not found" error
-          glibc.dev
-
           # For build automation
           just
           git-lfs
+        ] ++ pkgs.lib.optionals isLinux [
+          # C standard library headers required for Ruby C extension compilation on Linux
+          # Without this, build fails with "stdarg.h file not found" error
+          glibc.dev
         ];
 
-        # Environment variables required to fix NixOS-specific build issues with rb-sys/bindgen
+        # Environment variables required to fix build issues with rb-sys/bindgen
 
         # LIBCLANG_PATH: Required by bindgen to locate libclang shared library
         # Without this, bindgen fails with "couldn't find any valid shared libraries" error
         LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
 
+        # Compiler environment variables to ensure consistent toolchain usage
+        # These help rb-sys and other build scripts use the correct clang installation
+        CLANG_PATH = "${pkgs.llvmPackages.clang}/bin/clang";
+        CC = "${pkgs.llvmPackages.clang}/bin/clang";
+        CXX = "${pkgs.llvmPackages.clang}/bin/clang++";
+      } // pkgs.lib.optionalAttrs isLinux {
         # BINDGEN_EXTRA_CLANG_ARGS: Additional clang arguments for bindgen when parsing Ruby headers
         # Includes system header paths that are not automatically discovered in NixOS
         # --sysroot ensures clang can find standard C library headers like stdarg.h
@@ -52,12 +60,6 @@
             "-I${glibc.dev}/include" # System C headers
             "--sysroot=${glibc.dev}" # System root for header resolution
           ];
-
-        # Compiler environment variables to ensure consistent toolchain usage
-        # These help rb-sys and other build scripts use the correct clang installation
-        CLANG_PATH = "${pkgs.llvmPackages.clang}/bin/clang";
-        CC = "${pkgs.llvmPackages.clang}/bin/clang";
-        CXX = "${pkgs.llvmPackages.clang}/bin/clang++";
       };
     });
   };
