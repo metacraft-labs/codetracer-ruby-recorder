@@ -5,7 +5,7 @@
 require 'optparse'
 require 'fileutils'
 require 'rbconfig'
-require_relative '../../../codetracer/kernel_patches'
+require_relative 'codetracer/kernel_patches'
 
 options = {}
 parser = OptionParser.new do |opts|
