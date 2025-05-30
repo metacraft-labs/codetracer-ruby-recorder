@@ -1,4 +1,9 @@
 #!/usr/bin/env ruby
-require 'rbconfig'
-script = File.expand_path('../lib/trace.rb', __dir__)
-exec RbConfig.ruby, script, *ARGV
+# SPDX-License-Identifier: MIT
+# CLI for the pure Ruby tracer
+
+lib_dir = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
+require 'trace'
+
+exit Codetracer::PureRubyRecorder.parse_argv_and_trace_ruby_file(ARGV)

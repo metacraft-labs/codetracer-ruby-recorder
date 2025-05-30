@@ -51,8 +51,8 @@ class TraceTest < Minitest::Test
   Dir.glob(File.join(FIXTURE_DIR, '*_trace.json')).each do |fixture|
     base = File.basename(fixture, '_trace.json')
     define_method("test_#{base}") do
-      pure_trace, pure_out = run_trace('gems/codetracer-pure-ruby-recorder/lib/trace.rb', "#{base}.rb", *program_args(base))
-      native_trace, native_out = run_trace('gems/codetracer-ruby-recorder/lib/native_trace.rb', "#{base}.rb", *program_args(base))
+      pure_trace, pure_out = run_trace('gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder', "#{base}.rb", *program_args(base))
+      native_trace, native_out = run_trace('gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder', "#{base}.rb", *program_args(base))
 
       expected = expected_trace("#{base}.rb")
       assert_equal expected, pure_trace
@@ -133,7 +133,7 @@ class TraceTest < Minitest::Test
       env = { 'CODETRACER_RUBY_RECORDER_DEBUG' => '1' }
       out_dir = File.join('test', 'tmp', 'debug_smoke')
       FileUtils.rm_rf(out_dir)
-      stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, 'gems/codetracer-pure-ruby-recorder/lib/trace.rb', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
+      stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, 'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
       raise "trace failed: #{stderr}" unless status.success?
 
       lines = stdout.lines.map(&:chomp)

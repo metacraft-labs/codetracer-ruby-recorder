@@ -652,7 +652,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 #[no_mangle]
 pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
-        let class = rb_define_class(b"RubyRecorder\0".as_ptr() as *const c_char, rb_cObject);
+        let class = rb_define_class(b"CodeTracerNativeRecorder\0".as_ptr() as *const c_char, rb_cObject);
         rb_define_alloc_func(class, Some(ruby_recorder_alloc));
         let enable_cb: unsafe extern "C" fn(VALUE) -> VALUE = enable_tracing;
         let disable_cb: unsafe extern "C" fn(VALUE) -> VALUE = disable_tracing;
