@@ -1,1 +1,5 @@
-No insights yet. Please add content here and remove this line.
+When tracing scripts with the pure Ruby recorder, avoid including the
+`RubyRecorder` instance (or its `TraceRecord`) among the inspected local
+variables. Otherwise the serializer will descend into the tracer's own
+state which quickly explodes in size and appears as infinite recursion.
+`load_variables` filters these objects out.

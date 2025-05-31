@@ -215,16 +215,21 @@ class Tracer
 
   private
 
+  # Collect local variables from the current +binding+.  Variables that refer to
+  # the tracer itself or the trace record are ignored to avoid recursively
+  # serialising the internal state of the tracer.
   def load_variables(binding)
-    if !binding.nil?
-      # $stdout.write binding.local_variables
-      binding.local_variables.map do |name|
-        v = binding.local_variable_get(name)
-        out = to_value(v)
-        [name, out]
-      end
-    else
-      []
+    return [] if binding.nil?
+
+    binding.local_variables.filter_map do |name|
+      v = binding.local_variable_get(name)
+
+      next if v.equal?(self) || v.equal?(@record)
+      next if defined?(RubyRecorder) && v.is_a?(RubyRecorder)
+      next if defined?(TraceRecord) && v.is_a?(TraceRecord)
+
+      out = to_value(v)
+      [name, out]
     end
   end
 end
