@@ -53,7 +53,7 @@ module CodeTracer
         Kernel.module_eval do
           alias_method :p, :codetracer_original_p
           alias_method :puts, :codetracer_original_puts
-          alias_method :print, :codetracer_oirginal_print
+          alias_method :print, :codetracer_original_print
         end
       end
     end
