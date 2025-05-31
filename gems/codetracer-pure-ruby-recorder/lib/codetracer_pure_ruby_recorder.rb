@@ -125,15 +125,24 @@ module CodeTracer
 
     def prepare_args(tp)
       args_after_self = tp.parameters.map do |(kind, name)|
-        value = if tp.binding.nil? || name.nil?
-            @record.nil_value
-          else
-            begin
-              @record.to_value(tp.binding.local_variable_get(name))
-            rescue
-              @record.nil_value
-            end
-          end
+        raw = if tp.binding.nil? || name.nil?
+                nil
+              else
+                begin
+                  tp.binding.local_variable_get(name)
+                rescue
+                  nil
+                end
+              end
+
+        value = if raw.nil?
+                  @record.nil_value
+                elsif raw.equal?(self) || raw.equal?(@record)
+                  @record.raw_obj_value(raw.to_s, raw.class.name)
+                else
+                  @record.to_value(raw)
+                end
+
         [name.to_sym, value]
       end
 
@@ -198,6 +207,7 @@ module CodeTracer
     end
 
     def record_event(*args)
+      disable_tracepoints
       if args.length == 2
         caller, content = args
         begin
@@ -214,6 +224,7 @@ module CodeTracer
       else
         raise ArgumentError, "wrong number of arguments"
       end
+      enable_tracepoints
     end
 
     def record_exception(tp)

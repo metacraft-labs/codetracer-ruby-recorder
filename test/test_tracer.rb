@@ -134,13 +134,13 @@ class TraceTest < Minitest::Test
           require '#{gem_module}'
           recorder = #{recorder_class}.new
           puts 'start trace'
-          # recorder.stop
+          recorder.stop
           puts 'this will not be traced'
           recorder.start
-          # puts 'this will be traced'
+          puts 'this will be traced'
           recorder.stop
-          # puts 'tracing disabled'
-          # recorder.flush_trace('#{out_dir_lib}')
+          puts 'tracing disabled'
+          recorder.flush_trace('#{out_dir_lib}')
         RUBY
         script_path = File.join('test', 'tmp', "use_#{gem_bin.tr('-', '_')}.rb")
         File.write(script_path, script)
