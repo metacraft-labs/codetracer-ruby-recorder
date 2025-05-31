@@ -1,1 +1,6 @@
-No insights yet. Please add content here and remove this line.
+When the pure Ruby recorder traces a script that holds a reference to the
+`PureRubyRecorder` instance in a local variable, the variable inspection code
+would recursively serialise the tracer's internal state. This results in an
+explosive amount of output and may appear as an infinite recursion when running
+`examples/selective_tracing_pure.rb`. To avoid this, `load_variables` now skips
+values that refer to the recorder or its `TraceRecord`.

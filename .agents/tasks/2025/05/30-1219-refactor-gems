@@ -1,0 +1,16 @@
+A previous developer got the following task:
+
+Currently, the gems in the repo are structured in a weird way. We have a very think executable file for each gem that just calls into another ruby script that used to be the primary executable. The other script now serves as a library, but has special code to detect when it's being executed. Let's make the second script a pure library and move all the "executable" code in the main gem binaries.
+
+He made really good progress in commit d007872908d4fb5dbe862549f825eec98e7721f0, but
+he hasn't tested his code.
+
+Please test his changes and fix any issues that you find.
+
+He tried to implement one new feature:
+
+Both gem binaries now allow the standard "--" separator that specifies where
+the arguments of the executed program begin.
+
+Please add a test case that uses this notation to make sure its works correctly.
+Of course, keep the existing tests that don't use this notation.

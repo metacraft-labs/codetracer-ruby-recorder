@@ -23,7 +23,7 @@ just build-extension
 
 This compiles the extension in release mode using Cargo. The resulting
 shared library is placed under
-`ext/native_tracer/target/release/` and is loaded by `gems/codetracer-ruby-recorder/lib/native_trace.rb`.
+`ext/native_tracer/target/release/` and is loaded by `gems/codetracer-ruby-recorder/lib/codetracer_ruby_recorder.rb`.
 
 ## Running tests
 

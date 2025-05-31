@@ -53,7 +53,7 @@ def run_benchmark(name)
   native_dir = File.join(TMP_DIR, name, 'native')
   FileUtils.mkdir_p(native_dir)
   elapsed = Benchmark.realtime do
-    system(RbConfig.ruby, File.expand_path('../../gems/codetracer-ruby-recorder/lib/native_trace.rb', __dir__),
+    system(RbConfig.ruby, File.expand_path('../../gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder', __dir__),
            '--out-dir', native_dir, program)
     raise 'Native trace failed' unless $?.success?
   end
@@ -64,7 +64,7 @@ def run_benchmark(name)
   pure_dir = File.join(TMP_DIR, name, 'pure')
   FileUtils.mkdir_p(pure_dir)
   elapsed = Benchmark.realtime do
-    system(RbConfig.ruby, File.expand_path('../../gems/codetracer-pure-ruby-recorder/lib/trace.rb', __dir__),
+    system(RbConfig.ruby, File.expand_path('../../gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder', __dir__),
            '--out-dir', pure_dir, program)
     raise 'Pure trace failed' unless $?.success?
   end
