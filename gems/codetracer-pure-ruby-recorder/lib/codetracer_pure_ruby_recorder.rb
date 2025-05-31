@@ -268,16 +268,20 @@ module CodeTracer
       @tracing = false
     end
 
+    # Collect local variables from the current binding and convert them
+    # into CodeTracer values. Variables that refer to the recorder itself
+    # (or its TraceRecord) are ignored to avoid serialising the entire
+    # tracer state, which quickly leads to deep recursion and huge traces.
     def load_variables(binding)
-      if !binding.nil?
-        # $stdout.write binding.local_variables
-        binding.local_variables.map do |name|
-          v = binding.local_variable_get(name)
-          out = @record.to_value(v)
-          [name, out]
-        end
-      else
-        []
+      return [] if binding.nil?
+
+      binding.local_variables.filter_map do |name|
+        v = binding.local_variable_get(name)
+
+        next if v.equal?(self) || v.equal?(@record)
+
+        out = @record.to_value(v)
+        [name, out]
       end
     end
   end
