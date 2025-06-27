@@ -394,7 +394,7 @@ class TraceRecord
         end)
       end
     when Hash
-      if true or v.count > MAX_COUNT
+      if v.count > MAX_COUNT
         not_supported_value
       else
         pairs = v.map do |k, val|

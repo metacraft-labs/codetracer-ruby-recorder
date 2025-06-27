@@ -37,6 +37,10 @@
           # C standard library headers required for Ruby C extension compilation on Linux
           # Without this, build fails with "stdarg.h file not found" error
           glibc.dev
+        ] ++ pkgs.lib.optionals isDarwin [
+          # Required for Ruby C extension compilation on macOS
+          darwin.apple_sdk.frameworks.CoreFoundation
+          darwin.apple_sdk.frameworks.Security
         ];
 
         # Environment variables required to fix build issues with rb-sys/bindgen

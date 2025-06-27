@@ -58,13 +58,40 @@ however you probably want to use it in combination with CodeTracer, which would 
 * if you pass `CODETRACER_RUBY_RECORDER_DEBUG=1`, you enable some additional debug-related logging
 * `CODETRACER_RUBY_RECORDER_OUT_DIR` can be used to specify the directory for trace files
 
+## Development Setup
+
+This repository includes a comprehensive Ruby debugging setup for Visual Studio Code. See [`.vscode/README.md`](.vscode/README.md) for detailed information about:
+
+* VS Code tasks for running and debugging Ruby code
+* Debug configurations for rdbg debugger  
+* Ruby LSP integration for full language support
+* Interactive debugging with Pry
+
+### Quick Start for Contributors
+
+1. **Install debugging gems** (if not using nix):
+
+   ```bash
+   gem install debug pry
+   ```
+
+2. **Use VS Code tasks**: Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and search for "Tasks: Run Task"
+
+3. **Debug with F5**: Use the debug panel to set breakpoints and step through code
+
+4. **Run tests**: Use the provided tasks or run manually:
+
+   ```bash
+   ruby -I lib -I test test/test_tracer.rb
+   ```
+
 ## Future directions
 
 The current Ruby support is a prototype. In the future, it may be expanded to function in a way similar to the more complete implementations, e.g. [Noir](https://github.com/blocksense-network/noir/tree/blocksense/tooling/tracer).
 
 ### Current approach: TracePoint API
 
-Currently we're using the TracePoint API: https://rubyapi.org/3.4/o/tracepoint .
+Currently we're using the [TracePoint API](https://rubyapi.org/3.4/o/tracepoint).
 This is very flexible and can function with probably multiple Ruby versions out of the box.
 However, this is limited:
 

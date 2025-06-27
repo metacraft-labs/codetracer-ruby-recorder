@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Wrapper script to launch rdbg without hardcoded paths
+# On Windows, rdbg doesn't place any executable binaries in the system
+# PATH for some reason, so this script discovers the debug gem path and
+# executes the main rdbg script directly
+
+begin
+  require 'debug'
+
+  # Find the rdbg executable in the debug gem
+  debug_gem_spec = Gem.loaded_specs['debug']
+  if debug_gem_spec.nil?
+    puts 'Error: debug gem not found. Install with: gem install debug'
+    exit 1
+  end
+
+  rdbg_path = File.join(debug_gem_spec.full_gem_path, 'exe', 'rdbg')
+
+  unless File.exist?(rdbg_path)
+    puts "Error: rdbg executable not found at #{rdbg_path}"
+    exit 1
+  end
+
+  # Set up ARGV to match what rdbg expects
+  # The rdbg script reads from ARGV directly
+  original_argv = ARGV.dup
+  ARGV.replace(original_argv)
+
+  # Load and execute the rdbg script
+  load rdbg_path
+rescue LoadError => e
+  puts "Error loading debug gem: #{e.message}"
+  puts 'Install with: gem install debug'
+  exit 1
+rescue StandardError => e
+  puts "Error: #{e.message}"
+  exit 1
+end
