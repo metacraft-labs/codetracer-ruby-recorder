@@ -3,20 +3,16 @@
 use std::{
     ffi::CStr,
     mem::transmute,
-    os::raw::{c_char, c_void},
+    os::raw::{c_char, c_void, c_int},
     path::Path,
     ptr,
     collections::HashMap,
 };
 
 use rb_sys::{
-    rb_add_event_hook2, rb_remove_event_hook_with_data, rb_define_class,
+    rb_define_class,
     rb_define_alloc_func, rb_define_method, rb_funcall, rb_intern,
-    rb_event_hook_flag_t::RUBY_EVENT_HOOK_FLAG_RAW_ARG,
-    rb_event_flag_t, rb_trace_arg_t,
-    rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_self,
-    rb_tracearg_binding, rb_tracearg_callee_id, rb_tracearg_return_value,
-    rb_tracearg_raised_exception,
+    rb_event_flag_t,
     rb_cObject, VALUE, ID, RUBY_EVENT_LINE, RUBY_EVENT_CALL, RUBY_EVENT_RETURN,
     RUBY_EVENT_RAISE,
     rb_raise, rb_eIOError,
@@ -24,11 +20,22 @@ use rb_sys::{
 };
 use rb_sys::{RARRAY_LEN, RARRAY_CONST_PTR, RSTRING_LEN, RSTRING_PTR, RB_INTEGER_TYPE_P, RB_TYPE_P, RB_SYMBOL_P, RB_FLOAT_TYPE_P, NIL_P, rb_protect};
 use rb_sys::{Qtrue, Qfalse, Qnil};
-use std::os::raw::c_int;
 use runtime_tracing::{
-    Tracer, Line, ValueRecord, TypeKind, TypeSpecificInfo, TypeRecord, FieldTypeRecord, TypeId,
+    Tracer, Line, ValueRecord, TypeKind, TypeSpecificInfo, TypeRecord, FieldTypeRecord,
     EventLogKind, TraceLowLevelEvent, CallRecord, FullValueRecord, ReturnRecord, RecordEvent,
 };
+
+// Event hook function type from Ruby debug.h
+type rb_event_hook_func_t = Option<unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE)>;
+
+// Event hook flags enum from Ruby debug.h  
+#[repr(C)]
+#[derive(Clone, Copy)]
+enum rb_event_hook_flag_t {
+    RUBY_EVENT_HOOK_FLAG_SAFE = 0x01,
+    RUBY_EVENT_HOOK_FLAG_DELETED = 0x02,
+    RUBY_EVENT_HOOK_FLAG_RAW_ARG = 0x04,
+}
 
 #[repr(C)]
 struct RTypedData {
@@ -73,6 +80,31 @@ extern "C" {
     static rb_cStruct: VALUE;
     static rb_cRange: VALUE;
     fn rb_method_boundp(klass: VALUE, mid: ID, ex: c_int) -> VALUE;
+    
+    // TracePoint API functions that aren't in rb_sys
+    fn rb_add_event_hook2(
+        func: rb_event_hook_func_t,
+        events: rb_event_flag_t,
+        data: VALUE,
+        hook_flag: rb_event_hook_flag_t,
+    );
+    fn rb_remove_event_hook_with_data(
+        func: rb_event_hook_func_t,
+        data: VALUE,
+    ) -> c_int;
+    fn rb_tracearg_event_flag(trace_arg: *mut rb_trace_arg_t) -> rb_event_flag_t;
+    fn rb_tracearg_lineno(trace_arg: *mut rb_trace_arg_t) -> VALUE;
+    fn rb_tracearg_path(trace_arg: *mut rb_trace_arg_t) -> VALUE;
+    fn rb_tracearg_self(trace_arg: *mut rb_trace_arg_t) -> VALUE;
+    fn rb_tracearg_binding(trace_arg: *mut rb_trace_arg_t) -> VALUE;
+    fn rb_tracearg_callee_id(trace_arg: *mut rb_trace_arg_t) -> VALUE;
+    fn rb_tracearg_return_value(trace_arg: *mut rb_trace_arg_t) -> VALUE;
+    fn rb_tracearg_raised_exception(trace_arg: *mut rb_trace_arg_t) -> VALUE;
+}
+
+#[repr(C)]
+struct rb_trace_arg_t {
+    // Opaque struct representing rb_trace_arg_struct from Ruby
 }
 
 struct Recorder {
@@ -168,7 +200,11 @@ static mut RECORDER_TYPE: rb_data_type_t = rb_data_type_t {
 
 unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
-    rb_check_typeddata(obj, ty) as *mut Recorder
+    let ptr = rb_check_typeddata(obj, ty);
+    if ptr.is_null() {
+        rb_raise(rb_eIOError, b"Invalid recorder object\0".as_ptr() as *const c_char);
+    }
+    ptr as *mut Recorder
 }
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
@@ -207,27 +243,27 @@ unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
     if !recorder.active {
         let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
-        let cb: unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE) = transmute(raw_cb);
+        let func: rb_event_hook_func_t = Some(transmute(raw_cb));
         rb_add_event_hook2(
-            Some(cb),
+            func,
             RUBY_EVENT_LINE | RUBY_EVENT_CALL | RUBY_EVENT_RETURN | RUBY_EVENT_RAISE,
             self_val,
-            RUBY_EVENT_HOOK_FLAG_RAW_ARG,
+            rb_event_hook_flag_t::RUBY_EVENT_HOOK_FLAG_RAW_ARG,
         );
         recorder.active = true;
     }
-    rb_sys::Qnil.into()
+    Qnil.into()
 }
 
 unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
     if recorder.active {
         let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
-        let cb: unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE) = transmute(raw_cb);
-        rb_remove_event_hook_with_data(Some(cb), self_val);
+        let func: rb_event_hook_func_t = Some(transmute(raw_cb));
+        rb_remove_event_hook_with_data(func, self_val);
         recorder.active = false;
     }
-    rb_sys::Qnil.into()
+    Qnil.into()
 }
 
 fn flush_to_dir(tracer: &Tracer, dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -531,7 +567,7 @@ unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE) -> VALUE {
         Err(e) => rb_raise(rb_eIOError, b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char, e.to_string().as_ptr() as *const c_char),
     }
 
-    rb_sys::Qnil.into()
+    Qnil.into()
 }
 
 unsafe extern "C" fn record_event_api(self_val: VALUE, path: VALUE, line: VALUE, content: VALUE) -> VALUE {
@@ -546,7 +582,7 @@ unsafe extern "C" fn record_event_api(self_val: VALUE, path: VALUE, line: VALUE,
     let line_num = rb_num2long(line) as i64;
     let content_str = value_to_string(content, recorder.to_s_id).unwrap_or_default();
     record_event(&mut recorder.tracer, &path_str, line_num, &content_str);
-    rb_sys::Qnil.into()
+    Qnil.into()
 }
 
 /// Raw-argument callback (Ruby will call it when we set
@@ -654,13 +690,30 @@ pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
         let class = rb_define_class(b"RubyRecorder\0".as_ptr() as *const c_char, rb_cObject);
         rb_define_alloc_func(class, Some(ruby_recorder_alloc));
-        let enable_cb: unsafe extern "C" fn(VALUE) -> VALUE = enable_tracing;
-        let disable_cb: unsafe extern "C" fn(VALUE) -> VALUE = disable_tracing;
-        let flush_cb: unsafe extern "C" fn(VALUE, VALUE) -> VALUE = flush_trace;
-        let event_cb: unsafe extern "C" fn(VALUE, VALUE, VALUE, VALUE) -> VALUE = record_event_api;
-        rb_define_method(class, b"enable_tracing\0".as_ptr() as *const c_char, Some(transmute(enable_cb)), 0);
-        rb_define_method(class, b"disable_tracing\0".as_ptr() as *const c_char, Some(transmute(disable_cb)), 0);
-        rb_define_method(class, b"flush_trace\0".as_ptr() as *const c_char, Some(transmute(flush_cb)), 1);
-        rb_define_method(class, b"record_event\0".as_ptr() as *const c_char, Some(transmute(event_cb)), 3);
+        
+        rb_define_method(
+            class, 
+            b"enable_tracing\0".as_ptr() as *const c_char, 
+            Some(std::mem::transmute(enable_tracing as *const ())), 
+            0
+        );
+        rb_define_method(
+            class, 
+            b"disable_tracing\0".as_ptr() as *const c_char, 
+            Some(std::mem::transmute(disable_tracing as *const ())), 
+            0
+        );
+        rb_define_method(
+            class, 
+            b"flush_trace\0".as_ptr() as *const c_char, 
+            Some(std::mem::transmute(flush_trace as *const ())), 
+            1
+        );
+        rb_define_method(
+            class, 
+            b"record_event\0".as_ptr() as *const c_char, 
+            Some(std::mem::transmute(record_event_api as *const ())), 
+            3
+        );
     }
 }

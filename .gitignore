@@ -4,7 +4,8 @@
 !test/benchmarks/fixtures/*.json
 test/tmp/
 .direnv/
-pkg/ 
+.idea/
+pkg/
 
 # Built ruby gems
 
