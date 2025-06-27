@@ -362,7 +362,6 @@ class TraceRecord
   MAX_COUNT = 5000
 
   def to_value(v, depth=10)
-    codetracer_original_p v
     if depth <= 0
       return nil_value
     end
