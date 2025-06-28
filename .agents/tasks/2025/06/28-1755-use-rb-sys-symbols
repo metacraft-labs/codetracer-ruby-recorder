@@ -1,0 +1,1 @@
+reduce extern C definitions referencing rb_sys
