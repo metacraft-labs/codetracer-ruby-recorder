@@ -28,84 +28,19 @@ use runtime_tracing::{
 // Event hook function type from Ruby debug.h
 type rb_event_hook_func_t = Option<unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE)>;
 
-// Event hook flags enum from Ruby debug.h  
-#[repr(C)]
-#[derive(Clone, Copy)]
-enum rb_event_hook_flag_t {
-    RUBY_EVENT_HOOK_FLAG_SAFE = 0x01,
-    RUBY_EVENT_HOOK_FLAG_DELETED = 0x02,
-    RUBY_EVENT_HOOK_FLAG_RAW_ARG = 0x04,
-}
+// Use event hook flags enum from rb_sys
+use rb_sys::rb_event_hook_flag_t;
 
-#[repr(C)]
-struct RTypedData {
-    _basic: [VALUE; 2],
-    type_: *const rb_data_type_t,
-    typed_flag: VALUE,
-    data: *mut c_void,
-}
-
-#[repr(C)]
-struct rb_data_type_function_struct {
-    dmark: Option<unsafe extern "C" fn(*mut c_void)>,
-    dfree: Option<unsafe extern "C" fn(*mut c_void)>,
-    dsize: Option<unsafe extern "C" fn(*const c_void) -> usize>,
-    dcompact: Option<unsafe extern "C" fn(*mut c_void)>,
-    reserved: [*mut c_void; 1],
-}
-
-#[repr(C)]
-struct rb_data_type_t {
-    wrap_struct_name: *const c_char,
-    function: rb_data_type_function_struct,
-    parent: *const rb_data_type_t,
-    data: *mut c_void,
-    flags: VALUE,
-}
-
-extern "C" {
-    fn rb_data_typed_object_wrap(
-        klass: VALUE,
-        datap: *mut c_void,
-        data_type: *const rb_data_type_t,
-    ) -> VALUE;
-    fn rb_check_typeddata(obj: VALUE, data_type: *const rb_data_type_t) -> *mut c_void;
-    fn rb_num2dbl(val: VALUE) -> f64;
-    fn rb_obj_is_kind_of(obj: VALUE, class: VALUE) -> VALUE;
-    fn rb_path2class(path: *const c_char) -> VALUE;
-    fn rb_const_defined(klass: VALUE, name: ID) -> VALUE;
-    fn rb_const_get(klass: VALUE, name: ID) -> VALUE;
-    static rb_cTime: VALUE;
-    static rb_cRegexp: VALUE;
-    static rb_cStruct: VALUE;
-    static rb_cRange: VALUE;
-    fn rb_method_boundp(klass: VALUE, mid: ID, ex: c_int) -> VALUE;
-    
-    // TracePoint API functions that aren't in rb_sys
-    fn rb_add_event_hook2(
-        func: rb_event_hook_func_t,
-        events: rb_event_flag_t,
-        data: VALUE,
-        hook_flag: rb_event_hook_flag_t,
-    );
-    fn rb_remove_event_hook_with_data(
-        func: rb_event_hook_func_t,
-        data: VALUE,
-    ) -> c_int;
-    fn rb_tracearg_event_flag(trace_arg: *mut rb_trace_arg_t) -> rb_event_flag_t;
-    fn rb_tracearg_lineno(trace_arg: *mut rb_trace_arg_t) -> VALUE;
-    fn rb_tracearg_path(trace_arg: *mut rb_trace_arg_t) -> VALUE;
-    fn rb_tracearg_self(trace_arg: *mut rb_trace_arg_t) -> VALUE;
-    fn rb_tracearg_binding(trace_arg: *mut rb_trace_arg_t) -> VALUE;
-    fn rb_tracearg_callee_id(trace_arg: *mut rb_trace_arg_t) -> VALUE;
-    fn rb_tracearg_return_value(trace_arg: *mut rb_trace_arg_t) -> VALUE;
-    fn rb_tracearg_raised_exception(trace_arg: *mut rb_trace_arg_t) -> VALUE;
-}
-
-#[repr(C)]
-struct rb_trace_arg_t {
-    // Opaque struct representing rb_trace_arg_struct from Ruby
-}
+// Types from rb_sys bindings
+use rb_sys::{
+    rb_data_typed_object_wrap, rb_check_typeddata, rb_num2dbl, rb_obj_is_kind_of,
+    rb_const_defined, rb_const_get, rb_method_boundp, rb_cTime,
+    rb_cRegexp, rb_cStruct, rb_cRange, rb_add_event_hook2,
+    rb_remove_event_hook_with_data, rb_tracearg_event_flag, rb_tracearg_lineno,
+    rb_tracearg_path, rb_tracearg_self, rb_tracearg_binding, rb_tracearg_callee_id,
+    rb_tracearg_return_value, rb_tracearg_raised_exception, rb_trace_arg_t,
+    rb_data_type_t, rb_data_type_struct__bindgen_ty_1,
+};
 
 struct Recorder {
     tracer: Tracer,
@@ -186,7 +121,7 @@ unsafe extern "C" fn recorder_free(ptr: *mut c_void) {
 
 static mut RECORDER_TYPE: rb_data_type_t = rb_data_type_t {
     wrap_struct_name: b"Recorder\0".as_ptr() as *const c_char,
-    function: rb_data_type_function_struct {
+    function: rb_data_type_struct__bindgen_ty_1 {
         dmark: None,
         dfree: Some(recorder_free),
         dsize: None,
