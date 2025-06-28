@@ -163,6 +163,11 @@ class TraceTest < Minitest::Test
   end
 
   def test_pure_gem_installation
+    # When the pure Ruby recorder traces a script that holds a reference to the
+    # `PureRubyRecorder` instance in a local variable, the variable inspection code
+    # would recursively serialise the tracer's internal state. This results in an
+    # explosive amount of output and may appear as an infinite recursion when running
+    # `examples/selective_tracing_pure.rb`. For this reason, we skip this test for now.
     skip
     run_gem_installation_test('codetracer-pure-ruby-recorder', 'codetracer_pure_ruby_recorder')
   end
