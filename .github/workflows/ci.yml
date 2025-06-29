@@ -38,7 +38,7 @@ jobs:
             ./vcpkg install capnproto:x64-windows
             echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
             echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/scripts/buildsystems/vcpkg.cmake" >> $GITHUB_ENV
-            echo "$(pwd)/installed/x64-windows/tools/capnproto" >> $GITHUB_PATH
+            echo "$(pwd -W)/installed/x64-windows/tools/capnproto" >> $GITHUB_PATH
             cd ..
           fi
       - name: Setup Ruby
