@@ -97,9 +97,9 @@ unsafe fn struct_value(
     depth: usize,
     to_s_id: ID,
 ) -> ValueRecord {
-    let mut vals = Vec::new();
-    for v in field_values {
-        vals.push(to_value(recorder, *v, depth - 1, to_s_id));
+    let mut vals = Vec::with_capacity(field_values.len());
+    for &v in field_values {
+        vals.push(to_value(recorder, v, depth - 1, to_s_id));
     }
 
     let version_entry = recorder
@@ -108,14 +108,13 @@ unsafe fn struct_value(
         .or_insert(0);
     let name_version = format!("{} (#{})", class_name, *version_entry);
     *version_entry += 1;
-    let field_types: Vec<FieldTypeRecord> = field_names
-        .iter()
-        .zip(&vals)
-        .map(|(n, v)| FieldTypeRecord {
+    let mut field_types = Vec::with_capacity(field_names.len());
+    for (n, v) in field_names.iter().zip(&vals) {
+        field_types.push(FieldTypeRecord {
             name: (*n).to_string(),
             type_id: value_type_id(v),
-        })
-        .collect();
+        });
+    }
     let typ = TypeRecord {
         kind: TypeKind::Struct,
         lang_type: name_version,
@@ -365,7 +364,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         let len = RARRAY_LEN(val) as usize;
-        let mut elements = Vec::new();
+        let mut elements = Vec::with_capacity(len);
         let ptr = RARRAY_CONST_PTR(val);
         for i in 0..len {
             let elem = *ptr.add(i);
@@ -382,7 +381,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         let pairs = rb_funcall(val, recorder.to_a_id, 0);
         let len = RARRAY_LEN(pairs) as usize;
         let ptr = RARRAY_CONST_PTR(pairs);
-        let mut elements = Vec::new();
+        let mut elements = Vec::with_capacity(len);
         for i in 0..len {
             let pair = *ptr.add(i);
             if !RB_TYPE_P(pair, rb_sys::ruby_value_type::RUBY_T_ARRAY) || RARRAY_LEN(pair) < 2 {
@@ -429,7 +428,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         if RB_TYPE_P(arr, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
             let len = RARRAY_LEN(arr) as usize;
             let ptr = RARRAY_CONST_PTR(arr);
-            let mut elements = Vec::new();
+            let mut elements = Vec::with_capacity(len);
             for i in 0..len {
                 let elem = *ptr.add(i);
                 elements.push(to_value(recorder, elem, depth - 1, to_s_id));
@@ -481,8 +480,8 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         let len = RARRAY_LEN(values) as usize;
         let mem_ptr = RARRAY_CONST_PTR(members);
         let val_ptr = RARRAY_CONST_PTR(values);
-        let mut names: Vec<&str> = Vec::new();
-        let mut vals: Vec<VALUE> = Vec::new();
+        let mut names: Vec<&str> = Vec::with_capacity(len);
+        let mut vals: Vec<VALUE> = Vec::with_capacity(len);
         for i in 0..len {
             let sym = *mem_ptr.add(i);
             let id = rb_sym2id(sym);
@@ -512,8 +511,8 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
     }
     let len = RARRAY_LEN(ivars) as usize;
     let ptr = RARRAY_CONST_PTR(ivars);
-    let mut names: Vec<&str> = Vec::new();
-    let mut vals: Vec<VALUE> = Vec::new();
+    let mut names: Vec<&str> = Vec::with_capacity(len);
+    let mut vals: Vec<VALUE> = Vec::with_capacity(len);
     for i in 0..len {
         let sym = *ptr.add(i);
         let id = rb_sym2id(sym);
@@ -532,12 +531,12 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
 }
 
 unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullValueRecord> {
-    let mut result = Vec::new();
     let vars = rb_funcall(binding, recorder.locals_id, 0);
     if !RB_TYPE_P(vars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
-        return result;
+        return Vec::new();
     }
     let len = RARRAY_LEN(vars) as usize;
+    let mut result = Vec::with_capacity(len);
     let ptr = RARRAY_CONST_PTR(vars);
     for i in 0..len {
         let sym = *ptr.add(i);
@@ -564,18 +563,18 @@ unsafe fn record_parameters(
     mid: ID,
     register: bool,
 ) -> Vec<FullValueRecord> {
-    let mut result = Vec::new();
     let method_sym = rb_id2sym(mid);
     if rb_method_boundp(defined_class, mid, 0) == 0 {
-        return result;
+        return Vec::new();
     }
     let method_obj = rb_funcall(defined_class, recorder.inst_meth_id, 1, method_sym);
     let params_ary = rb_funcall(method_obj, recorder.parameters_id, 0);
     if !RB_TYPE_P(params_ary, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
-        return result;
+        return Vec::new();
     }
     let params_len = RARRAY_LEN(params_ary) as usize;
     let params_ptr = RARRAY_CONST_PTR(params_ary);
+    let mut result = Vec::with_capacity(params_len);
     for i in 0..params_len {
         let pair = *params_ptr.add(i);
         if !RB_TYPE_P(pair, rb_sys::ruby_value_type::RUBY_T_ARRAY) || RARRAY_LEN(pair) < 2 {
@@ -700,13 +699,12 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     let ev: rb_event_flag_t = rb_tracearg_event_flag(arg);
     let path_val = rb_tracearg_path(arg);
     let line_val = rb_tracearg_lineno(arg);
-    let path = if NIL_P(path_val) {
-        "".to_string()
+    let path_bytes = if NIL_P(path_val) {
+        &[] as &[u8]
     } else {
-        let ptr = RSTRING_PTR(path_val);
-        let len = RSTRING_LEN(path_val) as usize;
-        String::from_utf8_lossy(std::slice::from_raw_parts(ptr as *const u8, len)).to_string()
+        std::slice::from_raw_parts(RSTRING_PTR(path_val) as *const u8, RSTRING_LEN(path_val) as usize)
     };
+    let path = std::str::from_utf8(path_bytes).unwrap_or("");
     let line = rb_num2long(line_val) as i64;
     if path.contains("codetracer_ruby_recorder.rb")
         || path.contains("lib/ruby")
