@@ -57,5 +57,12 @@ module CodeTracer
         end
       end
     end
+
+    # Uninstall all active tracers and restore the original Kernel methods.
+    def self.reset
+      @@tracers.dup.each do |tracer|
+        uninstall(tracer)
+      end
+    end
   end
 end
