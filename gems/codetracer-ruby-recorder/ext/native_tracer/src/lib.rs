@@ -685,18 +685,24 @@ unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE, format: VALUE)
     match std::str::from_utf8(slice) {
         Ok(path_str) => {
             if let Err(e) = flush_to_dir(&recorder.tracer, Path::new(path_str), fmt) {
+                let msg = std::ffi::CString::new(e.to_string())
+                    .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
                 rb_raise(
                     rb_eIOError,
                     b"Failed to flush trace: %s\0".as_ptr() as *const c_char,
-                    e.to_string().as_ptr() as *const c_char,
+                    msg.as_ptr(),
                 );
             }
         }
-        Err(e) => rb_raise(
-            rb_eIOError,
-            b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char,
-            e.to_string().as_ptr() as *const c_char,
-        ),
+        Err(e) => {
+            let msg = std::ffi::CString::new(e.to_string())
+                .unwrap_or_else(|_| std::ffi::CString::new("invalid utf8").unwrap());
+            rb_raise(
+                rb_eIOError,
+                b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char,
+                msg.as_ptr(),
+            )
+        },
     }
 
     Qnil.into()

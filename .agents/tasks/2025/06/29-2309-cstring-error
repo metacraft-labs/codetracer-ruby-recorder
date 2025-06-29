@@ -1,0 +1,1 @@
+Create CString objects for error strings before passing them to rb_raise
