@@ -36,10 +36,11 @@ recorder.flush_trace(Dir.pwd)
 you can currently use it directly with
 
 ```bash
-ruby gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder [--out-dir DIR] <path to ruby file>
+ruby gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder [--out-dir DIR] <path to ruby file> [-- <program args>]
 # produces several trace json files in DIR,
 # or in `$CODETRACER_RUBY_RECORDER_OUT_DIR` if DIR is not provided.
 # Defaults to the current directory.
+# Use `--` to stop option parsing and pass arguments to the program.
 # Pass --help to list all options.
 ```
 
@@ -47,8 +48,16 @@ You can also invoke a lightweight CLI that loads the native tracer extension
 directly:
 
 ```bash
-ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder [--out-dir DIR] <path to ruby file>
+ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder [--out-dir DIR] [--format json|binary] <path to ruby file> [-- <program args>]
 # Uses DIR or `$CODETRACER_RUBY_RECORDER_OUT_DIR` to choose where traces are saved.
+# `--format` selects the trace format (`json` or `binary`).
+# Use `--` to pass arguments to the traced program.
+```
+
+Example recording a binary trace while passing arguments to the program:
+
+```bash
+ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder --format=binary --out-dir traces examples/runtime_code_execution.rb -- 2
 ```
 
 however you probably want to use it in combination with CodeTracer, which would be released soon.
