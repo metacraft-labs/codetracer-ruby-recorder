@@ -67,6 +67,26 @@ struct Recorder {
     set_class: VALUE,
     open_struct_class: VALUE,
     struct_type_versions: HashMap<String, usize>,
+    int_type_id: runtime_tracing::TypeId,
+    float_type_id: runtime_tracing::TypeId,
+    bool_type_id: runtime_tracing::TypeId,
+    string_type_id: runtime_tracing::TypeId,
+    symbol_type_id: runtime_tracing::TypeId,
+    error_type_id: runtime_tracing::TypeId,
+}
+
+fn should_ignore_path(path: &str) -> bool {
+    const PATTERNS: [&str; 5] = [
+        "codetracer_ruby_recorder.rb",
+        "lib/ruby",
+        "recorder.rb",
+        "codetracer_pure_ruby_recorder.rb",
+        "gems/",
+    ];
+    if path.starts_with("<internal:") {
+        return true;
+    }
+    PATTERNS.iter().any(|p| path.contains(p))
 }
 
 fn value_type_id(val: &ValueRecord) -> runtime_tracing::TypeId {
@@ -165,11 +185,12 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     let mut tracer = Tracer::new("ruby", &vec![]);
     // pre-register common types to match the pure Ruby tracer
-    tracer.ensure_type_id(TypeKind::Int, "Integer");
-    tracer.ensure_type_id(TypeKind::String, "String");
-    tracer.ensure_type_id(TypeKind::Bool, "Bool");
-    tracer.ensure_type_id(TypeKind::String, "Symbol");
-    tracer.ensure_type_id(TypeKind::Error, "No type");
+    let int_type_id = tracer.ensure_type_id(TypeKind::Int, "Integer");
+    let string_type_id = tracer.ensure_type_id(TypeKind::String, "String");
+    let bool_type_id = tracer.ensure_type_id(TypeKind::Bool, "Bool");
+    let float_type_id = runtime_tracing::NONE_TYPE_ID;
+    let symbol_type_id = tracer.ensure_type_id(TypeKind::String, "Symbol");
+    let error_type_id = tracer.ensure_type_id(TypeKind::Error, "No type");
     let path = Path::new("");
     let func_id = tracer.ensure_function_id("<top-level>", path, Line(1));
     tracer.events.push(TraceLowLevelEvent::Call(CallRecord {
@@ -222,6 +243,12 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         set_class: Qnil.into(),
         open_struct_class: Qnil.into(),
         struct_type_versions: HashMap::new(),
+        int_type_id,
+        float_type_id,
+        bool_type_id,
+        string_type_id,
+        symbol_type_id,
+        error_type_id,
     });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
     rb_data_typed_object_wrap(klass, Box::into_raw(recorder) as *mut c_void, ty)
@@ -319,47 +346,54 @@ unsafe fn value_to_string_safe(val: VALUE, to_s_id: ID) -> Option<String> {
 
 unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: ID) -> ValueRecord {
     if depth == 0 {
-        let type_id = recorder.tracer.ensure_type_id(TypeKind::Error, "No type");
-        return ValueRecord::None { type_id };
+        return ValueRecord::None {
+            type_id: recorder.error_type_id,
+        };
     }
     if NIL_P(val) {
-        let type_id = recorder.tracer.ensure_type_id(TypeKind::Error, "No type");
-        return ValueRecord::None { type_id };
+        return ValueRecord::None {
+            type_id: recorder.error_type_id,
+        };
     }
     if val == (Qtrue as VALUE) || val == (Qfalse as VALUE) {
-        let type_id = recorder.tracer.ensure_type_id(TypeKind::Bool, "Bool");
         return ValueRecord::Bool {
             b: val == (Qtrue as VALUE),
-            type_id,
+            type_id: recorder.bool_type_id,
         };
     }
     if RB_INTEGER_TYPE_P(val) {
         let i = rb_num2long(val) as i64;
-        let type_id = recorder.tracer.ensure_type_id(TypeKind::Int, "Integer");
-        return ValueRecord::Int { i, type_id };
+        return ValueRecord::Int {
+            i,
+            type_id: recorder.int_type_id,
+        };
     }
     if RB_FLOAT_TYPE_P(val) {
         let f = rb_num2dbl(val);
-        let type_id = recorder.tracer.ensure_type_id(TypeKind::Float, "Float");
+        let type_id = if recorder.float_type_id == runtime_tracing::NONE_TYPE_ID {
+            let id = recorder.tracer.ensure_type_id(TypeKind::Float, "Float");
+            recorder.float_type_id = id;
+            id
+        } else {
+            recorder.float_type_id
+        };
         return ValueRecord::Float { f, type_id };
     }
     if RB_SYMBOL_P(val) {
         let id = rb_sym2id(val);
         let name = CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("");
-        let type_id = recorder.tracer.ensure_type_id(TypeKind::String, "Symbol");
         return ValueRecord::String {
             text: name.to_string(),
-            type_id,
+            type_id: recorder.symbol_type_id,
         };
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
         let ptr = RSTRING_PTR(val);
         let len = RSTRING_LEN(val) as usize;
         let slice = std::slice::from_raw_parts(ptr as *const u8, len);
-        let type_id = recorder.tracer.ensure_type_id(TypeKind::String, "String");
         return ValueRecord::String {
             text: String::from_utf8_lossy(slice).to_string(),
-            type_id,
+            type_id: recorder.string_type_id,
         };
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
@@ -702,17 +736,14 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     let path_bytes = if NIL_P(path_val) {
         &[] as &[u8]
     } else {
-        std::slice::from_raw_parts(RSTRING_PTR(path_val) as *const u8, RSTRING_LEN(path_val) as usize)
+        std::slice::from_raw_parts(
+            RSTRING_PTR(path_val) as *const u8,
+            RSTRING_LEN(path_val) as usize,
+        )
     };
     let path = std::str::from_utf8(path_bytes).unwrap_or("");
     let line = rb_num2long(line_val) as i64;
-    if path.contains("codetracer_ruby_recorder.rb")
-        || path.contains("lib/ruby")
-        || path.contains("recorder.rb")
-        || path.contains("codetracer_pure_ruby_recorder.rb")
-        || path.contains("gems/")
-        || path.starts_with("<internal:")
-    {
+    if should_ignore_path(path) {
         return;
     }
 
