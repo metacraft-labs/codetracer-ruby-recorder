@@ -46,7 +46,8 @@ module CodeTracer
 
       tracer.record.register_call('', 1, '<top-level>', [])
       tracer.ignore('lib/ruby')
-      tracer.ignore('codetracer_pure_ruby_recoreder.rb')
+      tracer.ignore('codetracer_pure_ruby_recorder.rb')
+      tracer.ignore(File.expand_path(__FILE__))
       tracer.ignore('recorder.rb')
       tracer.ignore('<internal:')
       tracer.ignore('gems/')
