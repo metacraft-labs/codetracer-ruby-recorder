@@ -1,0 +1,1 @@
+Update the README usage section to mention --format option for the native recorder (json or binary) and use of -- to separate tracer options from program arguments, showing example invocations with these options
