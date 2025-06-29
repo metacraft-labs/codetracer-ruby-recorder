@@ -1,0 +1,1 @@
+Read the code of the native tracer and optimize inefficiencies, compute values once where possible, ensure tests pass

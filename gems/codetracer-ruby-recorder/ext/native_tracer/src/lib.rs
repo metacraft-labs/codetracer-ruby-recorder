@@ -50,6 +50,22 @@ struct Recorder {
     inst_meth_id: ID,
     parameters_id: ID,
     class_id: ID,
+    to_a_id: ID,
+    begin_id: ID,
+    end_id: ID,
+    to_i_id: ID,
+    nsec_id: ID,
+    source_id: ID,
+    options_id: ID,
+    members_id: ID,
+    values_id: ID,
+    to_h_id: ID,
+    instance_variables_id: ID,
+    instance_variable_get_id: ID,
+    set_const_id: ID,
+    open_struct_const_id: ID,
+    set_class: VALUE,
+    open_struct_class: VALUE,
     struct_type_versions: HashMap<String, usize>,
 }
 
@@ -167,6 +183,20 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     let inst_meth_id = rb_intern(b"instance_method\0".as_ptr() as *const c_char);
     let parameters_id = rb_intern(b"parameters\0".as_ptr() as *const c_char);
     let class_id = rb_intern(b"class\0".as_ptr() as *const c_char);
+    let to_a_id = rb_intern(b"to_a\0".as_ptr() as *const c_char);
+    let begin_id = rb_intern(b"begin\0".as_ptr() as *const c_char);
+    let end_id = rb_intern(b"end\0".as_ptr() as *const c_char);
+    let to_i_id = rb_intern(b"to_i\0".as_ptr() as *const c_char);
+    let nsec_id = rb_intern(b"nsec\0".as_ptr() as *const c_char);
+    let source_id = rb_intern(b"source\0".as_ptr() as *const c_char);
+    let options_id = rb_intern(b"options\0".as_ptr() as *const c_char);
+    let members_id = rb_intern(b"members\0".as_ptr() as *const c_char);
+    let values_id = rb_intern(b"values\0".as_ptr() as *const c_char);
+    let to_h_id = rb_intern(b"to_h\0".as_ptr() as *const c_char);
+    let instance_variables_id = rb_intern(b"instance_variables\0".as_ptr() as *const c_char);
+    let instance_variable_get_id = rb_intern(b"instance_variable_get\0".as_ptr() as *const c_char);
+    let set_const_id = rb_intern(b"Set\0".as_ptr() as *const c_char);
+    let open_struct_const_id = rb_intern(b"OpenStruct\0".as_ptr() as *const c_char);
     let recorder = Box::new(Recorder {
         tracer,
         active: false,
@@ -176,6 +206,22 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         inst_meth_id,
         parameters_id,
         class_id,
+        to_a_id,
+        begin_id,
+        end_id,
+        to_i_id,
+        nsec_id,
+        source_id,
+        options_id,
+        members_id,
+        values_id,
+        to_h_id,
+        instance_variables_id,
+        instance_variable_get_id,
+        set_const_id,
+        open_struct_const_id,
+        set_class: Qnil.into(),
+        open_struct_class: Qnil.into(),
         struct_type_versions: HashMap::new(),
     });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
@@ -333,7 +379,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         };
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_HASH) {
-        let pairs = rb_funcall(val, rb_intern(b"to_a\0".as_ptr() as *const c_char), 0);
+        let pairs = rb_funcall(val, recorder.to_a_id, 0);
         let len = RARRAY_LEN(pairs) as usize;
         let ptr = RARRAY_CONST_PTR(pairs);
         let mut elements = Vec::new();
@@ -362,8 +408,8 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         };
     }
     if rb_obj_is_kind_of(val, rb_cRange) != 0 {
-        let begin_val = rb_funcall(val, rb_intern(b"begin\0".as_ptr() as *const c_char), 0);
-        let end_val = rb_funcall(val, rb_intern(b"end\0".as_ptr() as *const c_char), 0);
+        let begin_val = rb_funcall(val, recorder.begin_id, 0);
+        let end_val = rb_funcall(val, recorder.end_id, 0);
         return struct_value(
             recorder,
             "Range",
@@ -373,31 +419,32 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
             to_s_id,
         );
     }
-    let set_id = rb_intern(b"Set\0".as_ptr() as *const c_char);
-    if rb_const_defined(rb_cObject, set_id) != 0 {
-        let set_cls = rb_const_get(rb_cObject, set_id);
-        if rb_obj_is_kind_of(val, set_cls) != 0 {
-            let arr = rb_funcall(val, rb_intern(b"to_a\0".as_ptr() as *const c_char), 0);
-            if RB_TYPE_P(arr, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
-                let len = RARRAY_LEN(arr) as usize;
-                let ptr = RARRAY_CONST_PTR(arr);
-                let mut elements = Vec::new();
-                for i in 0..len {
-                    let elem = *ptr.add(i);
-                    elements.push(to_value(recorder, elem, depth - 1, to_s_id));
-                }
-                let type_id = recorder.tracer.ensure_type_id(TypeKind::Seq, "Set");
-                return ValueRecord::Sequence {
-                    elements,
-                    is_slice: false,
-                    type_id,
-                };
+    if NIL_P(recorder.set_class) {
+        if rb_const_defined(rb_cObject, recorder.set_const_id) != 0 {
+            recorder.set_class = rb_const_get(rb_cObject, recorder.set_const_id);
+        }
+    }
+    if !NIL_P(recorder.set_class) && rb_obj_is_kind_of(val, recorder.set_class) != 0 {
+        let arr = rb_funcall(val, recorder.to_a_id, 0);
+        if RB_TYPE_P(arr, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+            let len = RARRAY_LEN(arr) as usize;
+            let ptr = RARRAY_CONST_PTR(arr);
+            let mut elements = Vec::new();
+            for i in 0..len {
+                let elem = *ptr.add(i);
+                elements.push(to_value(recorder, elem, depth - 1, to_s_id));
             }
+            let type_id = recorder.tracer.ensure_type_id(TypeKind::Seq, "Set");
+            return ValueRecord::Sequence {
+                elements,
+                is_slice: false,
+                type_id,
+            };
         }
     }
     if rb_obj_is_kind_of(val, rb_cTime) != 0 {
-        let sec = rb_funcall(val, rb_intern(b"to_i\0".as_ptr() as *const c_char), 0);
-        let nsec = rb_funcall(val, rb_intern(b"nsec\0".as_ptr() as *const c_char), 0);
+        let sec = rb_funcall(val, recorder.to_i_id, 0);
+        let nsec = rb_funcall(val, recorder.nsec_id, 0);
         return struct_value(
             recorder,
             "Time",
@@ -408,8 +455,8 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         );
     }
     if rb_obj_is_kind_of(val, rb_cRegexp) != 0 {
-        let src = rb_funcall(val, rb_intern(b"source\0".as_ptr() as *const c_char), 0);
-        let opts = rb_funcall(val, rb_intern(b"options\0".as_ptr() as *const c_char), 0);
+        let src = rb_funcall(val, recorder.source_id, 0);
+        let opts = rb_funcall(val, recorder.options_id, 0);
         return struct_value(
             recorder,
             "Regexp",
@@ -422,8 +469,8 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
     if rb_obj_is_kind_of(val, rb_cStruct) != 0 {
         let class_name =
             cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Struct".to_string());
-        let members = rb_funcall(val, rb_intern(b"members\0".as_ptr() as *const c_char), 0);
-        let values = rb_funcall(val, rb_intern(b"values\0".as_ptr() as *const c_char), 0);
+        let members = rb_funcall(val, recorder.members_id, 0);
+        let values = rb_funcall(val, recorder.values_id, 0);
         if !RB_TYPE_P(members, rb_sys::ruby_value_type::RUBY_T_ARRAY)
             || !RB_TYPE_P(values, rb_sys::ruby_value_type::RUBY_T_ARRAY)
         {
@@ -446,21 +493,18 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         }
         return struct_value(recorder, &class_name, &names, &vals, depth, to_s_id);
     }
-    let open_struct_id = rb_intern(b"OpenStruct\0".as_ptr() as *const c_char);
-    if rb_const_defined(rb_cObject, open_struct_id) != 0 {
-        let open_struct = rb_const_get(rb_cObject, open_struct_id);
-        if rb_obj_is_kind_of(val, open_struct) != 0 {
-            let h = rb_funcall(val, rb_intern(b"to_h\0".as_ptr() as *const c_char), 0);
-            return to_value(recorder, h, depth - 1, to_s_id);
+    if NIL_P(recorder.open_struct_class) {
+        if rb_const_defined(rb_cObject, recorder.open_struct_const_id) != 0 {
+            recorder.open_struct_class = rb_const_get(rb_cObject, recorder.open_struct_const_id);
         }
+    }
+    if !NIL_P(recorder.open_struct_class) && rb_obj_is_kind_of(val, recorder.open_struct_class) != 0 {
+        let h = rb_funcall(val, recorder.to_h_id, 0);
+        return to_value(recorder, h, depth - 1, to_s_id);
     }
     let class_name = cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Object".to_string());
     // generic object
-    let ivars = rb_funcall(
-        val,
-        rb_intern(b"instance_variables\0".as_ptr() as *const c_char),
-        0,
-    );
+    let ivars = rb_funcall(val, recorder.instance_variables_id, 0);
     if !RB_TYPE_P(ivars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         let text = value_to_string(val, to_s_id).unwrap_or_default();
         let type_id = recorder.tracer.ensure_type_id(TypeKind::Raw, &class_name);
@@ -476,12 +520,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         let cstr = rb_id2name(id);
         let name = CStr::from_ptr(cstr).to_str().unwrap_or("?");
         names.push(name);
-        let value = rb_funcall(
-            val,
-            rb_intern(b"instance_variable_get\0".as_ptr() as *const c_char),
-            1,
-            sym,
-        );
+        let value = rb_funcall(val, recorder.instance_variable_get_id, 1, sym);
         vals.push(value);
     }
     if !names.is_empty() {
