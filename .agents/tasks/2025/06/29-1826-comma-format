@@ -1,0 +1,1 @@
+In the console and svg benchmarks, format the numbers with commas for better readability. Use rubocop for linting. Ensure all software used in the just files is installed in the GitHub workflows.

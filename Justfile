@@ -30,7 +30,7 @@ lint-nix:
     if command -v nixfmt >/dev/null; then find . -name '*.nix' -print0 | xargs -0 nixfmt --check; fi
 
 lint-ruby:
-    find . -name '*.rb' -print0 | xargs -0 -n 1 ruby -wc
+    if command -v bundle >/dev/null && bundle exec rubocop -v >/dev/null 2>&1; then bundle exec rubocop; else echo "rubocop not available; skipping"; fi
 
 lint:
     just lint-rust

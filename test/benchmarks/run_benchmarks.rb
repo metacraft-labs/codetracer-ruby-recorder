@@ -21,6 +21,11 @@ COLUMN_NAMES = {
   pure: 'JSON (PureRuby)'
 }.freeze
 
+# Format integer with comma separators for readability
+def comma(n)
+  n.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
+end
+
 options = { write_report: WRITE_REPORT_DEFAULT }
 OptionParser.new do |opts|
   opts.banner = 'Usage: ruby run_benchmarks.rb GLOB [options]'
@@ -128,10 +133,14 @@ results = benchmarks.map { |b| run_benchmark(b) }
 if options[:write_report] == 'console'
   # Determine column widths with padding
   name_w   = [COLUMN_NAMES[:benchmark].length, *results.map { |r| r[:name].length }].max + 2
-  ruby_w   = [COLUMN_NAMES[:ruby].length, *results.map { |r| "#{r[:ruby_ms]}ms".length }].max + 2
-  json_w   = [COLUMN_NAMES[:json].length,     *results.map { |r| "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms #{r[:native_bytes]}B".length }].max + 2
-  capnp_w  = [COLUMN_NAMES[:capnp].length,    *results.map { |r| "#{r[:native_bin_ms]}ms #{r[:native_bin_bytes]}B".length }].max + 2
-  pure_w   = [COLUMN_NAMES[:pure].length, *results.map { |r| "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms #{r[:pure_bytes]}B".length }].max + 2
+  ruby_w   = [COLUMN_NAMES[:ruby].length,
+              *results.map { |r| "#{comma(r[:ruby_ms])}ms".length }].max + 2
+  json_w   = [COLUMN_NAMES[:json].length,
+              *results.map { |r| "#{r[:native_ok] ? '✓' : '✗'} #{comma(r[:native_ms])}ms #{comma(r[:native_bytes])}B".length }].max + 2
+  capnp_w  = [COLUMN_NAMES[:capnp].length,
+              *results.map { |r| "#{comma(r[:native_bin_ms])}ms #{comma(r[:native_bin_bytes])}B".length }].max + 2
+  pure_w   = [COLUMN_NAMES[:pure].length,
+              *results.map { |r| "#{r[:pure_ok] ? '✓' : '✗'} #{comma(r[:pure_ms])}ms #{comma(r[:pure_bytes])}B".length }].max + 2
 
   total_width = name_w + ruby_w + json_w + capnp_w + pure_w + 5
 
@@ -142,10 +151,10 @@ if options[:write_report] == 'console'
 
   # Rows
   results.each do |r|
-    ruby_s   = "#{r[:ruby_ms]}ms"
-    json_s   = "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms #{r[:native_bytes]}B"
-    capnp_s  = "#{r[:native_bin_ms]}ms #{r[:native_bin_bytes]}B"
-    pure_s   = "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms #{r[:pure_bytes]}B"
+    ruby_s   = "#{comma(r[:ruby_ms])}ms"
+    json_s   = "#{r[:native_ok] ? '✓' : '✗'} #{comma(r[:native_ms])}ms #{comma(r[:native_bytes])}B"
+    capnp_s  = "#{comma(r[:native_bin_ms])}ms #{comma(r[:native_bin_bytes])}B"
+    pure_s   = "#{r[:pure_ok] ? '✓' : '✗'} #{comma(r[:pure_ms])}ms #{comma(r[:pure_bytes])}B"
     printf "| %-#{name_w-2}s | %#{ruby_w-2}s | %-#{json_w-2}s | %#{capnp_w-2}s | %-#{pure_w-2}s |\n", r[:name], ruby_s, json_s, capnp_s, pure_s
   end
   puts "=" * total_width
@@ -195,10 +204,10 @@ else
     svg << "      <tbody>\n"
     results.each_with_index do |r, idx|
       row_style = idx.odd? ? " style='background:#f0f0f0;'" : ''
-      ruby_s = "#{r[:ruby_ms]}ms"
-      json_s = "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms #{r[:native_bytes]}B"
-      capnp_s = "#{r[:native_bin_ms]}ms #{r[:native_bin_bytes]}B"
-      pure_s = "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms #{r[:pure_bytes]}B"
+      ruby_s = "#{comma(r[:ruby_ms])}ms"
+      json_s = "#{r[:native_ok] ? '✓' : '✗'} #{comma(r[:native_ms])}ms #{comma(r[:native_bytes])}B"
+      capnp_s = "#{comma(r[:native_bin_ms])}ms #{comma(r[:native_bin_bytes])}B"
+      pure_s = "#{r[:pure_ok] ? '✓' : '✗'} #{comma(r[:pure_ms])}ms #{comma(r[:pure_bytes])}B"
       svg << "        <tr#{row_style}><td #{cell_style}>#{r[:name]}</td><td #{cell_style}>#{ruby_s}</td><td #{cell_style}>#{json_s}</td><td #{cell_style}>#{capnp_s}</td><td #{cell_style}>#{pure_s}</td></tr>\n"
     end
     svg << "      </tbody>\n"
