@@ -1,0 +1,5 @@
+There is a new version of the runtime_tracing create used by the `gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs` module.
+
+The primary new feature is that the create support a new binary format for the trace files and requires the user to choose between json and binary when flushing the trace to a file.
+
+Please migrate the project to the new version of runtime_tracing and enhance the benchmark setup to compare the pure ruby implementation vs json in the native implementation vs the new binary format in the native implementation.

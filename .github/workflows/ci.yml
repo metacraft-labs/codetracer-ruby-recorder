@@ -16,10 +16,38 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+      - name: Install system dependencies
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libclang-dev capnproto libcapnp-dev pkg-config
+            # Set environment variables for Rust/bindgen
+            LLVM_VERSION=$(ls /usr/lib/ | grep llvm | sort -V | tail -1)
+            echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
+            echo "CLANG_PATH=/usr/bin/clang" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install capnp pkg-config
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            # Install LLVM/Clang for Windows
+            choco install llvm -y
+            # Install vcpkg for Cap'n Proto on Windows
+            git clone https://github.com/Microsoft/vcpkg.git
+            cd vcpkg
+            ./bootstrap-vcpkg.bat
+            ./vcpkg install capnproto:x64-windows
+            echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
+            echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/scripts/buildsystems/vcpkg.cmake" >> $GITHUB_ENV
+            cd ..
+          fi
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Ruby dependencies
+        run: bundle install
       - name: Setup just
         uses: extractions/setup-just@v1
       - name: Build extension
@@ -33,10 +61,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+      - name: Install system dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libclang-dev capnproto libcapnp-dev pkg-config
+          # Set environment variables for Rust/bindgen
+          LLVM_VERSION=$(ls /usr/lib/ | grep llvm | sort -V | tail -1)
+          echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
+          echo "CLANG_PATH=/usr/bin/clang" >> $GITHUB_ENV
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Ruby dependencies
+        run: bundle install
       - name: Setup just
         uses: extractions/setup-just@v1
       - name: Build extension

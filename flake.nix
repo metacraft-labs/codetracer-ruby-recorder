@@ -1,7 +1,7 @@
 {
   description = "Development environment for codetracer-ruby-recorder";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
   outputs = {
     self,
@@ -33,6 +33,8 @@
           # For build automation
           just
           git-lfs
+
+          capnproto # Required for the native tracer's Cap'n Proto serialization
         ] ++ pkgs.lib.optionals isLinux [
           # C standard library headers required for Ruby C extension compilation on Linux
           # Without this, build fails with "stdarg.h file not found" error
