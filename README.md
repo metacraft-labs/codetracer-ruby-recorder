@@ -129,6 +129,25 @@ We'd be very happy if the community finds this useful, and if anyone wants to:
 
 For maintainer instructions, see [MAINTAINERS.md](MAINTAINERS.md).
 
+### Development workflow
+
+Use [just](https://github.com/casey/just) for common tasks:
+
+```bash
+just build-extension  # compile native extension
+just test             # run the test suite
+just format           # apply automatic formatting for all languages
+just lint             # run all linters
+
+# Language-specific tasks
+just format-rust      # Rust code
+just format-ruby      # Ruby code (requires rubocop)
+just format-nix       # Nix files
+just lint-rust        # Rust formatting check
+just lint-ruby        # Ruby syntax check
+just lint-nix         # Nix formatting check
+```
+
 ### Legal info
 
 LICENSE: MIT

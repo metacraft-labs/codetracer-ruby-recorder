@@ -2,16 +2,34 @@
   description = "Development environment for codetracer-ruby-recorder";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+  inputs.pre-commit-hooks.url = "github:cachix/git-hooks.nix";
 
   outputs = {
     self,
     nixpkgs,
+    pre-commit-hooks,
   }: let
     systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     forEachSystem = nixpkgs.lib.genAttrs systems;
   in {
+    checks = forEachSystem (system: {
+      pre-commit-check = pre-commit-hooks.lib.${system}.run {
+        src = ./.;
+        hooks = {
+          lint = {
+            enable = true;
+            name = "Lint";
+            entry = "just lint";
+            language = "system";
+            pass_filenames = false;
+          };
+        };
+      };
+    });
+
     devShells = forEachSystem (system: let
-      pkgs = import nixpkgs {inherit system;};
+      pkgs = import nixpkgs { inherit system; };
+      preCommit = self.checks.${system}.pre-commit-check;
       isLinux = pkgs.stdenv.isLinux;
       isDarwin = pkgs.stdenv.isDarwin;
     in {
@@ -43,7 +61,7 @@
           # Required for Ruby C extension compilation on macOS
           darwin.apple_sdk.frameworks.CoreFoundation
           darwin.apple_sdk.frameworks.Security
-        ];
+        ] ++ preCommit.enabledPackages;
 
         # Environment variables required to fix build issues with rb-sys/bindgen
 
@@ -56,6 +74,8 @@
         CLANG_PATH = "${pkgs.llvmPackages.clang}/bin/clang";
         CC = "${pkgs.llvmPackages.clang}/bin/clang";
         CXX = "${pkgs.llvmPackages.clang}/bin/clang++";
+
+        inherit (preCommit) shellHook;
       } // pkgs.lib.optionalAttrs isLinux {
         # BINDGEN_EXTRA_CLANG_ARGS: Additional clang arguments for bindgen when parsing Ruby headers
         # Includes system header paths that are not automatically discovered in NixOS

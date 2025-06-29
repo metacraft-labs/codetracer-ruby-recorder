@@ -1,0 +1,1 @@
+Add just targets for running auto formatters (e.g just format). Setup a git pre commit that checks that lints pass using the same technique employed by the Blocksense-network blocksense repo
