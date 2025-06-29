@@ -15,6 +15,9 @@ module CodeTracer
         opts.on('-o DIR', '--out-dir DIR', 'Directory to write trace files') do |dir|
           options[:out_dir] = dir
         end
+        opts.on('-f FORMAT', '--format FORMAT', 'trace format: json or binary') do |fmt|
+          options[:format] = fmt
+        end
         opts.on('-h', '--help', 'Print this help') do
           puts opts
           exit
@@ -32,11 +35,12 @@ module CodeTracer
       program_args = argv.dup
 
       out_dir = options[:out_dir] || ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pwd
-      trace_ruby_file(program, out_dir, program_args)
+      format = (options[:format] || 'json').to_sym
+      trace_ruby_file(program, out_dir, program_args, format)
       0
     end
 
-    def self.trace_ruby_file(program, out_dir, program_args = [])
+    def self.trace_ruby_file(program, out_dir, program_args = [], format = :json)
       recorder = RubyRecorder.new
       return 1 unless recorder.available?
 
@@ -56,7 +60,7 @@ module CodeTracer
         ARGV.concat(original_argv)
 
         recorder.stop
-        recorder.flush_trace(out_dir)
+        recorder.flush_trace(out_dir, format)
       end
       0
     end
@@ -96,8 +100,8 @@ module CodeTracer
     end
 
     # Flush trace to output directory
-    def flush_trace(out_dir)
-      @recorder.flush_trace(out_dir) if @recorder
+    def flush_trace(out_dir, format = :json)
+      @recorder.flush_trace(out_dir, format) if @recorder
     end
 
     # Check if recorder is available

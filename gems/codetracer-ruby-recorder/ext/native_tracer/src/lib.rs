@@ -68,6 +68,7 @@ fn value_type_id(val: &ValueRecord) -> runtime_tracing::TypeId {
         | Reference { type_id, .. }
         | Raw { type_id, .. }
         | Error { type_id, .. }
+        | BigInt { type_id, .. }
         | None { type_id } => *type_id,
         Cell { .. } => runtime_tracing::NONE_TYPE_ID,
     }
@@ -201,12 +202,15 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     Qnil.into()
 }
 
-fn flush_to_dir(tracer: &Tracer, dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn flush_to_dir(tracer: &Tracer, dir: &Path, format: runtime_tracing::TraceEventsFileFormat) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(dir)?;
-    let events = dir.join("trace.json");
+    let events = match format {
+        runtime_tracing::TraceEventsFileFormat::Json => dir.join("trace.json"),
+        runtime_tracing::TraceEventsFileFormat::Binary => dir.join("trace.bin"),
+    };
     let metadata = dir.join("trace_metadata.json");
     let paths = dir.join("trace_paths.json");
-    tracer.store_trace_events(&events)?;
+    tracer.store_trace_events(&events, format)?;
     tracer.store_trace_metadata(&metadata)?;
     tracer.store_trace_paths(&paths)?;
     Ok(())
@@ -486,16 +490,32 @@ unsafe fn record_event(tracer: &mut Tracer, path: &str, line: i64, content: &str
     }));
 }
 
-unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE) -> VALUE {
+unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE, format: VALUE) -> VALUE {
     let recorder_ptr = get_recorder(self_val);
     let recorder = &mut *recorder_ptr;
     let ptr = RSTRING_PTR(out_dir) as *const u8;
     let len = RSTRING_LEN(out_dir) as usize;
     let slice = std::slice::from_raw_parts(ptr, len);
 
+    let fmt = if NIL_P(format) {
+        runtime_tracing::TraceEventsFileFormat::Json
+    } else if RB_SYMBOL_P(format) {
+        let id = rb_sym2id(format);
+        match CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("") {
+            "binary" | "bin" => runtime_tracing::TraceEventsFileFormat::Binary,
+            "json" => runtime_tracing::TraceEventsFileFormat::Json,
+            _ => {
+                rb_raise(rb_eIOError, b"Unknown format\0".as_ptr() as *const c_char);
+                runtime_tracing::TraceEventsFileFormat::Json
+            }
+        }
+    } else {
+        runtime_tracing::TraceEventsFileFormat::Json
+    };
+
     match std::str::from_utf8(slice) {
         Ok(path_str) => {
-            if let Err(e) = flush_to_dir(&recorder.tracer, Path::new(path_str)) {
+            if let Err(e) = flush_to_dir(&recorder.tracer, Path::new(path_str), fmt) {
                 rb_raise(rb_eIOError, b"Failed to flush trace: %s\0".as_ptr() as *const c_char, e.to_string().as_ptr() as *const c_char);
             }
         }
@@ -639,10 +659,10 @@ pub extern "C" fn Init_codetracer_ruby_recorder() {
             0
         );
         rb_define_method(
-            class, 
-            b"flush_trace\0".as_ptr() as *const c_char, 
-            Some(std::mem::transmute(flush_trace as *const ())), 
-            1
+            class,
+            b"flush_trace\0".as_ptr() as *const c_char,
+            Some(std::mem::transmute(flush_trace as *const ())),
+            2
         );
         rb_define_method(
             class, 
