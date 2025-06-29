@@ -1,0 +1,1 @@
+In the benchmark reports produced by 'just bench', include the size of the produced trace files. Do this for all report types.
