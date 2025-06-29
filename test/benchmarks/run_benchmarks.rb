@@ -91,6 +91,7 @@ def run_benchmark(name)
   native_trace = File.join(native_dir, 'trace.json')
   # TODO: Re-enable strict comparison: results[:native_ok] = traces_equal?(fixture, native_trace)
   results[:native_ok] = trace_valid?(native_trace)
+  results[:native_bytes] = File.exist?(native_trace) ? File.size(native_trace) : 0
 
   native_bin_dir = File.join(TMP_DIR, name, 'native_bin')
   FileUtils.mkdir_p(native_bin_dir)
@@ -100,7 +101,9 @@ def run_benchmark(name)
     raise 'Native binary trace failed' unless $?.success?
   end
   results[:native_bin_ms] = (elapsed * 1000).round
-  results[:native_bin_ok] = File.exist?(File.join(native_bin_dir, 'trace.bin'))
+  native_bin_trace = File.join(native_bin_dir, 'trace.bin')
+  results[:native_bin_ok] = File.exist?(native_bin_trace)
+  results[:native_bin_bytes] = File.exist?(native_bin_trace) ? File.size(native_bin_trace) : 0
 
   pure_dir = File.join(TMP_DIR, name, 'pure')
   FileUtils.mkdir_p(pure_dir)
@@ -113,6 +116,7 @@ def run_benchmark(name)
   pure_trace = File.join(pure_dir, 'trace.json')
   # TODO: Re-enable strict comparison: results[:pure_ok] = traces_equal?(fixture, pure_trace)
   results[:pure_ok] = trace_valid?(pure_trace)
+  results[:pure_bytes] = File.exist?(pure_trace) ? File.size(pure_trace) : 0
 
   results
 end
@@ -125,9 +129,9 @@ if options[:write_report] == 'console'
   # Determine column widths with padding
   name_w   = [COLUMN_NAMES[:benchmark].length, *results.map { |r| r[:name].length }].max + 2
   ruby_w   = [COLUMN_NAMES[:ruby].length, *results.map { |r| "#{r[:ruby_ms]}ms".length }].max + 2
-  json_w   = [COLUMN_NAMES[:json].length,     *results.map { |r| "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms".length }].max + 2
-  capnp_w  = [COLUMN_NAMES[:capnp].length,    *results.map { |r| "#{r[:native_bin_ms]}ms".length }].max + 2
-  pure_w   = [COLUMN_NAMES[:pure].length, *results.map { |r| "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms".length }].max + 2
+  json_w   = [COLUMN_NAMES[:json].length,     *results.map { |r| "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms #{r[:native_bytes]}B".length }].max + 2
+  capnp_w  = [COLUMN_NAMES[:capnp].length,    *results.map { |r| "#{r[:native_bin_ms]}ms #{r[:native_bin_bytes]}B".length }].max + 2
+  pure_w   = [COLUMN_NAMES[:pure].length, *results.map { |r| "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms #{r[:pure_bytes]}B".length }].max + 2
 
   total_width = name_w + ruby_w + json_w + capnp_w + pure_w + 5
 
@@ -139,9 +143,9 @@ if options[:write_report] == 'console'
   # Rows
   results.each do |r|
     ruby_s   = "#{r[:ruby_ms]}ms"
-    json_s   = "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms"
-    capnp_s  = "#{r[:native_bin_ms]}ms"
-    pure_s   = "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms"
+    json_s   = "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms #{r[:native_bytes]}B"
+    capnp_s  = "#{r[:native_bin_ms]}ms #{r[:native_bin_bytes]}B"
+    pure_s   = "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms #{r[:pure_bytes]}B"
     printf "| %-#{name_w-2}s | %#{ruby_w-2}s | %-#{json_w-2}s | %#{capnp_w-2}s | %-#{pure_w-2}s |\n", r[:name], ruby_s, json_s, capnp_s, pure_s
   end
   puts "=" * total_width
@@ -165,9 +169,12 @@ else
         benchmark: r[:name],
         ruby_ms: r[:ruby_ms],
         native_ms: r[:native_ms],
+        native_bytes: r[:native_bytes],
         native_ok: r[:native_ok],
         native_bin_ms: r[:native_bin_ms],
+        native_bin_bytes: r[:native_bin_bytes],
         pure_ms: r[:pure_ms],
+        pure_bytes: r[:pure_bytes],
         pure_ok: r[:pure_ok]
       }
     end
@@ -189,9 +196,9 @@ else
     results.each_with_index do |r, idx|
       row_style = idx.odd? ? " style='background:#f0f0f0;'" : ''
       ruby_s = "#{r[:ruby_ms]}ms"
-      json_s = "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms"
-      capnp_s = "#{r[:native_bin_ms]}ms"
-      pure_s = "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms"
+      json_s = "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms #{r[:native_bytes]}B"
+      capnp_s = "#{r[:native_bin_ms]}ms #{r[:native_bin_bytes]}B"
+      pure_s = "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms #{r[:pure_bytes]}B"
       svg << "        <tr#{row_style}><td #{cell_style}>#{r[:name]}</td><td #{cell_style}>#{ruby_s}</td><td #{cell_style}>#{json_s}</td><td #{cell_style}>#{capnp_s}</td><td #{cell_style}>#{pure_s}</td></tr>\n"
     end
     svg << "      </tbody>\n"
