@@ -24,21 +24,11 @@ class TestKernelPatches < Minitest::Test
   def setup
     @tracer1 = MockTracer.new("tracer1")
     @tracer2 = MockTracer.new("tracer2")
-    # Ensure a clean state before each test by attempting to clear any existing tracers
-    # This is a bit of a hack, ideally KernelPatches would offer a reset or more direct access
-    current_tracers = CodeTracer::KernelPatches.class_variable_get(:@@tracers).dup
-    current_tracers.each do |tracer|
-      CodeTracer::KernelPatches.uninstall(tracer)
-    end
+    CodeTracer::KernelPatches.reset
   end
 
   def teardown
-    # Ensure all tracers are uninstalled after each test
-    current_tracers = CodeTracer::KernelPatches.class_variable_get(:@@tracers).dup
-    current_tracers.each do |tracer|
-      CodeTracer::KernelPatches.uninstall(tracer)
-    end
-    # Verify that original methods are restored if no tracers are left
+    CodeTracer::KernelPatches.reset
     assert_empty CodeTracer::KernelPatches.class_variable_get(:@@tracers), "Tracers should be empty after teardown"
   end
 
@@ -114,6 +104,24 @@ class TestKernelPatches < Minitest::Test
     p 'original restored' # This line's output will go to actual stdout
 
     assert_empty @tracer1.events, "Tracer should not record events after being uninstalled and patches removed"
+  end
+
+  def test_reset_removes_all_tracers_and_restores_methods
+    CodeTracer::KernelPatches.install(@tracer1)
+    CodeTracer::KernelPatches.install(@tracer2)
+
+    CodeTracer::KernelPatches.reset
+
+    assert_empty CodeTracer::KernelPatches.class_variable_get(:@@tracers), "No tracers should remain after reset"
+
+    p 'after reset'
+
+    assert_empty @tracer1.events, "Tracer1 should not record after reset"
+    assert_empty @tracer2.events, "Tracer2 should not record after reset"
+
+    assert_equal Kernel.instance_method(:codetracer_original_p), Kernel.instance_method(:p)
+    assert_equal Kernel.instance_method(:codetracer_original_puts), Kernel.instance_method(:puts)
+    assert_equal Kernel.instance_method(:codetracer_original_print), Kernel.instance_method(:print)
   end
 
   def test_correct_event_arguments
