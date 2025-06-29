@@ -88,5 +88,18 @@
           ];
       };
     });
+
+    packages = forEachSystem (system: let
+      pkgs = import nixpkgs { inherit system; };
+      buildGem = gemdir: pkgs.rubyPackages.buildRubyGem {
+        pname = builtins.baseNameOf gemdir;
+        version = builtins.readFile ./version.txt;
+        src = gemdir;
+      };
+    in {
+      codetracer-ruby-recorder = buildGem ./gems/codetracer-ruby-recorder;
+      codetracer-pure-ruby-recorder = buildGem ./gems/codetracer-pure-ruby-recorder;
+      default = self.packages.${system}.codetracer-ruby-recorder;
+    });
   };
 }
