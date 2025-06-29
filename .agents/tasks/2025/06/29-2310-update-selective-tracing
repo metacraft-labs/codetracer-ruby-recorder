@@ -1,0 +1,1 @@
+Update example selective_tracing.rb to require codetracer_ruby_recorder after computing ext_base, replace enable_tracing/disable_tracing with start/stop, confirm example runs
