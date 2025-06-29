@@ -1,15 +1,16 @@
 #!/usr/bin/env ruby
 
-ext_base = File.expand_path('../gems/codetracer-ruby-recorder/ext/native_tracer/target/release/libcodetracer_ruby_recorder', __dir__)
-require ext_base
+ext_base = File.expand_path('../gems/codetracer-ruby-recorder/lib', __dir__)
+$LOAD_PATH.unshift(ext_base) unless $LOAD_PATH.include?(ext_base)
+require 'codetracer_ruby_recorder'
 
 recorder = CodeTracer::RubyRecorder.new
 
 puts 'start trace'
-recorder.disable_tracing
+recorder.stop
 puts 'this will not be traced'
-recorder.enable_tracing
+recorder.start
 puts 'this will be traced'
-recorder.disable_tracing
+recorder.stop
 puts 'tracing disabled'
 recorder.flush_trace(Dir.pwd)
