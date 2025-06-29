@@ -1,0 +1,1 @@
+File: gems/codetracer-pure-ruby-recorder/lib/codetracer_pure_ruby_recorder.rb, Replace codetracer_pure_ruby_recoreder.rb with codetracer_pure_ruby_recorder.rb. Ensure the tracer's ignore list skips its own file when run from this repository or when packaged.
