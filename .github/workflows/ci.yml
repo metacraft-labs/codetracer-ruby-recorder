@@ -121,7 +121,11 @@ jobs:
             }
 
   nix:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -135,3 +139,9 @@ jobs:
         run: nix develop -c just build-extension
       - name: Run tests via Nix
         run: nix develop -c just test
+      - name: Build Nix packages
+        run: |
+          nix build .#codetracer-ruby-recorder -o result-ruby
+          ./result-ruby/bin/codetracer-ruby-recorder --help >/dev/null
+          nix build .#codetracer-pure-ruby-recorder -o result-pure
+          ./result-pure/bin/codetracer-pure-ruby-recorder --help >/dev/null
