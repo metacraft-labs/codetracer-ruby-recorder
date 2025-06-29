@@ -1,28 +1,28 @@
 #![allow(clippy::missing_safety_doc)]
 
 use std::{
+    collections::HashMap,
     ffi::CStr,
     mem::transmute,
-    os::raw::{c_char, c_void, c_int},
+    os::raw::{c_char, c_int, c_void},
     path::Path,
     ptr,
-    collections::HashMap,
 };
 
 use rb_sys::{
-    rb_define_class,
-    rb_define_alloc_func, rb_define_method, rb_funcall, rb_intern,
-    rb_event_flag_t,
-    rb_cObject, VALUE, ID, RUBY_EVENT_LINE, RUBY_EVENT_CALL, RUBY_EVENT_RETURN,
-    RUBY_EVENT_RAISE,
-    rb_raise, rb_eIOError,
-    rb_sym2id, rb_id2name, rb_id2sym, rb_obj_classname, rb_num2long
+    rb_cObject, rb_define_alloc_func, rb_define_class, rb_define_method, rb_eIOError,
+    rb_event_flag_t, rb_funcall, rb_id2name, rb_id2sym, rb_intern, rb_num2long, rb_obj_classname,
+    rb_raise, rb_sym2id, ID, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN,
+    VALUE,
 };
-use rb_sys::{RARRAY_LEN, RARRAY_CONST_PTR, RSTRING_LEN, RSTRING_PTR, RB_INTEGER_TYPE_P, RB_TYPE_P, RB_SYMBOL_P, RB_FLOAT_TYPE_P, NIL_P, rb_protect};
-use rb_sys::{Qtrue, Qfalse, Qnil};
+use rb_sys::{
+    rb_protect, NIL_P, RARRAY_CONST_PTR, RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P,
+    RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN, RSTRING_PTR,
+};
+use rb_sys::{Qfalse, Qnil, Qtrue};
 use runtime_tracing::{
-    Tracer, Line, ValueRecord, TypeKind, TypeSpecificInfo, TypeRecord, FieldTypeRecord,
-    EventLogKind, TraceLowLevelEvent, CallRecord, FullValueRecord, ReturnRecord, RecordEvent,
+    CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line, RecordEvent, ReturnRecord,
+    TraceLowLevelEvent, Tracer, TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord,
 };
 
 // Event hook function type from Ruby debug.h
@@ -33,13 +33,12 @@ use rb_sys::rb_event_hook_flag_t;
 
 // Types from rb_sys bindings
 use rb_sys::{
-    rb_data_typed_object_wrap, rb_check_typeddata, rb_num2dbl, rb_obj_is_kind_of,
-    rb_const_defined, rb_const_get, rb_method_boundp, rb_cTime,
-    rb_cRegexp, rb_cStruct, rb_cRange, rb_add_event_hook2,
-    rb_remove_event_hook_with_data, rb_tracearg_event_flag, rb_tracearg_lineno,
-    rb_tracearg_path, rb_tracearg_self, rb_tracearg_binding, rb_tracearg_callee_id,
-    rb_tracearg_return_value, rb_tracearg_raised_exception, rb_trace_arg_t,
-    rb_data_type_t, rb_data_type_struct__bindgen_ty_1,
+    rb_add_event_hook2, rb_cRange, rb_cRegexp, rb_cStruct, rb_cTime, rb_check_typeddata,
+    rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1, rb_data_type_t,
+    rb_data_typed_object_wrap, rb_method_boundp, rb_num2dbl, rb_obj_is_kind_of,
+    rb_remove_event_hook_with_data, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id,
+    rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception,
+    rb_tracearg_return_value, rb_tracearg_self,
 };
 
 struct Recorder {
@@ -104,7 +103,9 @@ unsafe fn struct_value(
     let typ = TypeRecord {
         kind: TypeKind::Struct,
         lang_type: name_version,
-        specific_info: TypeSpecificInfo::Struct { fields: field_types },
+        specific_info: TypeSpecificInfo::Struct {
+            fields: field_types,
+        },
     };
     let type_id = recorder.tracer.ensure_raw_type_id(typ);
 
@@ -138,7 +139,10 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
     let ptr = rb_check_typeddata(obj, ty);
     if ptr.is_null() {
-        rb_raise(rb_eIOError, b"Invalid recorder object\0".as_ptr() as *const c_char);
+        rb_raise(
+            rb_eIOError,
+            b"Invalid recorder object\0".as_ptr() as *const c_char,
+        );
     }
     ptr as *mut Recorder
 }
@@ -153,7 +157,10 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     tracer.ensure_type_id(TypeKind::Error, "No type");
     let path = Path::new("");
     let func_id = tracer.ensure_function_id("<top-level>", path, Line(1));
-    tracer.events.push(TraceLowLevelEvent::Call(CallRecord { function_id: func_id, args: vec![] }));
+    tracer.events.push(TraceLowLevelEvent::Call(CallRecord {
+        function_id: func_id,
+        args: vec![],
+    }));
     let to_s_id = rb_intern(b"to_s\0".as_ptr() as *const c_char);
     let locals_id = rb_intern(b"local_variables\0".as_ptr() as *const c_char);
     let local_get_id = rb_intern(b"local_variable_get\0".as_ptr() as *const c_char);
@@ -202,7 +209,11 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     Qnil.into()
 }
 
-fn flush_to_dir(tracer: &Tracer, dir: &Path, format: runtime_tracing::TraceEventsFileFormat) -> Result<(), Box<dyn std::error::Error>> {
+fn flush_to_dir(
+    tracer: &Tracer,
+    dir: &Path,
+    format: runtime_tracing::TraceEventsFileFormat,
+) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(dir)?;
     let events = match format {
         runtime_tracing::TraceEventsFileFormat::Json => dir.join("trace.json"),
@@ -272,7 +283,10 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
     }
     if val == (Qtrue as VALUE) || val == (Qfalse as VALUE) {
         let type_id = recorder.tracer.ensure_type_id(TypeKind::Bool, "Bool");
-        return ValueRecord::Bool { b: val == (Qtrue as VALUE), type_id };
+        return ValueRecord::Bool {
+            b: val == (Qtrue as VALUE),
+            type_id,
+        };
     }
     if RB_INTEGER_TYPE_P(val) {
         let i = rb_num2long(val) as i64;
@@ -288,14 +302,20 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         let id = rb_sym2id(val);
         let name = CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("");
         let type_id = recorder.tracer.ensure_type_id(TypeKind::String, "Symbol");
-        return ValueRecord::String { text: name.to_string(), type_id };
+        return ValueRecord::String {
+            text: name.to_string(),
+            type_id,
+        };
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
         let ptr = RSTRING_PTR(val);
         let len = RSTRING_LEN(val) as usize;
         let slice = std::slice::from_raw_parts(ptr as *const u8, len);
         let type_id = recorder.tracer.ensure_type_id(TypeKind::String, "String");
-        return ValueRecord::String { text: String::from_utf8_lossy(slice).to_string(), type_id };
+        return ValueRecord::String {
+            text: String::from_utf8_lossy(slice).to_string(),
+            type_id,
+        };
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         let len = RARRAY_LEN(val) as usize;
@@ -306,7 +326,11 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
             elements.push(to_value(recorder, elem, depth - 1, to_s_id));
         }
         let type_id = recorder.tracer.ensure_type_id(TypeKind::Seq, "Array");
-        return ValueRecord::Sequence { elements, is_slice: false, type_id };
+        return ValueRecord::Sequence {
+            elements,
+            is_slice: false,
+            type_id,
+        };
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_HASH) {
         let pairs = rb_funcall(val, rb_intern(b"to_a\0".as_ptr() as *const c_char), 0);
@@ -321,15 +345,33 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
             let pair_ptr = RARRAY_CONST_PTR(pair);
             let key = *pair_ptr.add(0);
             let val_elem = *pair_ptr.add(1);
-            elements.push(struct_value(recorder, "Pair", &["k", "v"], &[key, val_elem], depth, to_s_id));
+            elements.push(struct_value(
+                recorder,
+                "Pair",
+                &["k", "v"],
+                &[key, val_elem],
+                depth,
+                to_s_id,
+            ));
         }
         let type_id = recorder.tracer.ensure_type_id(TypeKind::Seq, "Hash");
-        return ValueRecord::Sequence { elements, is_slice: false, type_id };
+        return ValueRecord::Sequence {
+            elements,
+            is_slice: false,
+            type_id,
+        };
     }
     if rb_obj_is_kind_of(val, rb_cRange) != 0 {
         let begin_val = rb_funcall(val, rb_intern(b"begin\0".as_ptr() as *const c_char), 0);
         let end_val = rb_funcall(val, rb_intern(b"end\0".as_ptr() as *const c_char), 0);
-        return struct_value(recorder, "Range", &["begin", "end"], &[begin_val, end_val], depth, to_s_id);
+        return struct_value(
+            recorder,
+            "Range",
+            &["begin", "end"],
+            &[begin_val, end_val],
+            depth,
+            to_s_id,
+        );
     }
     let set_id = rb_intern(b"Set\0".as_ptr() as *const c_char);
     if rb_const_defined(rb_cObject, set_id) != 0 {
@@ -345,25 +387,46 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
                     elements.push(to_value(recorder, elem, depth - 1, to_s_id));
                 }
                 let type_id = recorder.tracer.ensure_type_id(TypeKind::Seq, "Set");
-                return ValueRecord::Sequence { elements, is_slice: false, type_id };
+                return ValueRecord::Sequence {
+                    elements,
+                    is_slice: false,
+                    type_id,
+                };
             }
         }
     }
     if rb_obj_is_kind_of(val, rb_cTime) != 0 {
         let sec = rb_funcall(val, rb_intern(b"to_i\0".as_ptr() as *const c_char), 0);
         let nsec = rb_funcall(val, rb_intern(b"nsec\0".as_ptr() as *const c_char), 0);
-        return struct_value(recorder, "Time", &["sec", "nsec"], &[sec, nsec], depth, to_s_id);
+        return struct_value(
+            recorder,
+            "Time",
+            &["sec", "nsec"],
+            &[sec, nsec],
+            depth,
+            to_s_id,
+        );
     }
     if rb_obj_is_kind_of(val, rb_cRegexp) != 0 {
         let src = rb_funcall(val, rb_intern(b"source\0".as_ptr() as *const c_char), 0);
         let opts = rb_funcall(val, rb_intern(b"options\0".as_ptr() as *const c_char), 0);
-        return struct_value(recorder, "Regexp", &["source", "options"], &[src, opts], depth, to_s_id);
+        return struct_value(
+            recorder,
+            "Regexp",
+            &["source", "options"],
+            &[src, opts],
+            depth,
+            to_s_id,
+        );
     }
     if rb_obj_is_kind_of(val, rb_cStruct) != 0 {
-        let class_name = cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Struct".to_string());
+        let class_name =
+            cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Struct".to_string());
         let members = rb_funcall(val, rb_intern(b"members\0".as_ptr() as *const c_char), 0);
         let values = rb_funcall(val, rb_intern(b"values\0".as_ptr() as *const c_char), 0);
-        if !RB_TYPE_P(members, rb_sys::ruby_value_type::RUBY_T_ARRAY) || !RB_TYPE_P(values, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+        if !RB_TYPE_P(members, rb_sys::ruby_value_type::RUBY_T_ARRAY)
+            || !RB_TYPE_P(values, rb_sys::ruby_value_type::RUBY_T_ARRAY)
+        {
             let text = value_to_string(val, to_s_id).unwrap_or_default();
             let type_id = recorder.tracer.ensure_type_id(TypeKind::Raw, &class_name);
             return ValueRecord::Raw { r: text, type_id };
@@ -393,7 +456,11 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
     }
     let class_name = cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Object".to_string());
     // generic object
-    let ivars = rb_funcall(val, rb_intern(b"instance_variables\0".as_ptr() as *const c_char), 0);
+    let ivars = rb_funcall(
+        val,
+        rb_intern(b"instance_variables\0".as_ptr() as *const c_char),
+        0,
+    );
     if !RB_TYPE_P(ivars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         let text = value_to_string(val, to_s_id).unwrap_or_default();
         let type_id = recorder.tracer.ensure_type_id(TypeKind::Raw, &class_name);
@@ -409,7 +476,12 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         let cstr = rb_id2name(id);
         let name = CStr::from_ptr(cstr).to_str().unwrap_or("?");
         names.push(name);
-        let value = rb_funcall(val, rb_intern(b"instance_variable_get\0".as_ptr() as *const c_char), 1, sym);
+        let value = rb_funcall(
+            val,
+            rb_intern(b"instance_variable_get\0".as_ptr() as *const c_char),
+            1,
+            sym,
+        );
         vals.push(value);
     }
     if !names.is_empty() {
@@ -434,14 +506,25 @@ unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullV
         let name = CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("");
         let value = rb_funcall(binding, recorder.local_get_id, 1, sym);
         let val_rec = to_value(recorder, value, 10, recorder.to_s_id);
-        recorder.tracer.register_variable_with_full_value(name, val_rec.clone());
+        recorder
+            .tracer
+            .register_variable_with_full_value(name, val_rec.clone());
         let var_id = recorder.tracer.ensure_variable_id(name);
-        result.push(FullValueRecord { variable_id: var_id, value: val_rec });
+        result.push(FullValueRecord {
+            variable_id: var_id,
+            value: val_rec,
+        });
     }
     result
 }
 
-unsafe fn record_parameters(recorder: &mut Recorder, binding: VALUE, defined_class: VALUE, mid: ID, register: bool) -> Vec<FullValueRecord> {
+unsafe fn record_parameters(
+    recorder: &mut Recorder,
+    binding: VALUE,
+    defined_class: VALUE,
+    mid: ID,
+    register: bool,
+) -> Vec<FullValueRecord> {
     let mut result = Vec::new();
     let method_sym = rb_id2sym(mid);
     if rb_method_boundp(defined_class, mid, 0) == 0 {
@@ -473,9 +556,14 @@ unsafe fn record_parameters(recorder: &mut Recorder, binding: VALUE, defined_cla
         let value = rb_funcall(binding, recorder.local_get_id, 1, name_sym);
         let val_rec = to_value(recorder, value, 10, recorder.to_s_id);
         if register {
-            recorder.tracer.register_variable_with_full_value(name, val_rec.clone());
+            recorder
+                .tracer
+                .register_variable_with_full_value(name, val_rec.clone());
             let var_id = recorder.tracer.ensure_variable_id(name);
-            result.push(FullValueRecord { variable_id: var_id, value: val_rec });
+            result.push(FullValueRecord {
+                variable_id: var_id,
+                value: val_rec,
+            });
         }
     }
     result
@@ -516,16 +604,29 @@ unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE, format: VALUE)
     match std::str::from_utf8(slice) {
         Ok(path_str) => {
             if let Err(e) = flush_to_dir(&recorder.tracer, Path::new(path_str), fmt) {
-                rb_raise(rb_eIOError, b"Failed to flush trace: %s\0".as_ptr() as *const c_char, e.to_string().as_ptr() as *const c_char);
+                rb_raise(
+                    rb_eIOError,
+                    b"Failed to flush trace: %s\0".as_ptr() as *const c_char,
+                    e.to_string().as_ptr() as *const c_char,
+                );
             }
         }
-        Err(e) => rb_raise(rb_eIOError, b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char, e.to_string().as_ptr() as *const c_char),
+        Err(e) => rb_raise(
+            rb_eIOError,
+            b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char,
+            e.to_string().as_ptr() as *const c_char,
+        ),
     }
 
     Qnil.into()
 }
 
-unsafe extern "C" fn record_event_api(self_val: VALUE, path: VALUE, line: VALUE, content: VALUE) -> VALUE {
+unsafe extern "C" fn record_event_api(
+    self_val: VALUE,
+    path: VALUE,
+    line: VALUE,
+    content: VALUE,
+) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
     let path_str = if NIL_P(path) {
         "".to_string()
@@ -595,10 +696,14 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
             // ensure parameter types are registered before self
             let _ = record_parameters(recorder, binding, defined_class, mid, false);
         }
-        let class_name = cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
+        let class_name =
+            cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
         let text = value_to_string_safe(self_val, recorder.to_s_id).unwrap_or_default();
         let self_type = recorder.tracer.ensure_type_id(TypeKind::Raw, &class_name);
-        let self_rec = ValueRecord::Raw { r: text, type_id: self_type };
+        let self_rec = ValueRecord::Raw {
+            r: text,
+            type_id: self_type,
+        };
         recorder
             .tracer
             .register_variable_with_full_value("self", self_rec.clone());
@@ -620,22 +725,40 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         if class_name != "Object" {
             name = format!("{}#{}", class_name, name);
         }
-        let fid = recorder.tracer.ensure_function_id(&name, Path::new(&path), Line(line));
-        recorder.tracer.events.push(TraceLowLevelEvent::Call(CallRecord { function_id: fid, args }));
+        let fid = recorder
+            .tracer
+            .ensure_function_id(&name, Path::new(&path), Line(line));
+        recorder
+            .tracer
+            .events
+            .push(TraceLowLevelEvent::Call(CallRecord {
+                function_id: fid,
+                args,
+            }));
     } else if (ev & RUBY_EVENT_RETURN) != 0 {
         recorder.tracer.register_step(Path::new(&path), Line(line));
         let ret = rb_tracearg_return_value(arg);
         let val_rec = to_value(recorder, ret, 10, recorder.to_s_id);
-        recorder.tracer.register_variable_with_full_value("<return_value>", val_rec.clone());
-        recorder.tracer.events.push(TraceLowLevelEvent::Return(ReturnRecord { return_value: val_rec }));
+        recorder
+            .tracer
+            .register_variable_with_full_value("<return_value>", val_rec.clone());
+        recorder
+            .tracer
+            .events
+            .push(TraceLowLevelEvent::Return(ReturnRecord {
+                return_value: val_rec,
+            }));
     } else if (ev & RUBY_EVENT_RAISE) != 0 {
         let exc = rb_tracearg_raised_exception(arg);
         if let Some(msg) = value_to_string(exc, recorder.to_s_id) {
-            recorder.tracer.events.push(TraceLowLevelEvent::Event(RecordEvent {
-                kind: EventLogKind::Error,
-                metadata: String::new(),
-                content: msg,
-            }));
+            recorder
+                .tracer
+                .events
+                .push(TraceLowLevelEvent::Event(RecordEvent {
+                    kind: EventLogKind::Error,
+                    metadata: String::new(),
+                    content: msg,
+                }));
         }
     }
 }
@@ -643,32 +766,35 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 #[no_mangle]
 pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
-        let class = rb_define_class(b"CodeTracerNativeRecorder\0".as_ptr() as *const c_char, rb_cObject);
+        let class = rb_define_class(
+            b"CodeTracerNativeRecorder\0".as_ptr() as *const c_char,
+            rb_cObject,
+        );
         rb_define_alloc_func(class, Some(ruby_recorder_alloc));
-        
+
         rb_define_method(
-            class, 
-            b"enable_tracing\0".as_ptr() as *const c_char, 
-            Some(std::mem::transmute(enable_tracing as *const ())), 
-            0
+            class,
+            b"enable_tracing\0".as_ptr() as *const c_char,
+            Some(std::mem::transmute(enable_tracing as *const ())),
+            0,
         );
         rb_define_method(
-            class, 
-            b"disable_tracing\0".as_ptr() as *const c_char, 
-            Some(std::mem::transmute(disable_tracing as *const ())), 
-            0
+            class,
+            b"disable_tracing\0".as_ptr() as *const c_char,
+            Some(std::mem::transmute(disable_tracing as *const ())),
+            0,
         );
         rb_define_method(
             class,
             b"flush_trace\0".as_ptr() as *const c_char,
             Some(std::mem::transmute(flush_trace as *const ())),
-            2
+            2,
         );
         rb_define_method(
-            class, 
-            b"record_event\0".as_ptr() as *const c_char, 
-            Some(std::mem::transmute(record_event_api as *const ())), 
-            3
+            class,
+            b"record_event\0".as_ptr() as *const c_char,
+            Some(std::mem::transmute(record_event_api as *const ())),
+            3,
         );
     }
 }

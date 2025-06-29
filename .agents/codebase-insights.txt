@@ -1,0 +1,1 @@
+flake.nix defines a pre-commit check using git-hooks.nix. Run 'nix develop' to install git hooks.
