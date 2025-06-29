@@ -1,0 +1,1 @@
+Provide Ruby gems as packages in the Nix flake; set native extension gem as default
