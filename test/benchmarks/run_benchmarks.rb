@@ -177,16 +177,22 @@ else
     height     = 40 + row_height * results.size
     svg = +"<svg xmlns='http://www.w3.org/2000/svg' width='700' height='#{height}'>\n"
     svg << "  <foreignObject width='100%' height='100%'>\n"
-    svg << "    <style>table{border-collapse:collapse;font-family:sans-serif;}td,th{border:1px solid #999;padding:4px;text-align:center;}</style>\n"
-    svg << "    <table>\n"
-    svg << "      <thead><tr><th>#{COLUMN_NAMES[:benchmark]}</th><th>#{COLUMN_NAMES[:ruby]}</th><th>#{COLUMN_NAMES[:json]}</th><th>#{COLUMN_NAMES[:capnp]}</th><th>#{COLUMN_NAMES[:pure]}</th></tr></thead>\n"
+    cell_style = "style='border:1px solid #999;padding:4px;text-align:center;'"
+    svg << "    <table style='border-collapse:collapse;font-family:sans-serif;'>\n"
+    svg << "      <thead><tr>"
+    svg << "<th #{cell_style}>#{COLUMN_NAMES[:benchmark]}</th>"
+    svg << "<th #{cell_style}>#{COLUMN_NAMES[:ruby]}</th>"
+    svg << "<th #{cell_style}>#{COLUMN_NAMES[:json]}</th>"
+    svg << "<th #{cell_style}>#{COLUMN_NAMES[:capnp]}</th>"
+    svg << "<th #{cell_style}>#{COLUMN_NAMES[:pure]}</th></tr></thead>\n"
     svg << "      <tbody>\n"
-    results.each do |r|
+    results.each_with_index do |r, idx|
+      row_style = idx.odd? ? " style='background:#f0f0f0;'" : ''
       ruby_s = "#{r[:ruby_ms]}ms"
       json_s = "#{r[:native_ok] ? '✓' : '✗'} #{r[:native_ms]}ms"
       capnp_s = "#{r[:native_bin_ms]}ms"
       pure_s = "#{r[:pure_ok] ? '✓' : '✗'} #{r[:pure_ms]}ms"
-      svg << "        <tr><td>#{r[:name]}</td><td>#{ruby_s}</td><td>#{json_s}</td><td>#{capnp_s}</td><td>#{pure_s}</td></tr>\n"
+      svg << "        <tr#{row_style}><td #{cell_style}>#{r[:name]}</td><td #{cell_style}>#{ruby_s}</td><td #{cell_style}>#{json_s}</td><td #{cell_style}>#{capnp_s}</td><td #{cell_style}>#{pure_s}</td></tr>\n"
     end
     svg << "      </tbody>\n"
     svg << "    </table>\n"
