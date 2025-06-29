@@ -15,3 +15,8 @@ runtime_tracing = "0.12.1"
 
 [build-dependencies]
 rb-sys-env = "0.2"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = 3
