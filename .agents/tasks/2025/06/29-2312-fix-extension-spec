@@ -1,0 +1,1 @@
+In codetracer-ruby-recorder.gemspec, set spec.extensions to ['ext/native_tracer/extconf.rb'] and verify that rake build produces a gem that compiles the extension when installed
