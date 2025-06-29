@@ -3,6 +3,8 @@
 !test/fixtures/*.json
 !test/benchmarks/fixtures/*.json
 test/tmp/
+reports/
+test/benchmarks/tmp/
 .direnv/
 .idea/
 pkg/
