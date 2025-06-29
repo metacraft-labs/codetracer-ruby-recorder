@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
     'ext/native_tracer/target/release/*'
   ]
   spec.require_paths = ['lib']
-  spec.extensions    = []
+  spec.extensions    = ['ext/native_tracer/extconf.rb']
   spec.bindir        = 'bin'
   spec.executables   = ['codetracer-ruby-recorder']
 

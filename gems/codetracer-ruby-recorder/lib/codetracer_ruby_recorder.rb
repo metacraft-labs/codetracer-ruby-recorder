@@ -117,6 +117,14 @@ module CodeTracer
         ext_dir = File.expand_path('../ext/native_tracer/target/release', __dir__)
         dlext = RbConfig::CONFIG['DLEXT']
         target_path = File.join(ext_dir, "codetracer_ruby_recorder.#{dlext}")
+
+        unless File.exist?(target_path)
+          # When built via rb_sys during gem installation, the extension is
+          # placed directly under the gem's lib directory.
+          lib_path = File.expand_path("codetracer_ruby_recorder.#{dlext}", __dir__)
+          target_path = lib_path if File.exist?(lib_path)
+        end
+
         unless File.exist?(target_path)
           extensions = %w[so bundle dylib dll]
           alt_path = extensions

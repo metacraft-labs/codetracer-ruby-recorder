@@ -4,3 +4,7 @@ The native tracer (Rust extension) caches frequently used Ruby method IDs and
 class constants in the `Recorder` struct. When adding new Ruby method calls,
 ensure the IDs are interned once during allocation and stored in the struct for
 reuse.
+
+When the native extension is built via `rb_sys` during gem installation, the
+compiled shared library is placed directly under the gem's `lib` directory
+instead of `ext/native_tracer/target/release`.
