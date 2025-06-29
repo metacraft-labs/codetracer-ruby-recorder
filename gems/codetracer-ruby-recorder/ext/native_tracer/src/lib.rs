@@ -556,13 +556,13 @@ unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullV
     result
 }
 
-unsafe fn record_parameters(
+
+unsafe fn collect_parameter_values(
     recorder: &mut Recorder,
     binding: VALUE,
     defined_class: VALUE,
     mid: ID,
-    register: bool,
-) -> Vec<FullValueRecord> {
+) -> Vec<(String, ValueRecord)> {
     let method_sym = rb_id2sym(mid);
     if rb_method_boundp(defined_class, mid, 0) == 0 {
         return Vec::new();
@@ -590,29 +590,38 @@ unsafe fn record_parameters(
         if name_c.is_null() {
             continue;
         }
-        let name = CStr::from_ptr(name_c).to_str().unwrap_or("");
+        let name = CStr::from_ptr(name_c).to_str().unwrap_or("").to_string();
         let value = rb_funcall(binding, recorder.local_get_id, 1, name_sym);
         let val_rec = to_value(recorder, value, 10, recorder.to_s_id);
-        if register {
-            recorder
-                .tracer
-                .register_variable_with_full_value(name, val_rec.clone());
-            let var_id = recorder.tracer.ensure_variable_id(name);
-            result.push(FullValueRecord {
-                variable_id: var_id,
-                value: val_rec,
-            });
-        }
+        result.push((name, val_rec));
     }
     result
 }
 
-unsafe fn record_event(tracer: &mut Tracer, path: &str, line: i64, content: &str) {
+unsafe fn register_parameter_values(
+    recorder: &mut Recorder,
+    params: Vec<(String, ValueRecord)>,
+) -> Vec<FullValueRecord> {
+    let mut result = Vec::with_capacity(params.len());
+    for (name, val_rec) in params {
+        recorder
+            .tracer
+            .register_variable_with_full_value(&name, val_rec.clone());
+        let var_id = recorder.tracer.ensure_variable_id(&name);
+        result.push(FullValueRecord {
+            variable_id: var_id,
+            value: val_rec,
+        });
+    }
+    result
+}
+
+unsafe fn record_event(tracer: &mut Tracer, path: &str, line: i64, content: String) {
     tracer.register_step(Path::new(path), Line(line));
     tracer.events.push(TraceLowLevelEvent::Event(RecordEvent {
         kind: EventLogKind::Write,
         metadata: String::new(),
-        content: content.to_string(),
+        content,
     }));
 }
 
@@ -666,16 +675,16 @@ unsafe extern "C" fn record_event_api(
     content: VALUE,
 ) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
-    let path_str = if NIL_P(path) {
-        "".to_string()
+    let path_slice = if NIL_P(path) {
+        ""
     } else {
         let ptr = RSTRING_PTR(path);
         let len = RSTRING_LEN(path) as usize;
-        String::from_utf8_lossy(std::slice::from_raw_parts(ptr as *const u8, len)).to_string()
+        std::str::from_utf8(std::slice::from_raw_parts(ptr as *const u8, len)).unwrap_or("")
     };
     let line_num = rb_num2long(line) as i64;
     let content_str = value_to_string(content, recorder.to_s_id).unwrap_or_default();
-    record_event(&mut recorder.tracer, &path_str, line_num, &content_str);
+    record_event(&mut recorder.tracer, path_slice, line_num, content_str);
     Qnil.into()
 }
 
@@ -729,10 +738,13 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         let mid_sym = rb_tracearg_callee_id(arg);
         let mid = rb_sym2id(mid_sym);
         let defined_class = rb_funcall(self_val, recorder.class_id, 0);
-        if !NIL_P(binding) {
-            // ensure parameter types are registered before self
-            let _ = record_parameters(recorder, binding, defined_class, mid, false);
-        }
+
+        let param_vals = if NIL_P(binding) {
+            Vec::new()
+        } else {
+            collect_parameter_values(recorder, binding, defined_class, mid)
+        };
+
         let class_name =
             cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
         let text = value_to_string_safe(self_val, recorder.to_s_id).unwrap_or_default();
@@ -745,13 +757,10 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
             .tracer
             .register_variable_with_full_value("self", self_rec.clone());
 
-        let mut args = if NIL_P(binding) {
-            Vec::new()
-        } else {
-            record_parameters(recorder, binding, defined_class, mid, true)
-        };
-
-        args.insert(0, recorder.tracer.arg("self", self_rec));
+        let mut args = vec![recorder.tracer.arg("self", self_rec)];
+        if !param_vals.is_empty() {
+            args.extend(register_parameter_values(recorder, param_vals));
+        }
         recorder.tracer.register_step(Path::new(&path), Line(line));
         let name_c = rb_id2name(mid);
         let mut name = if !name_c.is_null() {
