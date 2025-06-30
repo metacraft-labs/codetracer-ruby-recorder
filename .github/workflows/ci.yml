@@ -53,7 +53,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          ridk exec pacman -S --noconfirm base-devel mingw-w64-ucrt-x86_64-toolchain
+          ruby -S ridk install 3
+          ruby -S ridk exec pacman -S --noconfirm base-devel mingw-w64-ucrt-x86_64-toolchain
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
