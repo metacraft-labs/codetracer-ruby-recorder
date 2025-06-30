@@ -33,6 +33,8 @@ jobs:
             choco install llvm -y
             echo "LIBCLANG_PATH=C:\\Program Files\\LLVM\\bin" >> $GITHUB_ENV
             echo "CLANG_PATH=C:\\Program Files\\LLVM\\bin\\clang.exe" >> $GITHUB_ENV
+            # Add MSYS2 include directories for bindgen
+            echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64-pc-windows-gnu=-IC:/msys64/ucrt64/include -IC:/msys64/usr/include" >> $GITHUB_ENV
             # Install vcpkg for Cap'n Proto on Windows
             git clone https://github.com/Microsoft/vcpkg.git
             cd vcpkg
@@ -47,6 +49,11 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
+      - name: Install MSYS2 toolchain
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          ridk exec pacman -S --noconfirm base-devel mingw-w64-ucrt-x86_64-toolchain
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
