@@ -21,7 +21,7 @@ use rb_sys::{
 };
 use rb_sys::{Qfalse, Qnil, Qtrue};
 use runtime_tracing::{
-    create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line, RecordEvent, ReturnRecord, TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord
+    create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line, RecordEvent, ReturnRecord, TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeId, TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord
 };
 
 // Event hook function type from Ruby debug.h
@@ -182,20 +182,7 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 }
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
-    let mut tracer = begin_trace(Path::new("./"), TraceEventsFileFormat::Binary).unwrap();
-    // pre-register common types to match the pure Ruby tracer
-    let int_type_id = TraceWriter::ensure_type_id(&mut *tracer, TypeKind::Int, "Integer");
-    let string_type_id = TraceWriter::ensure_type_id(&mut *tracer, TypeKind::String, "String");
-    let bool_type_id = TraceWriter::ensure_type_id(&mut *tracer, TypeKind::Bool, "Bool");
-    let float_type_id = runtime_tracing::NONE_TYPE_ID;
-    let symbol_type_id = TraceWriter::ensure_type_id(&mut *tracer, TypeKind::String, "Symbol");
-    let error_type_id = TraceWriter::ensure_type_id(&mut *tracer, TypeKind::Error, "No type");
-    let path = Path::new("");
-    let func_id = TraceWriter::ensure_function_id(&mut *tracer, "<top-level>", path, Line(1));
-    TraceWriter::add_event(&mut *tracer, TraceLowLevelEvent::Call(CallRecord {
-        function_id: func_id,
-        args: vec![],
-    }));
+    //let mut tracer = begin_trace(Path::new("./"), TraceEventsFileFormat::Binary).unwrap();
     let to_s_id = rb_intern(b"to_s\0".as_ptr() as *const c_char);
     let locals_id = rb_intern(b"local_variables\0".as_ptr() as *const c_char);
     let local_get_id = rb_intern(b"local_variable_get\0".as_ptr() as *const c_char);
@@ -217,7 +204,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     let set_const_id = rb_intern(b"Set\0".as_ptr() as *const c_char);
     let open_struct_const_id = rb_intern(b"OpenStruct\0".as_ptr() as *const c_char);
     let recorder = Box::new(Recorder {
-        tracer,
+        tracer: create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Binary),
         active: false,
         to_s_id,
         locals_id,
@@ -242,12 +229,12 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         set_class: Qnil.into(),
         open_struct_class: Qnil.into(),
         struct_type_versions: HashMap::new(),
-        int_type_id,
-        float_type_id,
-        bool_type_id,
-        string_type_id,
-        symbol_type_id,
-        error_type_id,
+        int_type_id: runtime_tracing::TypeId::default(),
+        float_type_id: runtime_tracing::TypeId::default(),
+        bool_type_id: runtime_tracing::TypeId::default(),
+        string_type_id: runtime_tracing::TypeId::default(),
+        symbol_type_id: runtime_tracing::TypeId::default(),
+        error_type_id: runtime_tracing::TypeId::default(),
     });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
     rb_data_typed_object_wrap(klass, Box::into_raw(recorder) as *mut c_void, ty)
@@ -679,6 +666,73 @@ unsafe fn record_event(tracer: &mut dyn TraceWriter, path: &str, line: i64, cont
     }));
 }
 
+unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) -> VALUE {
+    let recorder_ptr = get_recorder(self_val);
+    let recorder = &mut *recorder_ptr;
+    let ptr = RSTRING_PTR(out_dir) as *const u8;
+    let len = RSTRING_LEN(out_dir) as usize;
+    let slice = std::slice::from_raw_parts(ptr, len);
+
+    let fmt = if NIL_P(format) {
+        runtime_tracing::TraceEventsFileFormat::Json
+    } else if RB_SYMBOL_P(format) {
+        let id = rb_sym2id(format);
+        match CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("") {
+            "binary" | "bin" => runtime_tracing::TraceEventsFileFormat::Binary,
+            "json" => runtime_tracing::TraceEventsFileFormat::Json,
+            _ => {
+                rb_raise(rb_eIOError, b"Unknown format\0".as_ptr() as *const c_char);
+                runtime_tracing::TraceEventsFileFormat::Json
+            }
+        }
+    } else {
+        runtime_tracing::TraceEventsFileFormat::Json
+    };
+
+    match std::str::from_utf8(slice) {
+        Ok(path_str) => {
+            match begin_trace(Path::new(path_str), fmt) {
+                Ok(t) => {
+                    recorder.tracer = t;
+                    // pre-register common types to match the pure Ruby tracer
+                    recorder.int_type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Int, "Integer");
+                    recorder.string_type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::String, "String");
+                    recorder.bool_type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Bool, "Bool");
+                    recorder.float_type_id = runtime_tracing::NONE_TYPE_ID;
+                    recorder.symbol_type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::String, "Symbol");
+                    recorder.error_type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Error, "No type");
+                    let path = Path::new("");
+                    let func_id = TraceWriter::ensure_function_id(&mut *recorder.tracer, "<top-level>", path, Line(1));
+                    TraceWriter::add_event(&mut *recorder.tracer, TraceLowLevelEvent::Call(CallRecord {
+                        function_id: func_id,
+                        args: vec![],
+                    }));
+                }
+                Err(e) => {
+                    let msg = std::ffi::CString::new(e.to_string())
+                        .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
+                    rb_raise(
+                        rb_eIOError,
+                        b"Failed to flush trace: %s\0".as_ptr() as *const c_char,
+                        msg.as_ptr(),
+                    );
+                }
+            }
+        }
+        Err(e) => {
+            let msg = std::ffi::CString::new(e.to_string())
+                .unwrap_or_else(|_| std::ffi::CString::new("invalid utf8").unwrap());
+            rb_raise(
+                rb_eIOError,
+                b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char,
+                msg.as_ptr(),
+            )
+        },
+    }
+
+    Qnil.into()
+}
+
 unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE, format: VALUE) -> VALUE {
     let recorder_ptr = get_recorder(self_val);
     let recorder = &mut *recorder_ptr;
@@ -863,6 +917,12 @@ pub extern "C" fn Init_codetracer_ruby_recorder() {
         );
         rb_define_alloc_func(class, Some(ruby_recorder_alloc));
 
+        rb_define_method(
+            class,
+            b"initialize\0".as_ptr() as *const c_char,
+            Some(std::mem::transmute(initialize as *const ())),
+            2,
+        );
         rb_define_method(
             class,
             b"enable_tracing\0".as_ptr() as *const c_char,
