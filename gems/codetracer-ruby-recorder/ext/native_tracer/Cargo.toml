@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rb-sys = "0.9"
-runtime_tracing = "0.12.1"
+runtime_tracing = "0.14.0"
 
 [build-dependencies]
 rb-sys-env = "0.2"
