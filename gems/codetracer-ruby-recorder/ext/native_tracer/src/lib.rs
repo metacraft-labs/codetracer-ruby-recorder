@@ -904,12 +904,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
             "<return_value>",
             val_rec.clone(),
         );
-        TraceWriter::add_event(
-            &mut *recorder.tracer,
-            TraceLowLevelEvent::Return(ReturnRecord {
-                return_value: val_rec,
-            }),
-        );
+        TraceWriter::register_return(&mut *recorder.tracer, val_rec);
     } else if (ev & RUBY_EVENT_RAISE) != 0 {
         let exc = rb_tracearg_raised_exception(arg);
         if let Some(msg) = value_to_string(exc, recorder.to_s_id) {
