@@ -693,6 +693,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
     } else if RB_SYMBOL_P(format) {
         let id = rb_sym2id(format);
         match CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("") {
+            "binaryv0" => runtime_tracing::TraceEventsFileFormat::BinaryV0,
             "binary" | "bin" => runtime_tracing::TraceEventsFileFormat::Binary,
             "json" => runtime_tracing::TraceEventsFileFormat::Json,
             _ => {
