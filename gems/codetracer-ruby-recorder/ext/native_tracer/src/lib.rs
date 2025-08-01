@@ -913,14 +913,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     } else if (ev & RUBY_EVENT_RAISE) != 0 {
         let exc = rb_tracearg_raised_exception(arg);
         if let Some(msg) = value_to_string(exc, recorder.to_s_id) {
-            TraceWriter::add_event(
-                &mut *recorder.tracer,
-                TraceLowLevelEvent::Event(RecordEvent {
-                    kind: EventLogKind::Error,
-                    metadata: String::new(),
-                    content: msg,
-                }),
-            );
+            TraceWriter::register_special_event(&mut *recorder.tracer, EventLogKind::Error, &msg);
         }
     }
 }
