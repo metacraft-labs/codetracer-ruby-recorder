@@ -42,7 +42,7 @@ module CodeTracer
     end
 
     def self.trace_ruby_file(program, out_dir, program_args = [])
-      tracer = PureRubyRecorder.new(debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
+      tracer = PureRubyRecorder.new(out_dir, debug: ENV['CODETRACER_RUBY_RECORDER_DEBUG'] == '1')
 
       tracer.record.register_call('', 1, '<top-level>', [])
       tracer.ignore('lib/ruby')
@@ -81,10 +81,11 @@ module CodeTracer
       0
     end
 
-    def initialize(debug: false)
+    def initialize(out_dir, debug: false)
       @tracing = false
       @record = TraceRecord.new
       @ignore_list = []
+      @out_dir = out_dir
       @debug = debug
       @record.debug = debug if @record.respond_to?(:debug=)
       setup_tracepoints
@@ -243,8 +244,8 @@ module CodeTracer
     end
 
     # Flush trace to output directory - compatible with native recorder API
-    def flush_trace(out_dir)
-      @record.serialize('', out_dir)
+    def flush_trace
+      @record.serialize('', @out_dir)
     end
 
     private
