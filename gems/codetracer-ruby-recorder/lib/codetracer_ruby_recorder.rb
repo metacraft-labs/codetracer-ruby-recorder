@@ -60,7 +60,7 @@ module CodeTracer
         ARGV.concat(original_argv)
 
         recorder.stop
-        recorder.flush_trace(out_dir, format)
+        recorder.flush_trace
       end
       0
     end
@@ -100,8 +100,8 @@ module CodeTracer
     end
 
     # Flush trace to output directory
-    def flush_trace(out_dir, format = :json)
-      @recorder.flush_trace(out_dir, format) if @recorder
+    def flush_trace
+      @recorder.flush_trace if @recorder
     end
 
     # Check if recorder is available
