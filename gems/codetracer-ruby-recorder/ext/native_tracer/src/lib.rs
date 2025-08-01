@@ -694,10 +694,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
             "binaryv0" => runtime_tracing::TraceEventsFileFormat::BinaryV0,
             "binary" | "bin" => runtime_tracing::TraceEventsFileFormat::Binary,
             "json" => runtime_tracing::TraceEventsFileFormat::Json,
-            _ => {
-                rb_raise(rb_eIOError, b"Unknown format\0".as_ptr() as *const c_char);
-                runtime_tracing::TraceEventsFileFormat::Json
-            }
+            _ => rb_raise(rb_eIOError, b"Unknown format\0".as_ptr() as *const c_char),
         }
     } else {
         runtime_tracing::TraceEventsFileFormat::Json
