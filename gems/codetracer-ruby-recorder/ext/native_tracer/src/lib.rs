@@ -671,14 +671,7 @@ unsafe fn register_parameter_values(
 
 unsafe fn record_event(tracer: &mut dyn TraceWriter, path: &str, line: i64, content: String) {
     TraceWriter::register_step(tracer, Path::new(path), Line(line));
-    TraceWriter::add_event(
-        &mut *tracer,
-        TraceLowLevelEvent::Event(RecordEvent {
-            kind: EventLogKind::Write,
-            metadata: String::new(),
-            content,
-        }),
-    );
+    TraceWriter::register_special_event(tracer, EventLogKind::Write, &content)
 }
 
 unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) -> VALUE {
