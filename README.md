@@ -25,10 +25,10 @@ After installing, load the tracer:
 require 'codetracer_ruby_recorder' # native implementation
 # require 'codetracer_pure_ruby_recorder' # pure Ruby implementation
 
-recorder = RubyRecorder.new
+recorder = RubyRecorder.new(Dir.pwd)
 recorder.enable_tracing
 # ... your code ...
-recorder.flush_trace(Dir.pwd)
+recorder.flush_trace
 ```
 
 ### Usage
