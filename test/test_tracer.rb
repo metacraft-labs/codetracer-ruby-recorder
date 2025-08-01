@@ -132,7 +132,7 @@ class TraceTest < Minitest::Test
 
         script = <<~RUBY
           require '#{gem_module}'
-          recorder = #{recorder_class}.new
+          recorder = #{recorder_class}.new('#{out_dir_lib}')
           puts 'start trace'
           recorder.stop
           puts 'this will not be traced'

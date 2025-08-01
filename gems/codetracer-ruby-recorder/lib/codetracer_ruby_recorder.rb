@@ -41,7 +41,7 @@ module CodeTracer
     end
 
     def self.trace_ruby_file(program, out_dir, program_args = [], format = :json)
-      recorder = RubyRecorder.new
+      recorder = RubyRecorder.new(out_dir, format)
       return 1 unless recorder.available?
 
       ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] = out_dir
@@ -70,10 +70,10 @@ module CodeTracer
       parse_argv_and_trace_ruby_file(argv)
     end
 
-    def initialize
+    def initialize(out_dir, format = :json)
       @recorder = nil
       @active = false
-      load_native_recorder
+      load_native_recorder(out_dir, format)
     end
 
     # Start the recorder and install kernel patches
@@ -111,7 +111,7 @@ module CodeTracer
 
     private
 
-    def load_native_recorder
+    def load_native_recorder(out_dir, format = :json)
       begin
         # Load native extension at module level
         ext_dir = File.expand_path('../ext/native_tracer/target/release', __dir__)
@@ -132,7 +132,7 @@ module CodeTracer
         end
 
         require target_path
-        @recorder = CodeTracerNativeRecorder.new
+        @recorder = CodeTracerNativeRecorder.new(out_dir, format)
       rescue Exception => e
         warn "native tracer unavailable: #{e}"
         @recorder = nil
