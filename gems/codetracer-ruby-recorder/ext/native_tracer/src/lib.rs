@@ -688,9 +688,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
     let len = RSTRING_LEN(out_dir) as usize;
     let slice = std::slice::from_raw_parts(ptr, len);
 
-    let fmt = if NIL_P(format) {
-        runtime_tracing::TraceEventsFileFormat::Json
-    } else if RB_SYMBOL_P(format) {
+    let fmt = if !NIL_P(format) && RB_SYMBOL_P(format) {
         let id = rb_sym2id(format);
         match CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("") {
             "binaryv0" => runtime_tracing::TraceEventsFileFormat::BinaryV0,
