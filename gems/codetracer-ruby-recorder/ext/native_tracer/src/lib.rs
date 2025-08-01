@@ -733,50 +733,18 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
     Qnil.into()
 }
 
-unsafe extern "C" fn flush_trace(self_val: VALUE, out_dir: VALUE, format: VALUE) -> VALUE {
+unsafe extern "C" fn flush_trace(self_val: VALUE) -> VALUE {
     let recorder_ptr = get_recorder(self_val);
     let recorder = &mut *recorder_ptr;
-    let ptr = RSTRING_PTR(out_dir) as *const u8;
-    let len = RSTRING_LEN(out_dir) as usize;
-    let slice = std::slice::from_raw_parts(ptr, len);
 
-    let fmt = if NIL_P(format) {
-        runtime_tracing::TraceEventsFileFormat::Json
-    } else if RB_SYMBOL_P(format) {
-        let id = rb_sym2id(format);
-        match CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("") {
-            "binary" | "bin" => runtime_tracing::TraceEventsFileFormat::Binary,
-            "json" => runtime_tracing::TraceEventsFileFormat::Json,
-            _ => {
-                rb_raise(rb_eIOError, b"Unknown format\0".as_ptr() as *const c_char);
-                runtime_tracing::TraceEventsFileFormat::Json
-            }
-        }
-    } else {
-        runtime_tracing::TraceEventsFileFormat::Json
-    };
-
-    match std::str::from_utf8(slice) {
-        Ok(path_str) => {
-            if let Err(e) = flush_to_dir(&mut *recorder.tracer/*, Path::new(path_str), fmt*/) {
-                let msg = std::ffi::CString::new(e.to_string())
-                    .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
-                rb_raise(
-                    rb_eIOError,
-                    b"Failed to flush trace: %s\0".as_ptr() as *const c_char,
-                    msg.as_ptr(),
-                );
-            }
-        }
-        Err(e) => {
-            let msg = std::ffi::CString::new(e.to_string())
-                .unwrap_or_else(|_| std::ffi::CString::new("invalid utf8").unwrap());
-            rb_raise(
-                rb_eIOError,
-                b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char,
-                msg.as_ptr(),
-            )
-        },
+    if let Err(e) = flush_to_dir(&mut *recorder.tracer) {
+        let msg = std::ffi::CString::new(e.to_string())
+            .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
+        rb_raise(
+            rb_eIOError,
+            b"Failed to flush trace: %s\0".as_ptr() as *const c_char,
+            msg.as_ptr(),
+        );
     }
 
     Qnil.into()
@@ -939,7 +907,7 @@ pub extern "C" fn Init_codetracer_ruby_recorder() {
             class,
             b"flush_trace\0".as_ptr() as *const c_char,
             Some(std::mem::transmute(flush_trace as *const ())),
-            2,
+            0,
         );
         rb_define_method(
             class,
