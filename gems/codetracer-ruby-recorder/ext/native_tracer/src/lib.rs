@@ -184,7 +184,6 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 }
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
-    //let mut tracer = begin_trace(Path::new("./"), TraceEventsFileFormat::Binary).unwrap();
     let to_s_id = rb_intern(b"to_s\0".as_ptr() as *const c_char);
     let locals_id = rb_intern(b"local_variables\0".as_ptr() as *const c_char);
     let local_get_id = rb_intern(b"local_variable_get\0".as_ptr() as *const c_char);
@@ -292,23 +291,10 @@ fn begin_trace(
 
 fn flush_to_dir(
     tracer: &mut dyn TraceWriter,
-    //    dir: &Path,
-    //    format: runtime_tracing::TraceEventsFileFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    //std::fs::create_dir_all(dir)?;
-    //let events = match format {
-    //    runtime_tracing::TraceEventsFileFormat::Json => dir.join("trace.json"),
-    //    runtime_tracing::TraceEventsFileFormat::BinaryV0 |
-    //    runtime_tracing::TraceEventsFileFormat::Binary => dir.join("trace.bin"),
-    //};
-    //let metadata = dir.join("trace_metadata.json");
-    //let paths = dir.join("trace_paths.json");
     TraceWriter::finish_writing_trace_events(tracer)?;
     TraceWriter::finish_writing_trace_metadata(tracer)?;
     TraceWriter::finish_writing_trace_paths(tracer)?;
-    //tracer.store_trace_events(&events, format)?;
-    //tracer.store_trace_metadata(&metadata)?;
-    //tracer.store_trace_paths(&paths)?;
     Ok(())
 }
 
