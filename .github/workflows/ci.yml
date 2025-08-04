@@ -29,16 +29,13 @@ jobs:
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             brew install capnp pkg-config
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            # Install LLVM/Clang for Windows
-            choco install llvm -y
-            # Install vcpkg for Cap'n Proto on Windows
-            git clone https://github.com/Microsoft/vcpkg.git
-            cd vcpkg
-            ./bootstrap-vcpkg.bat
-            ./vcpkg install capnproto:x64-windows
-            echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
-            echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/scripts/buildsystems/vcpkg.cmake" >> $GITHUB_ENV
-            cd ..
+            # Install MSYS2 and required packages
+            choco install msys2 -y
+            C:/msys64/usr/bin/bash -lc "pacman -S --noconfirm mingw-w64-x86_64-clang capnproto"
+            # Ensure MSYS2 toolchain is used for builds
+            echo 'C:\msys64\mingw64\bin' >> $GITHUB_PATH
+            echo 'LIBCLANG_PATH=C:\msys64\mingw64\lib' >> $GITHUB_ENV
+            echo 'CLANG_PATH=C:\msys64\mingw64\bin\clang' >> $GITHUB_ENV
           fi
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
