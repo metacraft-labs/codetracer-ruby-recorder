@@ -289,9 +289,7 @@ fn begin_trace(
     Ok(tracer)
 }
 
-fn flush_to_dir(
-    tracer: &mut dyn TraceWriter,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn flush_to_dir(tracer: &mut dyn TraceWriter) -> Result<(), Box<dyn std::error::Error>> {
     TraceWriter::finish_writing_trace_events(tracer)?;
     TraceWriter::finish_writing_trace_metadata(tracer)?;
     TraceWriter::finish_writing_trace_paths(tracer)?;
