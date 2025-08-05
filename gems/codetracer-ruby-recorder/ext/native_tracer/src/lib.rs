@@ -46,7 +46,7 @@ struct Recorder {
     tracer: Box<dyn TraceWriter>,
     active: bool,
     to_s_id: ID,
-    locals_id: ID,
+    local_variables_id: ID,
     local_get_id: ID,
     inst_meth_id: ID,
     parameters_id: ID,
@@ -187,7 +187,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         tracer: create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Binary),
         active: false,
         to_s_id: rb_intern!("to_s"),
-        locals_id: rb_intern!("local_variables"),
+        local_variables_id: rb_intern!("local_variables"),
         local_get_id: rb_intern!("local_variable_get"),
         inst_meth_id: rb_intern!("instance_method"),
         parameters_id: rb_intern!("parameters"),
@@ -534,7 +534,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
 }
 
 unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullValueRecord> {
-    let vars = rb_funcall(binding, recorder.locals_id, 0);
+    let vars = rb_funcall(binding, recorder.local_variables_id, 0);
     if !RB_TYPE_P(vars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         return Vec::new();
     }
