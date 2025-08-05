@@ -47,7 +47,7 @@ struct Recorder {
     active: bool,
     to_s_id: ID,
     local_variables_id: ID,
-    local_get_id: ID,
+    local_variable_get_id: ID,
     inst_meth_id: ID,
     parameters_id: ID,
     class_id: ID,
@@ -188,7 +188,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         active: false,
         to_s_id: rb_intern!("to_s"),
         local_variables_id: rb_intern!("local_variables"),
-        local_get_id: rb_intern!("local_variable_get"),
+        local_variable_get_id: rb_intern!("local_variable_get"),
         inst_meth_id: rb_intern!("instance_method"),
         parameters_id: rb_intern!("parameters"),
         class_id: rb_intern!("class"),
@@ -545,7 +545,7 @@ unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullV
         let sym = *ptr.add(i);
         let id = rb_sym2id(sym);
         let name = CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("");
-        let value = rb_funcall(binding, recorder.local_get_id, 1, sym);
+        let value = rb_funcall(binding, recorder.local_variable_get_id, 1, sym);
         let val_rec = to_value(recorder, value, 10);
         TraceWriter::register_variable_with_full_value(
             &mut *recorder.tracer,
@@ -595,7 +595,7 @@ unsafe fn collect_parameter_values(
             continue;
         }
         let name = CStr::from_ptr(name_c).to_str().unwrap_or("").to_string();
-        let value = rb_funcall(binding, recorder.local_get_id, 1, name_sym);
+        let value = rb_funcall(binding, recorder.local_variable_get_id, 1, name_sym);
         let val_rec = to_value(recorder, value, 10);
         result.push((name, val_rec));
     }
