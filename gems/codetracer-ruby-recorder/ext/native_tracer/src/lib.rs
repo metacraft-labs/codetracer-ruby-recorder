@@ -116,11 +116,10 @@ unsafe fn struct_value(
     field_names: &[&str],
     field_values: &[VALUE],
     depth: usize,
-    to_s_id: ID,
 ) -> ValueRecord {
     let mut vals = Vec::with_capacity(field_values.len());
     for &v in field_values {
-        vals.push(to_value(recorder, v, depth - 1, to_s_id));
+        vals.push(to_value(recorder, v, depth - 1, recorder.to_s_id));
     }
 
     let version_entry = recorder
@@ -407,7 +406,6 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
                 &["k", "v"],
                 &[key, val_elem],
                 depth,
-                to_s_id,
             ));
         }
         let type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Seq, "Hash");
@@ -426,7 +424,6 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
             &["begin", "end"],
             &[begin_val, end_val],
             depth,
-            to_s_id,
         );
     }
     if NIL_P(recorder.set_class) {
@@ -461,7 +458,6 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
             &["sec", "nsec"],
             &[sec, nsec],
             depth,
-            to_s_id,
         );
     }
     if rb_obj_is_kind_of(val, rb_cRegexp) != 0 {
@@ -473,7 +469,6 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
             &["source", "options"],
             &[src, opts],
             depth,
-            to_s_id,
         );
     }
     if rb_obj_is_kind_of(val, rb_cStruct) != 0 {
@@ -502,7 +497,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
             names.push(name);
             vals.push(*val_ptr.add(i));
         }
-        return struct_value(recorder, &class_name, &names, &vals, depth, to_s_id);
+        return struct_value(recorder, &class_name, &names, &vals, depth);
     }
     if NIL_P(recorder.open_struct_class) {
         if rb_const_defined(rb_cObject, recorder.open_struct_const_id) != 0 {
@@ -537,7 +532,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
         vals.push(value);
     }
     if !names.is_empty() {
-        return struct_value(recorder, &class_name, &names, &vals, depth, to_s_id);
+        return struct_value(recorder, &class_name, &names, &vals, depth);
     }
     let text = value_to_string(val, to_s_id).unwrap_or_default();
     let type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
