@@ -48,7 +48,7 @@ struct Recorder {
     to_s_id: ID,
     local_variables_id: ID,
     local_variable_get_id: ID,
-    inst_meth_id: ID,
+    instance_method_id: ID,
     parameters_id: ID,
     class_id: ID,
     to_a_id: ID,
@@ -189,7 +189,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         to_s_id: rb_intern!("to_s"),
         local_variables_id: rb_intern!("local_variables"),
         local_variable_get_id: rb_intern!("local_variable_get"),
-        inst_meth_id: rb_intern!("instance_method"),
+        instance_method_id: rb_intern!("instance_method"),
         parameters_id: rb_intern!("parameters"),
         class_id: rb_intern!("class"),
         to_a_id: rb_intern!("to_a"),
@@ -571,7 +571,7 @@ unsafe fn collect_parameter_values(
     if rb_method_boundp(defined_class, mid, 0) == 0 {
         return Vec::new();
     }
-    let method_obj = rb_funcall(defined_class, recorder.inst_meth_id, 1, method_sym);
+    let method_obj = rb_funcall(defined_class, recorder.instance_method_id, 1, method_sym);
     let params_ary = rb_funcall(method_obj, recorder.parameters_id, 0);
     if !RB_TYPE_P(params_ary, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         return Vec::new();
