@@ -184,49 +184,29 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 }
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
-    let to_s_id = rb_intern(b"to_s\0".as_ptr() as *const c_char);
-    let locals_id = rb_intern(b"local_variables\0".as_ptr() as *const c_char);
-    let local_get_id = rb_intern(b"local_variable_get\0".as_ptr() as *const c_char);
-    let inst_meth_id = rb_intern(b"instance_method\0".as_ptr() as *const c_char);
-    let parameters_id = rb_intern(b"parameters\0".as_ptr() as *const c_char);
-    let class_id = rb_intern(b"class\0".as_ptr() as *const c_char);
-    let to_a_id = rb_intern(b"to_a\0".as_ptr() as *const c_char);
-    let begin_id = rb_intern(b"begin\0".as_ptr() as *const c_char);
-    let end_id = rb_intern(b"end\0".as_ptr() as *const c_char);
-    let to_i_id = rb_intern(b"to_i\0".as_ptr() as *const c_char);
-    let nsec_id = rb_intern(b"nsec\0".as_ptr() as *const c_char);
-    let source_id = rb_intern(b"source\0".as_ptr() as *const c_char);
-    let options_id = rb_intern(b"options\0".as_ptr() as *const c_char);
-    let members_id = rb_intern(b"members\0".as_ptr() as *const c_char);
-    let values_id = rb_intern(b"values\0".as_ptr() as *const c_char);
-    let to_h_id = rb_intern(b"to_h\0".as_ptr() as *const c_char);
-    let instance_variables_id = rb_intern(b"instance_variables\0".as_ptr() as *const c_char);
-    let instance_variable_get_id = rb_intern(b"instance_variable_get\0".as_ptr() as *const c_char);
-    let set_const_id = rb_intern(b"Set\0".as_ptr() as *const c_char);
-    let open_struct_const_id = rb_intern(b"OpenStruct\0".as_ptr() as *const c_char);
     let recorder = Box::new(Recorder {
         tracer: create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Binary),
         active: false,
-        to_s_id,
-        locals_id,
-        local_get_id,
-        inst_meth_id,
-        parameters_id,
-        class_id,
-        to_a_id,
-        begin_id,
-        end_id,
-        to_i_id,
-        nsec_id,
-        source_id,
-        options_id,
-        members_id,
-        values_id,
-        to_h_id,
-        instance_variables_id,
-        instance_variable_get_id,
-        set_const_id,
-        open_struct_const_id,
+        to_s_id: rb_intern(b"to_s\0".as_ptr() as *const c_char),
+        locals_id: rb_intern(b"local_variables\0".as_ptr() as *const c_char),
+        local_get_id: rb_intern(b"local_variable_get\0".as_ptr() as *const c_char),
+        inst_meth_id: rb_intern(b"instance_method\0".as_ptr() as *const c_char),
+        parameters_id: rb_intern(b"parameters\0".as_ptr() as *const c_char),
+        class_id: rb_intern(b"class\0".as_ptr() as *const c_char),
+        to_a_id: rb_intern(b"to_a\0".as_ptr() as *const c_char),
+        begin_id: rb_intern(b"begin\0".as_ptr() as *const c_char),
+        end_id: rb_intern(b"end\0".as_ptr() as *const c_char),
+        to_i_id: rb_intern(b"to_i\0".as_ptr() as *const c_char),
+        nsec_id: rb_intern(b"nsec\0".as_ptr() as *const c_char),
+        source_id: rb_intern(b"source\0".as_ptr() as *const c_char),
+        options_id: rb_intern(b"options\0".as_ptr() as *const c_char),
+        members_id: rb_intern(b"members\0".as_ptr() as *const c_char),
+        values_id: rb_intern(b"values\0".as_ptr() as *const c_char),
+        to_h_id: rb_intern(b"to_h\0".as_ptr() as *const c_char),
+        instance_variables_id: rb_intern(b"instance_variables\0".as_ptr() as *const c_char),
+        instance_variable_get_id: rb_intern(b"instance_variable_get\0".as_ptr() as *const c_char),
+        set_const_id: rb_intern(b"Set\0".as_ptr() as *const c_char),
+        open_struct_const_id: rb_intern(b"OpenStruct\0".as_ptr() as *const c_char),
         set_class: Qnil.into(),
         open_struct_class: Qnil.into(),
         struct_type_versions: HashMap::new(),
