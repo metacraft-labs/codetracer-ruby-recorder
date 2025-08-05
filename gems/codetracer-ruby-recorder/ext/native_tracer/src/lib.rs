@@ -784,15 +784,15 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     let ev: rb_event_flag_t = rb_tracearg_event_flag(arg);
     let path_val = rb_tracearg_path(arg);
     let line_val = rb_tracearg_lineno(arg);
-    let path_bytes = if NIL_P(path_val) {
-        &[] as &[u8]
+    let path = if NIL_P(path_val) {
+        ""
     } else {
-        std::slice::from_raw_parts(
+        let path_bytes = std::slice::from_raw_parts(
             RSTRING_PTR(path_val) as *const u8,
             RSTRING_LEN(path_val) as usize,
-        )
+        );
+        std::str::from_utf8(path_bytes).unwrap_or("")
     };
-    let path = std::str::from_utf8(path_bytes).unwrap_or("");
     let line = rb_num2long(line_val) as i64;
     if should_ignore_path(path) {
         return;
