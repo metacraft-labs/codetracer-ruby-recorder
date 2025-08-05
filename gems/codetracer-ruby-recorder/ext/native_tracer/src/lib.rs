@@ -22,8 +22,8 @@ use rb_sys::{
 use rb_sys::{Qfalse, Qnil, Qtrue};
 use runtime_tracing::{
     create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line,
-    TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter,
-    TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord,
+    TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeKind, TypeRecord, TypeSpecificInfo,
+    ValueRecord,
 };
 
 // Event hook function type from Ruby debug.h
