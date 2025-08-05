@@ -22,7 +22,7 @@ use rb_sys::{
 use rb_sys::{Qfalse, Qnil, Qtrue};
 use runtime_tracing::{
     create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line,
-    RecordEvent, ReturnRecord, TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeId,
+    TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter,
     TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord,
 };
 
