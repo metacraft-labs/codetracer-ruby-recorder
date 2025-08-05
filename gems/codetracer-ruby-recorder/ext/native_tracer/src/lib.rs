@@ -452,13 +452,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize, to_s_id: I
     if rb_obj_is_kind_of(val, rb_cTime) != 0 {
         let sec = rb_funcall(val, recorder.to_i_id, 0);
         let nsec = rb_funcall(val, recorder.nsec_id, 0);
-        return struct_value(
-            recorder,
-            "Time",
-            &["sec", "nsec"],
-            &[sec, nsec],
-            depth,
-        );
+        return struct_value(recorder, "Time", &["sec", "nsec"], &[sec, nsec], depth);
     }
     if rb_obj_is_kind_of(val, rb_cRegexp) != 0 {
         let src = rb_funcall(val, recorder.source_id, 0);
