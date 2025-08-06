@@ -31,6 +31,10 @@ jobs:
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
             # Install LLVM/Clang for Windows
             choco install llvm -y
+            echo "LIBCLANG_PATH=C:\\Program Files\\LLVM\\bin" >> $GITHUB_ENV
+            echo "CLANG_PATH=C:\\Program Files\\LLVM\\bin\\clang.exe" >> $GITHUB_ENV
+            # Add MSYS2 include directories for bindgen
+            echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64-pc-windows-gnu=-IC:/msys64/ucrt64/include -IC:/msys64/usr/include" >> $GITHUB_ENV
             # Install vcpkg for Cap'n Proto on Windows
             git clone https://github.com/Microsoft/vcpkg.git
             cd vcpkg
@@ -38,14 +42,23 @@ jobs:
             ./vcpkg install capnproto:x64-windows
             echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
             echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/scripts/buildsystems/vcpkg.cmake" >> $GITHUB_ENV
+            echo "$(pwd -W)/installed/x64-windows/tools/capnproto" >> $GITHUB_PATH
             cd ..
           fi
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
+      - name: Install MSYS2 toolchain
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          ruby -S ridk install 3
+          ruby -S ridk exec pacman -S --noconfirm base-devel mingw-w64-ucrt-x86_64-toolchain
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.os == 'windows-latest' && 'stable-x86_64-pc-windows-gnu' || 'stable' }}
       - name: Install Ruby dependencies
         run: bundle install
       - name: Setup just
