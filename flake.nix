@@ -1,16 +1,28 @@
 {
   description = "Development environment for codetracer-ruby-recorder";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
-  inputs.pre-commit-hooks.url = "github:cachix/git-hooks.nix";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    pre-commit-hooks.url = "github:cachix/git-hooks.nix";
+  };
 
   outputs = {
     self,
     nixpkgs,
+    fenix,
     pre-commit-hooks,
   }: let
     systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     forEachSystem = nixpkgs.lib.genAttrs systems;
+
+    rust-toolchain-for = system: fenix.packages.${system}.fromToolchainFile {
+      file = ./rust-toolchain.toml;
+      sha256 = "sha256-Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
+    };
   in {
     checks = forEachSystem (system: {
       pre-commit-check = pre-commit-hooks.lib.${system}.run {
@@ -38,8 +50,7 @@
           ruby
 
           # The native extension is implemented in Rust
-          rustc
-          cargo
+          (rust-toolchain-for system)
           libiconv # Required dependency when building the rb-sys Rust crate on macOS and some Linux systems
 
           # Required for bindgen (used by rb-sys crate for generating Ruby C API bindings)
