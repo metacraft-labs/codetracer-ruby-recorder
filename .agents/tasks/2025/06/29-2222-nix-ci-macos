@@ -1,0 +1,1 @@
+Address inline comments from previous PR, ensure Nix packages can build with buildGem function missing, test packaging on macOS, run smoke tests
