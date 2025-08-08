@@ -22,6 +22,7 @@ class TraceTest < Minitest::Test
     Dir.chdir(File.expand_path('..', __dir__)) do
       program = File.join('test', 'programs', program_name)
       out_dir = File.join(TMP_DIR, base, tracer_name)
+      FileUtils.rm_rf(out_dir)
       FileUtils.mkdir_p(out_dir)
       stdout, stderr, status = Open3.capture3(RbConfig.ruby, tracer_script, '--out-dir', out_dir, program, *args)
       raise "trace failed: #{stderr}" unless status.success?
@@ -38,6 +39,7 @@ class TraceTest < Minitest::Test
     Dir.chdir(File.expand_path('..', __dir__)) do
       program = File.join('test', 'programs', program_name)
       out_dir = File.join(TMP_DIR, "#{base}_dashdash", tracer_name)
+      FileUtils.rm_rf(out_dir)
       FileUtils.mkdir_p(out_dir)
       stdout, stderr, status = Open3.capture3(
         RbConfig.ruby, tracer_script, '--out-dir', out_dir, '--', program, *args
@@ -99,6 +101,7 @@ class TraceTest < Minitest::Test
       env = { 'CODETRACER_RUBY_RECORDER_DEBUG' => '1' }
       out_dir = File.join(TMP_DIR, 'debug_smoke')
       FileUtils.rm_rf(out_dir)
+      FileUtils.mkdir_p(out_dir)
       stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, 'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
       raise "trace failed: #{stderr}" unless status.success?
 
