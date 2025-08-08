@@ -18,7 +18,7 @@ class TraceTest < Minitest::Test
 
   def run_trace(tracer_script, program_name, *args)
     base = File.basename(program_name, '.rb')
-    tracer_name = tracer_script.include?('native') ? 'native' : 'pure'
+    tracer_name = tracer_script.include?('pure') ? 'pure' : 'native'
     Dir.chdir(File.expand_path('..', __dir__)) do
       program = File.join('test', 'programs', program_name)
       out_dir = File.join('test', 'tmp', base, tracer_name)
@@ -34,7 +34,7 @@ class TraceTest < Minitest::Test
 
   def run_trace_with_separator(tracer_script, program_name, *args)
     base = File.basename(program_name, '.rb')
-    tracer_name = tracer_script.include?('native') ? 'native' : 'pure'
+    tracer_name = tracer_script.include?('pure') ? 'pure' : 'native'
     Dir.chdir(File.expand_path('..', __dir__)) do
       program = File.join('test', 'programs', program_name)
       out_dir = File.join('test', 'tmp', "#{base}_dashdash", tracer_name)
