@@ -1,6 +1,7 @@
 alias t := test
 
 test:
+    ruby -Itest test/gem_installation.rb
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
 
 bench pattern="*" write_report="console":
