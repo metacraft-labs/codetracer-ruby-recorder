@@ -365,10 +365,8 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         return ValueRecord::Float { f, type_id };
     }
     if RB_SYMBOL_P(val) {
-        let id = rb_sym2id(val);
-        let name = CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("");
         return ValueRecord::String {
-            text: name.to_string(),
+            text: cstr_to_string(rb_id2name(rb_sym2id(val))).unwrap_or_default(),
             type_id: recorder.symbol_type_id,
         };
     }
