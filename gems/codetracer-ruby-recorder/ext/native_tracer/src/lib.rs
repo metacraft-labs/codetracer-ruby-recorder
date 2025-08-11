@@ -314,17 +314,19 @@ unsafe extern "C" fn call_to_s(arg: VALUE) -> VALUE {
     rb_funcall(data.0, data.1, 0)
 }
 
-unsafe fn value_to_string_safe(recorder: &Recorder, val: VALUE) -> Option<String> {
+unsafe fn value_to_string_safe(recorder: &Recorder, val: VALUE) -> String {
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
-        return Some(rstring_lossy(val));
+        rstring_lossy(val)
+    } else {
+        let mut state: c_int = 0;
+        let data = (val, recorder.id.to_s);
+        let str_val = rb_protect(Some(call_to_s), &data as *const _ as VALUE, &mut state);
+        if state != 0 {
+            String::default()
+        } else {
+            rstring_lossy(str_val)
+        }
     }
-    let mut state: c_int = 0;
-    let data = (val, recorder.id.to_s);
-    let str_val = rb_protect(Some(call_to_s), &data as *const _ as VALUE, &mut state);
-    if state != 0 {
-        return None;
-    }
-    Some(rstring_lossy(str_val))
 }
 
 unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRecord {
@@ -812,7 +814,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 
         let class_name =
             cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
-        let text = value_to_string_safe(recorder, self_val).unwrap_or_default();
+        let text = value_to_string_safe(recorder, self_val);
         let self_type =
             TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
         let self_rec = ValueRecord::Raw {
