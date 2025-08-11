@@ -294,18 +294,19 @@ unsafe fn cstr_to_string(ptr: *const c_char) -> Option<String> {
     CStr::from_ptr(ptr).to_str().ok().map(|s| s.to_string())
 }
 
+unsafe fn rstring_lossy(val: VALUE) -> String {
+    let ptr = RSTRING_PTR(val);
+    let len = RSTRING_LEN(val) as usize;
+    let slice = std::slice::from_raw_parts(ptr as *const u8, len);
+    String::from_utf8_lossy(slice).to_string()
+}
+
 unsafe fn value_to_string(recorder: &Recorder, val: VALUE) -> Option<String> {
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
-        let ptr = RSTRING_PTR(val);
-        let len = RSTRING_LEN(val) as usize;
-        let slice = std::slice::from_raw_parts(ptr as *const u8, len);
-        return Some(String::from_utf8_lossy(slice).to_string());
+        Some(rstring_lossy(val))
+    } else {
+        Some(rstring_lossy(rb_funcall(val, recorder.id.to_s, 0)))
     }
-    let str_val = rb_funcall(val, recorder.id.to_s, 0);
-    let ptr = RSTRING_PTR(str_val);
-    let len = RSTRING_LEN(str_val) as usize;
-    let slice = std::slice::from_raw_parts(ptr as *const u8, len);
-    Some(String::from_utf8_lossy(slice).to_string())
 }
 
 unsafe extern "C" fn call_to_s(arg: VALUE) -> VALUE {
@@ -315,10 +316,7 @@ unsafe extern "C" fn call_to_s(arg: VALUE) -> VALUE {
 
 unsafe fn value_to_string_safe(recorder: &Recorder, val: VALUE) -> Option<String> {
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
-        let ptr = RSTRING_PTR(val);
-        let len = RSTRING_LEN(val) as usize;
-        let slice = std::slice::from_raw_parts(ptr as *const u8, len);
-        return Some(String::from_utf8_lossy(slice).to_string());
+        return Some(rstring_lossy(val));
     }
     let mut state: c_int = 0;
     let data = (val, recorder.id.to_s);
@@ -326,10 +324,7 @@ unsafe fn value_to_string_safe(recorder: &Recorder, val: VALUE) -> Option<String
     if state != 0 {
         return None;
     }
-    let ptr = RSTRING_PTR(str_val);
-    let len = RSTRING_LEN(str_val) as usize;
-    let slice = std::slice::from_raw_parts(ptr as *const u8, len);
-    Some(String::from_utf8_lossy(slice).to_string())
+    Some(rstring_lossy(str_val))
 }
 
 unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRecord {
@@ -376,11 +371,8 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         };
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
-        let ptr = RSTRING_PTR(val);
-        let len = RSTRING_LEN(val) as usize;
-        let slice = std::slice::from_raw_parts(ptr as *const u8, len);
         return ValueRecord::String {
-            text: String::from_utf8_lossy(slice).to_string(),
+            text: rstring_lossy(val),
             type_id: recorder.string_type_id,
         };
     }
