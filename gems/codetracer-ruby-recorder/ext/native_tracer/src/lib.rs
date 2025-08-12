@@ -127,10 +127,10 @@ fn value_type_id(val: &ValueRecord) -> runtime_tracing::TypeId {
     }
 }
 
-unsafe fn struct_value(
+unsafe fn struct_value<T: AsRef<str> + ToString>(
     recorder: &mut Recorder,
     class_name: &str,
-    field_names: &[&str],
+    field_names: &[T],
     field_values: &[VALUE],
     depth: usize,
 ) -> ValueRecord {
@@ -471,14 +471,11 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         let len = RARRAY_LEN(values) as usize;
         let mem_ptr = RARRAY_CONST_PTR(members);
         let val_ptr = RARRAY_CONST_PTR(values);
-        let mut names: Vec<&str> = Vec::with_capacity(len);
-        let mut vals: Vec<VALUE> = Vec::with_capacity(len);
+        let mut names = Vec::with_capacity(len);
+        let mut vals = Vec::with_capacity(len);
         for i in 0..len {
             let sym = *mem_ptr.add(i);
-            let id = rb_sym2id(sym);
-            let cstr = rb_id2name(id);
-            let name = CStr::from_ptr(cstr).to_str().unwrap_or("?");
-            names.push(name);
+            names.push(cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or("?".to_string()));
             vals.push(*val_ptr.add(i));
         }
         return struct_value(recorder, &class_name, &names, &vals, depth);
@@ -504,14 +501,11 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
     }
     let len = RARRAY_LEN(ivars) as usize;
     let ptr = RARRAY_CONST_PTR(ivars);
-    let mut names: Vec<&str> = Vec::with_capacity(len);
+    let mut names = Vec::with_capacity(len);
     let mut vals: Vec<VALUE> = Vec::with_capacity(len);
     for i in 0..len {
         let sym = *ptr.add(i);
-        let id = rb_sym2id(sym);
-        let cstr = rb_id2name(id);
-        let name = CStr::from_ptr(cstr).to_str().unwrap_or("?");
-        names.push(name);
+        names.push(cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or("?".to_string()));
         let value = rb_funcall(val, recorder.id.instance_variable_get, 1, sym);
         vals.push(value);
     }
