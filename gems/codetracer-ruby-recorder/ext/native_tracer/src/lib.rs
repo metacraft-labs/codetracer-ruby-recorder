@@ -523,13 +523,12 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
     ValueRecord::Raw { r: text, type_id }
 }
 
-unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullValueRecord> {
+unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) {
     let vars = rb_funcall(binding, recorder.id.local_variables, 0);
     if !RB_TYPE_P(vars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
-        return Vec::new();
+        return;
     }
     let len = RARRAY_LEN(vars) as usize;
-    let mut result = Vec::with_capacity(len);
     let ptr = RARRAY_CONST_PTR(vars);
     for i in 0..len {
         let sym = *ptr.add(i);
@@ -540,15 +539,9 @@ unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) -> Vec<FullV
         TraceWriter::register_variable_with_full_value(
             &mut *recorder.tracer,
             name,
-            val_rec.clone(),
+            val_rec,
         );
-        let var_id = TraceWriter::ensure_variable_id(&mut *recorder.tracer, name);
-        result.push(FullValueRecord {
-            variable_id: var_id,
-            value: val_rec,
-        });
     }
-    result
 }
 
 unsafe fn collect_parameter_values(
