@@ -802,12 +802,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
             args.extend(register_parameter_values(recorder, param_vals));
         }
         TraceWriter::register_step(&mut *recorder.tracer, Path::new(&path), Line(line));
-        let name_c = rb_id2name(mid);
-        let mut name = if !name_c.is_null() {
-            CStr::from_ptr(name_c).to_str().unwrap_or("").to_string()
-        } else {
-            String::new()
-        };
+        let mut name = cstr_to_string(rb_id2name(mid)).unwrap_or_default();
         if class_name != "Object" {
             name = format!("{}#{}", class_name, name);
         }
