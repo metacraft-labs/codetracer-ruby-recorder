@@ -10,16 +10,18 @@ use std::{
 };
 
 use rb_sys::{
-    rb_cObject, rb_define_alloc_func, rb_define_class, rb_define_method, rb_eIOError,
-    rb_event_flag_t, rb_funcall, rb_id2name, rb_id2sym, rb_intern, rb_num2long, rb_obj_classname,
-    rb_raise, rb_sym2id, ID, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN,
-    VALUE,
+    rb_add_event_hook2, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct, rb_cTime,
+    rb_check_typeddata, rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1,
+    rb_data_type_t, rb_data_typed_object_wrap, rb_define_alloc_func, rb_define_class,
+    rb_define_method, rb_eIOError, rb_event_flag_t, rb_event_hook_flag_t, rb_funcall, rb_id2name,
+    rb_id2sym, rb_intern, rb_method_boundp, rb_num2dbl, rb_num2long, rb_obj_classname,
+    rb_obj_is_kind_of, rb_protect, rb_raise, rb_remove_event_hook_with_data, rb_sym2id,
+    rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id, rb_tracearg_event_flag,
+    rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception, rb_tracearg_return_value,
+    rb_tracearg_self, Qfalse, Qnil, Qtrue, ID, NIL_P, RARRAY_CONST_PTR, RARRAY_LEN,
+    RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN, RSTRING_PTR,
+    RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN, VALUE,
 };
-use rb_sys::{
-    rb_protect, NIL_P, RARRAY_CONST_PTR, RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P,
-    RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN, RSTRING_PTR,
-};
-use rb_sys::{Qfalse, Qnil, Qtrue};
 use runtime_tracing::{
     create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line,
     TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeKind, TypeRecord, TypeSpecificInfo,
@@ -28,19 +30,6 @@ use runtime_tracing::{
 
 // Event hook function type from Ruby debug.h
 type rb_event_hook_func_t = Option<unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE)>;
-
-// Use event hook flags enum from rb_sys
-use rb_sys::rb_event_hook_flag_t;
-
-// Types from rb_sys bindings
-use rb_sys::{
-    rb_add_event_hook2, rb_cRange, rb_cRegexp, rb_cStruct, rb_cTime, rb_check_typeddata,
-    rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1, rb_data_type_t,
-    rb_data_typed_object_wrap, rb_method_boundp, rb_num2dbl, rb_obj_is_kind_of,
-    rb_remove_event_hook_with_data, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id,
-    rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception,
-    rb_tracearg_return_value, rb_tracearg_self,
-};
 
 struct InternedSymbols {
     to_s: ID,
