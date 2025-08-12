@@ -532,11 +532,10 @@ unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) {
     let ptr = RARRAY_CONST_PTR(vars);
     for i in 0..len {
         let sym = *ptr.add(i);
-        let id = rb_sym2id(sym);
-        let name = CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("");
+        let name = cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or_default();
         let value = rb_funcall(binding, recorder.id.local_variable_get, 1, sym);
         let val_rec = to_value(recorder, value, 10);
-        TraceWriter::register_variable_with_full_value(&mut *recorder.tracer, name, val_rec);
+        TraceWriter::register_variable_with_full_value(&mut *recorder.tracer, &name, val_rec);
     }
 }
 
