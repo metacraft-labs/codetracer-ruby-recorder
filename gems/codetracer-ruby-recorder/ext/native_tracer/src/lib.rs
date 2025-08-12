@@ -174,7 +174,7 @@ unsafe extern "C" fn recorder_free(ptr: *mut c_void) {
 }
 
 static mut RECORDER_TYPE: rb_data_type_t = rb_data_type_t {
-    wrap_struct_name: b"Recorder\0".as_ptr() as *const c_char,
+    wrap_struct_name: c"Recorder".as_ptr() as *const c_char,
     function: rb_data_type_struct__bindgen_ty_1 {
         dmark: None,
         dfree: Some(recorder_free),
@@ -193,7 +193,7 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
     if ptr.is_null() {
         rb_raise(
             rb_eIOError,
-            b"Invalid recorder object\0".as_ptr() as *const c_char,
+            c"Invalid recorder object".as_ptr() as *const c_char,
         );
     }
     ptr as *mut Recorder
@@ -610,7 +610,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
             "binaryv0" => runtime_tracing::TraceEventsFileFormat::BinaryV0,
             "binary" | "bin" => runtime_tracing::TraceEventsFileFormat::Binary,
             "json" => runtime_tracing::TraceEventsFileFormat::Json,
-            _ => rb_raise(rb_eIOError, b"Unknown format\0".as_ptr() as *const c_char),
+            _ => rb_raise(rb_eIOError, c"Unknown format".as_ptr() as *const c_char),
         }
     } else {
         runtime_tracing::TraceEventsFileFormat::Json
@@ -665,7 +665,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
                         .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
                     rb_raise(
                         rb_eIOError,
-                        b"Failed to flush trace: %s\0".as_ptr() as *const c_char,
+                        c"Failed to flush trace: %s".as_ptr() as *const c_char,
                         msg.as_ptr(),
                     );
                 }
@@ -676,7 +676,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
                 .unwrap_or_else(|_| std::ffi::CString::new("invalid utf8").unwrap());
             rb_raise(
                 rb_eIOError,
-                b"Invalid UTF-8 in path: %s\0".as_ptr() as *const c_char,
+                c"Invalid UTF-8 in path: %s".as_ptr() as *const c_char,
                 msg.as_ptr(),
             )
         }
@@ -694,7 +694,7 @@ unsafe extern "C" fn flush_trace(self_val: VALUE) -> VALUE {
             .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
         rb_raise(
             rb_eIOError,
-            b"Failed to flush trace: %s\0".as_ptr() as *const c_char,
+            c"Failed to flush trace: %s".as_ptr() as *const c_char,
             msg.as_ptr(),
         );
     }
@@ -834,38 +834,38 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 pub extern "C" fn Init_codetracer_ruby_recorder() {
     unsafe {
         let class = rb_define_class(
-            b"CodeTracerNativeRecorder\0".as_ptr() as *const c_char,
+            c"CodeTracerNativeRecorder".as_ptr() as *const c_char,
             rb_cObject,
         );
         rb_define_alloc_func(class, Some(ruby_recorder_alloc));
 
         rb_define_method(
             class,
-            b"initialize\0".as_ptr() as *const c_char,
+            c"initialize".as_ptr() as *const c_char,
             Some(std::mem::transmute(initialize as *const ())),
             2,
         );
         rb_define_method(
             class,
-            b"enable_tracing\0".as_ptr() as *const c_char,
+            c"enable_tracing".as_ptr() as *const c_char,
             Some(std::mem::transmute(enable_tracing as *const ())),
             0,
         );
         rb_define_method(
             class,
-            b"disable_tracing\0".as_ptr() as *const c_char,
+            c"disable_tracing".as_ptr() as *const c_char,
             Some(std::mem::transmute(disable_tracing as *const ())),
             0,
         );
         rb_define_method(
             class,
-            b"flush_trace\0".as_ptr() as *const c_char,
+            c"flush_trace".as_ptr() as *const c_char,
             Some(std::mem::transmute(flush_trace as *const ())),
             0,
         );
         rb_define_method(
             class,
-            b"record_event\0".as_ptr() as *const c_char,
+            c"record_event".as_ptr() as *const c_char,
             Some(std::mem::transmute(record_event_api as *const ())),
             3,
         );
