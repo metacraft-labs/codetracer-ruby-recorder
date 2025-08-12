@@ -609,8 +609,10 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
     let slice = std::slice::from_raw_parts(ptr, len);
 
     let fmt = if !NIL_P(format) && RB_SYMBOL_P(format) {
-        let id = rb_sym2id(format);
-        match CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("") {
+        match cstr_to_string(rb_id2name(rb_sym2id(format)))
+            .unwrap_or_default()
+            .as_str()
+        {
             "binaryv0" => runtime_tracing::TraceEventsFileFormat::BinaryV0,
             "binary" | "bin" => runtime_tracing::TraceEventsFileFormat::Binary,
             "json" => runtime_tracing::TraceEventsFileFormat::Json,
