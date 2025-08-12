@@ -567,15 +567,11 @@ unsafe fn collect_parameter_values(
         if NIL_P(name_sym) {
             continue;
         }
-        let name_id = rb_sym2id(name_sym);
-        let name_c = rb_id2name(name_id);
-        if name_c.is_null() {
-            continue;
+        if let Some(name) = cstr_to_string(rb_id2name(rb_sym2id(name_sym))) {
+            let value = rb_funcall(binding, recorder.id.local_variable_get, 1, name_sym);
+            let val_rec = to_value(recorder, value, 10);
+            result.push((name, val_rec));
         }
-        let name = CStr::from_ptr(name_c).to_str().unwrap_or("").to_string();
-        let value = rb_funcall(binding, recorder.id.local_variable_get, 1, name_sym);
-        let val_rec = to_value(recorder, value, 10);
-        result.push((name, val_rec));
     }
     result
 }
