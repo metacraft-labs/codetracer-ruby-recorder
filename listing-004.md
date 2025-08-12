@@ -1,8 +1,8 @@
 # Listing 004
 
-This section unpacks how the Rust extension manages the recorder’s lifecycle and begins translating Ruby objects into traceable Rust structures. We examine `gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs` around the helper for struct serialization, the FFI hooks that allocate and enable the recorder, and the start of `to_value` which handles primitive Ruby types.
+This listing follows the Rust half of the recorder, showing how the extension allocates and frees the `Recorder`, toggles Ruby's trace hooks, and begins translating primitive Ruby values. All snippets come from `gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs`.
 
-**Serialize a Ruby struct into a typed runtime-tracing record, computing field type IDs and assigning a versioned name.**
+**Signature for `struct_value` collects the recorder context, struct metadata, and a recursion depth.**
 ```rust
 unsafe fn struct_value(
     recorder: &mut Recorder,
@@ -11,17 +11,28 @@ unsafe fn struct_value(
     field_values: &[VALUE],
     depth: usize,
 ) -> ValueRecord {
+```
+
+**Allocate space for converted fields and recursively map each Ruby field to a `ValueRecord`.**
+```rust
     let mut vals = Vec::with_capacity(field_values.len());
     for &v in field_values {
         vals.push(to_value(recorder, v, depth - 1));
     }
+```
 
+**Track a monotonically increasing version number per struct name.**
+```rust
     let version_entry = recorder
         .struct_type_versions
         .entry(class_name.to_string())
         .or_insert(0);
     let name_version = format!("{} (#{})", class_name, *version_entry);
     *version_entry += 1;
+```
+
+**Describe each field by name and the type ID of its converted value.**
+```rust
     let mut field_types = Vec::with_capacity(field_names.len());
     for (n, v) in field_names.iter().zip(&vals) {
         field_types.push(FieldTypeRecord {
@@ -29,6 +40,10 @@ unsafe fn struct_value(
             type_id: value_type_id(v),
         });
     }
+```
+
+**Assemble a `TypeRecord` for the struct and register it with the trace writer to obtain a type ID.**
+```rust
     let typ = TypeRecord {
         kind: TypeKind::Struct,
         lang_type: name_version,
@@ -37,7 +52,10 @@ unsafe fn struct_value(
         },
     };
     let type_id = TraceWriter::ensure_raw_type_id(&mut *recorder.tracer, typ);
+```
 
+**Return a structured value with its field data and associated type ID.**
+```rust
     ValueRecord::Struct {
         field_values: vals,
         type_id,
@@ -45,7 +63,7 @@ unsafe fn struct_value(
 }
 ```
 
-**Custom destructor frees the Rust `Recorder` when Ruby’s GC releases the wrapper object.**
+**`recorder_free` is registered as a destructor and drops the boxed recorder when the Ruby object is garbage collected.**
 ```rust
 unsafe extern "C" fn recorder_free(ptr: *mut c_void) {
     if !ptr.is_null() {
@@ -54,7 +72,7 @@ unsafe extern "C" fn recorder_free(ptr: *mut c_void) {
 }
 ```
 
-**Declare Ruby’s view of the `Recorder` data type, wiring in the free callback for GC.**
+**`RECORDER_TYPE` exposes the recorder to Ruby, naming the type and specifying the `dfree` callback.**
 ```rust
 static mut RECORDER_TYPE: rb_data_type_t = rb_data_type_t {
     wrap_struct_name: b"Recorder\0".as_ptr() as *const c_char,
@@ -71,7 +89,7 @@ static mut RECORDER_TYPE: rb_data_type_t = rb_data_type_t {
 };
 ```
 
-**Fetch the internal `Recorder` pointer from a Ruby object, raising `IOError` if the type does not match.**
+**`get_recorder` fetches the internal pointer from a Ruby object, raising `IOError` if the type check fails.**
 ```rust
 unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
@@ -86,7 +104,7 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 }
 ```
 
-**Allocator for the Ruby class instantiates a boxed `Recorder` with default type IDs and inactive state.**
+**Allocator for the Ruby class constructs a fresh `Recorder` with default type IDs and inactive tracing.**
 ```rust
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     let recorder = Box::new(Recorder {
@@ -108,7 +126,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
 }
 ```
 
-**Enable tracing by registering a low-level event hook; only one hook is active at a time.**
+**`enable_tracing` attaches a raw event hook so Ruby invokes our callback on line, call, return, and raise events.**
 ```rust
 unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
@@ -127,7 +145,7 @@ unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
 }
 ```
 
-**Disable tracing by removing the previously installed event hook.**
+**`disable_tracing` removes that hook and marks the recorder inactive.**
 ```rust
 unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
@@ -141,7 +159,7 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
 }
 ```
 
-**Helper that converts a C string pointer to a Rust `String`, returning `None` if null.**
+**`cstr_to_string` converts a C string pointer to a Rust `String`, returning `None` when the pointer is null.**
 ```rust
 unsafe fn cstr_to_string(ptr: *const c_char) -> Option<String> {
     if ptr.is_null() {
@@ -151,7 +169,7 @@ unsafe fn cstr_to_string(ptr: *const c_char) -> Option<String> {
 }
 ```
 
-**Extract a UTF‑8 string from a Ruby `VALUE`, replacing invalid bytes.**
+**`rstring_lossy` reads a Ruby `String`'s raw bytes and builds a UTF‑8 string, replacing invalid sequences.**
 ```rust
 unsafe fn rstring_lossy(val: VALUE) -> String {
     let ptr = RSTRING_PTR(val);
@@ -161,7 +179,7 @@ unsafe fn rstring_lossy(val: VALUE) -> String {
 }
 ```
 
-**Beginning of `to_value`: limit depth, map `nil` and booleans, and convert integers and floats with cached type IDs.**
+**`to_value` begins value translation, first enforcing a recursion limit and checking for `nil`.**
 ```rust
 unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRecord {
     if depth == 0 {
@@ -174,12 +192,20 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
             type_id: recorder.error_type_id,
         };
     }
+```
+
+**Booleans map to `Bool` records, distinguishing `true` from `false` and reusing a cached type ID.**
+```rust
     if val == (Qtrue as VALUE) || val == (Qfalse as VALUE) {
         return ValueRecord::Bool {
             b: val == (Qtrue as VALUE),
             type_id: recorder.bool_type_id,
         };
     }
+```
+
+**Integers become `Int` records holding the numeric value and its type ID.**
+```rust
     if RB_INTEGER_TYPE_P(val) {
         let i = rb_num2long(val) as i64;
         return ValueRecord::Int {
@@ -187,6 +213,10 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
             type_id: recorder.int_type_id,
         };
     }
+```
+
+**For floats, lazily register the `Float` type and then store the numeric value with the obtained ID.**
+```rust
     if RB_FLOAT_TYPE_P(val) {
         let f = rb_num2dbl(val);
         let type_id = if recorder.float_type_id == runtime_tracing::NONE_TYPE_ID {
@@ -198,16 +228,25 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         };
         return ValueRecord::Float { f, type_id };
     }
+```
+
+**Symbols are encoded as strings using their interned names and the cached symbol type ID.**
+```rust
     if RB_SYMBOL_P(val) {
         return ValueRecord::String {
             text: cstr_to_string(rb_id2name(rb_sym2id(val))).unwrap_or_default(),
             type_id: recorder.symbol_type_id,
         };
     }
+```
+
+**Finally, Ruby `String` objects are copied lossily into UTF‑8 and tagged with the string type ID.**
+```rust
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
         return ValueRecord::String {
             text: rstring_lossy(val),
             type_id: recorder.string_type_id,
         };
     }
+}
 ```
