@@ -536,11 +536,7 @@ unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) {
         let name = CStr::from_ptr(rb_id2name(id)).to_str().unwrap_or("");
         let value = rb_funcall(binding, recorder.id.local_variable_get, 1, sym);
         let val_rec = to_value(recorder, value, 10);
-        TraceWriter::register_variable_with_full_value(
-            &mut *recorder.tracer,
-            name,
-            val_rec,
-        );
+        TraceWriter::register_variable_with_full_value(&mut *recorder.tracer, name, val_rec);
     }
 }
 
