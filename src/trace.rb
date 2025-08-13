@@ -32,7 +32,7 @@ module Kernel
   def p(*args)
     if $tracer.tracing
       $tracer.deactivate
-      $tracer.record_event(caller, args.join("\n"))
+      $tracer.record_event(caller, args.map(&:inspect).join("\n") + "\n")
       $tracer.activate
     end
     old_p(*args)
@@ -41,7 +41,8 @@ module Kernel
   def puts(*args)
     if $tracer.tracing
       $tracer.deactivate
-      $tracer.record_event(caller, args.join("\n"))
+      # TODO: Emulate the actual `puts` logic
+      $tracer.record_event(caller, args.join("\n") + "\n")
       $tracer.activate
     end
     old_puts(*args)
@@ -50,7 +51,7 @@ module Kernel
   def print(*args)
     if $tracer.tracing
       $tracer.deactivate
-      $tracer.record_event(caller, args.join("\n"))
+      $tracer.record_event(caller, args.join(""))
       $tracer.activate
     end
     old_print(*args)
