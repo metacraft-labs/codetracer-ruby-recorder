@@ -22,7 +22,12 @@ class GemInstallationTest < Minitest::Test
         gem_file = gem_build.lines.grep(/File:/).first.split.last
         gem_file = File.expand_path(File.join(gem_dir, gem_file))
 
-        env = { 'GEM_HOME' => gem_home, 'GEM_PATH' => gem_home, 'PATH' => "#{gem_home}/bin:#{ENV['PATH']}" }
+        path_separator = File::PATH_SEPARATOR
+        env = {
+          'GEM_HOME' => gem_home,
+          'GEM_PATH' => gem_home,
+          'PATH' => "#{gem_home}/bin#{path_separator}#{ENV['PATH']}"
+        }
         system(env, 'gem', 'install', '--local', gem_file, exception: true)
 
         out_dir = File.join('test', 'tmp', "gem_install_#{gem_bin.tr('-', '_')}")
