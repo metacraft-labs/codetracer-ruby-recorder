@@ -7,6 +7,7 @@ use std::{
     os::raw::{c_char, c_int, c_void},
     path::Path,
     ptr,
+    string::FromUtf8Error,
 };
 
 use rb_sys::{
@@ -285,6 +286,21 @@ unsafe fn rstring_lossy(val: VALUE) -> String {
     let len = RSTRING_LEN(val) as usize;
     let slice = std::slice::from_raw_parts(ptr as *const u8, len);
     String::from_utf8_lossy(slice).to_string()
+}
+
+unsafe fn rstring_checked(val: VALUE) -> Result<String, FromUtf8Error> {
+    let ptr = RSTRING_PTR(val);
+    let len = RSTRING_LEN(val) as usize;
+    let slice = std::slice::from_raw_parts(ptr as *const u8, len);
+    String::from_utf8(slice.to_vec())
+}
+
+unsafe fn rstring_checked_or_empty(val: VALUE) -> String {
+    if NIL_P(val) {
+        String::default()
+    } else {
+        rstring_checked(val).unwrap_or(String::default())
+    }
 }
 
 unsafe fn value_to_string(recorder: &Recorder, val: VALUE) -> String {
@@ -598,9 +614,6 @@ unsafe fn record_event(tracer: &mut dyn TraceWriter, path: &str, line: i64, cont
 unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) -> VALUE {
     let recorder_ptr = get_recorder(self_val);
     let recorder = &mut *recorder_ptr;
-    let ptr = RSTRING_PTR(out_dir) as *const u8;
-    let len = RSTRING_LEN(out_dir) as usize;
-    let slice = std::slice::from_raw_parts(ptr, len);
 
     let fmt = if !NIL_P(format) && RB_SYMBOL_P(format) {
         match cstr_to_string(rb_id2name(rb_sym2id(format)))
@@ -616,9 +629,9 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
         runtime_tracing::TraceEventsFileFormat::Json
     };
 
-    match std::str::from_utf8(slice) {
+    match rstring_checked(out_dir) {
         Ok(path_str) => {
-            match begin_trace(Path::new(path_str), fmt) {
+            match begin_trace(Path::new(&path_str), fmt) {
                 Ok(t) => {
                     recorder.tracer = t;
                     // pre-register common types to match the pure Ruby tracer
@@ -709,16 +722,10 @@ unsafe extern "C" fn record_event_api(
     content: VALUE,
 ) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
-    let path_slice = if NIL_P(path) {
-        ""
-    } else {
-        let ptr = RSTRING_PTR(path);
-        let len = RSTRING_LEN(path) as usize;
-        std::str::from_utf8(std::slice::from_raw_parts(ptr as *const u8, len)).unwrap_or("")
-    };
+    let path_string = rstring_checked_or_empty(path);
     let line_num = rb_num2long(line) as i64;
     let content_str = value_to_string(recorder, content);
-    record_event(&mut *recorder.tracer, path_slice, line_num, content_str);
+    record_event(&mut *recorder.tracer, &path_string, line_num, content_str);
     Qnil.into()
 }
 
@@ -742,17 +749,9 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     let ev: rb_event_flag_t = rb_tracearg_event_flag(arg);
     let path_val = rb_tracearg_path(arg);
     let line_val = rb_tracearg_lineno(arg);
-    let path = if NIL_P(path_val) {
-        ""
-    } else {
-        let path_bytes = std::slice::from_raw_parts(
-            RSTRING_PTR(path_val) as *const u8,
-            RSTRING_LEN(path_val) as usize,
-        );
-        std::str::from_utf8(path_bytes).unwrap_or("")
-    };
+    let path = rstring_checked_or_empty(path_val);
     let line = rb_num2long(line_val) as i64;
-    if should_ignore_path(path) {
+    if should_ignore_path(&path) {
         return;
     }
 
