@@ -15,13 +15,17 @@ use rb_sys::{
     rb_check_typeddata, rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1,
     rb_data_type_t, rb_data_typed_object_wrap, rb_define_alloc_func, rb_define_class,
     rb_define_method, rb_eIOError, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t,
-    rb_funcall, rb_id2name, rb_id2sym, rb_intern, rb_method_boundp, rb_num2dbl, rb_num2long,
-    rb_obj_classname, rb_obj_is_kind_of, rb_protect, rb_raise, rb_remove_event_hook_with_data,
-    rb_set_errinfo, rb_sym2id, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id,
-    rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception,
-    rb_tracearg_return_value, rb_tracearg_self, Qfalse, Qnil, Qtrue, ID, NIL_P, RARRAY_CONST_PTR,
-    RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN,
-    RSTRING_PTR, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN, VALUE,
+    rb_funcall, rb_id2name, rb_id2sym, rb_intern, rb_internal_thread_add_event_hook,
+    rb_internal_thread_event_data_t, rb_method_boundp, rb_num2dbl, rb_num2long, rb_obj_classname,
+    rb_obj_is_kind_of, rb_protect, rb_raise, rb_remove_event_hook_with_data, rb_set_errinfo,
+    rb_sym2id, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id, rb_tracearg_event_flag,
+    rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception, rb_tracearg_return_value,
+    rb_tracearg_self, Qfalse, Qnil, Qtrue, ID, NIL_P, RARRAY_CONST_PTR, RARRAY_LEN,
+    RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN, RSTRING_PTR,
+    RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN,
+    RUBY_INTERNAL_THREAD_EVENT_EXITED, RUBY_INTERNAL_THREAD_EVENT_READY,
+    RUBY_INTERNAL_THREAD_EVENT_RESUMED, RUBY_INTERNAL_THREAD_EVENT_STARTED,
+    RUBY_INTERNAL_THREAD_EVENT_SUSPENDED, VALUE,
 };
 use runtime_tracing::{
     create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line,
@@ -222,6 +226,8 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
 unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
     if !recorder.active {
+        thread_register_callback();
+
         let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
         let func: rb_event_hook_func_t = Some(transmute(raw_cb));
         rb_add_event_hook2(
@@ -820,6 +826,46 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         let msg = value_to_string_exception_safe(recorder, exc);
         TraceWriter::register_special_event(&mut *recorder.tracer, EventLogKind::Error, &msg);
     }
+}
+
+unsafe extern "C" fn ex_callback(
+    event: rb_event_flag_t,
+    event_data: *const rb_internal_thread_event_data_t,
+    _user_data: *mut c_void,
+) {
+    match event {
+        /*RUBY_INTERNAL_THREAD_EVENT_STARTED => {
+            println!(
+                "RUBY_INTERNAL_THREAD_EVENT_STARTED {}",
+                (*event_data).thread
+            );
+        }
+        RUBY_INTERNAL_THREAD_EVENT_READY => {
+            println!("RUBY_INTERNAL_THREAD_EVENT_READY");
+        }
+        RUBY_INTERNAL_THREAD_EVENT_RESUMED => {
+            println!("RUBY_INTERNAL_THREAD_EVENT_RESUMED");
+        }
+        RUBY_INTERNAL_THREAD_EVENT_SUSPENDED => {
+            println!("RUBY_INTERNAL_THREAD_EVENT_SUSPENDED");
+        }
+        RUBY_INTERNAL_THREAD_EVENT_EXITED => {
+            println!("RUBY_INTERNAL_THREAD_EVENT_EXITED {}", (*event_data).thread);
+        }*/
+        _ => {}
+    }
+}
+
+unsafe fn thread_register_callback() {
+    let q = rb_internal_thread_add_event_hook(
+        Some(ex_callback),
+        RUBY_INTERNAL_THREAD_EVENT_STARTED
+            | RUBY_INTERNAL_THREAD_EVENT_READY
+            | RUBY_INTERNAL_THREAD_EVENT_RESUMED
+            | RUBY_INTERNAL_THREAD_EVENT_SUSPENDED
+            | RUBY_INTERNAL_THREAD_EVENT_EXITED,
+        ptr::null_mut(),
+    );
 }
 
 #[no_mangle]
