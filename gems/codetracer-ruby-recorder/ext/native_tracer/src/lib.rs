@@ -303,14 +303,6 @@ unsafe fn rstring_checked_or_empty(val: VALUE) -> String {
     }
 }
 
-unsafe fn value_to_string(recorder: &Recorder, val: VALUE) -> String {
-    if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
-        rstring_lossy(val)
-    } else {
-        rstring_lossy(rb_funcall(val, recorder.id.to_s, 0))
-    }
-}
-
 unsafe extern "C" fn call_to_s(arg: VALUE) -> VALUE {
     let data = &*(arg as *const (VALUE, ID));
     rb_funcall(data.0, data.1, 0)
@@ -479,7 +471,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         if !RB_TYPE_P(members, rb_sys::ruby_value_type::RUBY_T_ARRAY)
             || !RB_TYPE_P(values, rb_sys::ruby_value_type::RUBY_T_ARRAY)
         {
-            let text = value_to_string(recorder, val);
+            let text = value_to_string_exception_safe(recorder, val);
             let type_id =
                 TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
             return ValueRecord::Raw { r: text, type_id };
@@ -510,7 +502,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
     // generic object
     let ivars = rb_funcall(val, recorder.id.instance_variables, 0);
     if !RB_TYPE_P(ivars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
-        let text = value_to_string(recorder, val);
+        let text = value_to_string_exception_safe(recorder, val);
         let type_id =
             TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
         return ValueRecord::Raw { r: text, type_id };
@@ -528,7 +520,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
     if !names.is_empty() {
         return struct_value(recorder, &class_name, &names, &vals, depth);
     }
-    let text = value_to_string(recorder, val);
+    let text = value_to_string_exception_safe(recorder, val);
     let type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
     ValueRecord::Raw { r: text, type_id }
 }
@@ -724,7 +716,7 @@ unsafe extern "C" fn record_event_api(
     let recorder = &mut *get_recorder(self_val);
     let path_string = rstring_checked_or_empty(path);
     let line_num = rb_num2long(line) as i64;
-    let content_str = value_to_string(recorder, content);
+    let content_str = value_to_string_exception_safe(recorder, content);
     record_event(&mut *recorder.tracer, &path_string, line_num, content_str);
     Qnil.into()
 }
@@ -824,7 +816,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         TraceWriter::register_return(&mut *recorder.tracer, val_rec);
     } else if (ev & RUBY_EVENT_RAISE) != 0 {
         let exc = rb_tracearg_raised_exception(arg);
-        let msg = value_to_string(recorder, exc);
+        let msg = value_to_string_exception_safe(recorder, exc);
         TraceWriter::register_special_event(&mut *recorder.tracer, EventLogKind::Error, &msg);
     }
 }
