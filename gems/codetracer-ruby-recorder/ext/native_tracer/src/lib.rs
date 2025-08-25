@@ -17,11 +17,11 @@ use rb_sys::{
     rb_define_method, rb_eIOError, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t,
     rb_funcall, rb_id2name, rb_id2sym, rb_intern, rb_method_boundp, rb_num2dbl, rb_num2long,
     rb_obj_classname, rb_obj_is_kind_of, rb_protect, rb_raise, rb_remove_event_hook_with_data,
-    rb_sym2id, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id, rb_tracearg_event_flag,
-    rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception, rb_tracearg_return_value,
-    rb_tracearg_self, Qfalse, Qnil, Qtrue, ID, NIL_P, RARRAY_CONST_PTR, RARRAY_LEN,
-    RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN, RSTRING_PTR,
-    RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN, VALUE,
+    rb_set_errinfo, rb_sym2id, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id,
+    rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception,
+    rb_tracearg_return_value, rb_tracearg_self, Qfalse, Qnil, Qtrue, ID, NIL_P, RARRAY_CONST_PTR,
+    RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN,
+    RSTRING_PTR, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN, VALUE,
 };
 use runtime_tracing::{
     create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line,
@@ -316,6 +316,7 @@ unsafe fn value_to_string_exception_safe(recorder: &Recorder, val: VALUE) -> Str
         let data = (val, recorder.id.to_s);
         let str_val = rb_protect(Some(call_to_s), &data as *const _ as VALUE, &mut state);
         if state != 0 {
+            rb_set_errinfo(Qnil.into());
             String::default()
         } else {
             rstring_lossy(str_val)
