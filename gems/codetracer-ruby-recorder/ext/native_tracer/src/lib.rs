@@ -316,7 +316,7 @@ unsafe extern "C" fn call_to_s(arg: VALUE) -> VALUE {
     rb_funcall(data.0, data.1, 0)
 }
 
-unsafe fn value_to_string_safe(recorder: &Recorder, val: VALUE) -> String {
+unsafe fn value_to_string_exception_safe(recorder: &Recorder, val: VALUE) -> String {
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
         rstring_lossy(val)
     } else {
@@ -777,7 +777,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 
         let class_name =
             cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
-        let text = value_to_string_safe(recorder, self_val);
+        let text = value_to_string_exception_safe(recorder, self_val);
         let self_type =
             TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
         let self_rec = ValueRecord::Raw {
