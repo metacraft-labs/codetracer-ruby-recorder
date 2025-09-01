@@ -17,9 +17,9 @@ module CodeTracer
           define_method(:p) do |*args|
             loc = caller_locations(1, 1).first
             content = if args.length == 1 && args.first.is_a?(Array)
-              args.first.map(&:inspect).join("\n")
+              args.first.map(&:inspect).join("\n") + "\n"
             else
-              args.map(&:inspect).join("\n")
+              args.map(&:inspect).join("\n") + "\n"
             end
             @@tracers.each do |t|
               t.record_event(loc.path, loc.lineno, content)
