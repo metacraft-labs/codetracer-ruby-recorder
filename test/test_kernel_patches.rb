@@ -49,7 +49,7 @@ class TestKernelPatches < Minitest::Test
     event_puts = @tracer1.events[1]
     assert_equal __FILE__, event_puts[:path]
     assert_equal expected_line_puts, event_puts[:lineno]
-    assert_equal "world", event_puts[:content]
+    assert_equal "world\n", event_puts[:content]
 
     event_print = @tracer1.events[2]
     assert_equal __FILE__, event_print[:path]
@@ -146,7 +146,7 @@ class TestKernelPatches < Minitest::Test
     assert_equal __FILE__, event_puts[:path], "Path for puts mismatch"
     assert_equal expected_line_puts_detailed, event_puts[:lineno], "Line number for puts mismatch"
     # puts calls to_s on each argument and prints each on a new line
-    assert_equal "detailed_puts\n{:key=>\"value\", :number=>123}", event_puts[:content], "Content for puts mismatch"
+    assert_equal "detailed_puts\n{:key=>\"value\", :number=>123}\n", event_puts[:content], "Content for puts mismatch"
 
 
     event_print = @tracer1.events[2]

@@ -232,7 +232,7 @@
   {
     "Event": {
       "kind": 0,
-      "content": "3",
+      "content": "3\n",
       "metadata": ""
     }
   }
