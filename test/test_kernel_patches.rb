@@ -44,7 +44,7 @@ class TestKernelPatches < Minitest::Test
     event_p = @tracer1.events[0]
     assert_equal __FILE__, event_p[:path]
     assert_equal expected_line_p, event_p[:lineno]
-    assert_equal "\"hello\"", event_p[:content] # p uses inspect
+    assert_equal "\"hello\"\n", event_p[:content] # p uses inspect
 
     event_puts = @tracer1.events[1]
     assert_equal __FILE__, event_puts[:path]
@@ -71,12 +71,12 @@ class TestKernelPatches < Minitest::Test
     event1_multi = @tracer1.events.first
     assert_equal __FILE__, event1_multi[:path]
     assert_equal expected_line_multi, event1_multi[:lineno]
-    assert_equal "\"multitest\"", event1_multi[:content]
+    assert_equal "\"multitest\"\n", event1_multi[:content]
 
     event2_multi = @tracer2.events.first
     assert_equal __FILE__, event2_multi[:path]
     assert_equal expected_line_multi, event2_multi[:lineno]
-    assert_equal "\"multitest\"", event2_multi[:content]
+    assert_equal "\"multitest\"\n", event2_multi[:content]
 
     CodeTracer::KernelPatches.uninstall(@tracer1)
     @tracer1.clear_events
@@ -90,7 +90,7 @@ class TestKernelPatches < Minitest::Test
     event2_one_left = @tracer2.events.first
     assert_equal __FILE__, event2_one_left[:path]
     assert_equal expected_line_one_left, event2_one_left[:lineno]
-    assert_equal "\"one left\"", event2_one_left[:content]
+    assert_equal "\"one left\"\n", event2_one_left[:content]
 
     CodeTracer::KernelPatches.uninstall(@tracer2)
   end
@@ -139,7 +139,7 @@ class TestKernelPatches < Minitest::Test
     assert_equal __FILE__, event_p[:path], "Path for p mismatch"
     assert_equal expected_line_p_detailed, event_p[:lineno], "Line number for p mismatch"
     # p calls inspect on each argument and joins with newline if multiple, but here it's one string then obj
-    assert_equal "\"detailed_p\"\n{:key=>\"value\", :number=>123}", event_p[:content], "Content for p mismatch"
+    assert_equal "\"detailed_p\"\n{:key=>\"value\", :number=>123}\n", event_p[:content], "Content for p mismatch"
 
 
     event_puts = @tracer1.events[1]

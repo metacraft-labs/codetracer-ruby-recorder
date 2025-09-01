@@ -345,7 +345,7 @@
   {
     "Event": {
       "kind": 0,
-      "content": "\"(3, 4)\"",
+      "content": "\"(3, 4)\"\n",
       "metadata": ""
     }
   }
