@@ -30,7 +30,7 @@ module CodeTracer
           define_method(:puts) do |*args|
             loc = caller_locations(1, 1).first
             @@tracers.each do |t|
-              t.record_event(loc.path, loc.lineno, args.join("\n"))
+              t.record_event(loc.path, loc.lineno, args.join("\n") + "\n")
             end
             codetracer_original_puts(*args)
           end
