@@ -896,6 +896,12 @@ unsafe extern "C" fn ex_callback(
             let event = TraceLowLevelEvent::ThreadStart(ThreadId((*event_data).thread));
             TraceWriter::add_event(&mut **locked_tracer, event);
         }
+        RUBY_INTERNAL_THREAD_EVENT_EXITED => {
+            let recorder = user_data as *mut Recorder;
+            let mut locked_tracer = (*recorder).tracer.lock().unwrap();
+            let event = TraceLowLevelEvent::ThreadExit(ThreadId((*event_data).thread));
+            TraceWriter::add_event(&mut **locked_tracer, event);
+        }
         /*RUBY_INTERNAL_THREAD_EVENT_READY => {
             println!("RUBY_INTERNAL_THREAD_EVENT_READY");
         }
@@ -904,9 +910,6 @@ unsafe extern "C" fn ex_callback(
         }
         RUBY_INTERNAL_THREAD_EVENT_SUSPENDED => {
             println!("RUBY_INTERNAL_THREAD_EVENT_SUSPENDED");
-        }
-        RUBY_INTERNAL_THREAD_EVENT_EXITED => {
-            println!("RUBY_INTERNAL_THREAD_EVENT_EXITED {}", (*event_data).thread);
         }*/
         _ => {}
     }
