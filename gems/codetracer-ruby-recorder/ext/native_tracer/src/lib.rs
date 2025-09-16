@@ -84,6 +84,7 @@ impl InternedSymbols {
 
 struct RecorderData {
     active: bool,
+    in_event_hook: bool,
     thread_event_hook_installed: bool,
     id: InternedSymbols,
     set_class: VALUE,
@@ -218,6 +219,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         )),
         data: RecorderData {
             active: false,
+            in_event_hook: false,
             thread_event_hook_installed: false,
             id: InternedSymbols::new(),
             set_class: Qnil.into(),
@@ -775,6 +777,11 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         return;
     }
 
+    if recorder.data.in_event_hook {
+        return;
+    }
+    recorder.data.in_event_hook = true;
+
     let mut locked_tracer = recorder.tracer.lock().unwrap();
 
     let ev: rb_event_flag_t = rb_tracearg_event_flag(arg);
@@ -783,6 +790,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     let path = rstring_checked_or_empty(path_val);
     let line = rb_num2long(line_val) as i64;
     if should_ignore_path(&path) {
+        recorder.data.in_event_hook = false;
         return;
     }
 
@@ -868,6 +876,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         let msg = value_to_string_exception_safe(&recorder.data, exc);
         TraceWriter::register_special_event(&mut **locked_tracer, EventLogKind::Error, &msg);
     }
+    recorder.data.in_event_hook = false;
 }
 
 unsafe extern "C" fn ex_callback(
