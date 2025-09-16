@@ -29,7 +29,9 @@ use rb_sys::{
     RUBY_INTERNAL_THREAD_EVENT_SUSPENDED, VALUE,
 };
 use runtime_tracing::{
-    create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line, ThreadId, TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord
+    create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line,
+    ThreadId, TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeKind, TypeRecord,
+    TypeSpecificInfo, ValueRecord,
 };
 
 struct InternedSymbols {
@@ -891,9 +893,7 @@ unsafe extern "C" fn ex_callback(
         RUBY_INTERNAL_THREAD_EVENT_STARTED => {
             let recorder = user_data as *mut Recorder;
             let mut locked_tracer = (*recorder).tracer.lock().unwrap();
-            let event = TraceLowLevelEvent::ThreadStart(
-                ThreadId((*event_data).thread)
-            );
+            let event = TraceLowLevelEvent::ThreadStart(ThreadId((*event_data).thread));
             TraceWriter::add_event(&mut **locked_tracer, event);
         }
         /*RUBY_INTERNAL_THREAD_EVENT_READY => {
