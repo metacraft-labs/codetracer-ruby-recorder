@@ -1,5 +1,6 @@
 #![allow(clippy::missing_safety_doc)]
 
+use std::sync::Mutex;
 use std::{
     collections::HashMap,
     ffi::CStr,
@@ -83,8 +84,7 @@ impl InternedSymbols {
     }
 }
 
-struct Recorder {
-    tracer: Box<dyn TraceWriter>,
+struct RecorderData {
     active: bool,
     thread_event_hook_installed: bool,
     id: InternedSymbols,
@@ -97,6 +97,11 @@ struct Recorder {
     string_type_id: runtime_tracing::TypeId,
     symbol_type_id: runtime_tracing::TypeId,
     error_type_id: runtime_tracing::TypeId,
+}
+
+struct Recorder {
+    tracer: Mutex<Box<dyn TraceWriter>>,
+    data: RecorderData,
 }
 
 fn should_ignore_path(path: &str) -> bool {
@@ -134,7 +139,8 @@ fn value_type_id(val: &ValueRecord) -> runtime_tracing::TypeId {
 }
 
 unsafe fn struct_value<T: AsRef<str> + ToString>(
-    recorder: &mut Recorder,
+    recorder: &mut RecorderData,
+    tracer: &mut dyn TraceWriter,
     class_name: &str,
     field_names: &[T],
     field_values: &[VALUE],
@@ -142,7 +148,7 @@ unsafe fn struct_value<T: AsRef<str> + ToString>(
 ) -> ValueRecord {
     let mut vals = Vec::with_capacity(field_values.len());
     for &v in field_values {
-        vals.push(to_value(recorder, v, depth - 1));
+        vals.push(to_value(recorder, tracer, v, depth - 1));
     }
 
     let version_entry = recorder
@@ -165,7 +171,7 @@ unsafe fn struct_value<T: AsRef<str> + ToString>(
             fields: field_types,
         },
     };
-    let type_id = TraceWriter::ensure_raw_type_id(&mut *recorder.tracer, typ);
+    let type_id = TraceWriter::ensure_raw_type_id(tracer, typ);
 
     ValueRecord::Struct {
         field_values: vals,
@@ -207,19 +213,21 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     let recorder = Box::new(Recorder {
-        tracer: create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Binary),
-        active: false,
-        thread_event_hook_installed: false,
-        id: InternedSymbols::new(),
-        set_class: Qnil.into(),
-        open_struct_class: Qnil.into(),
-        struct_type_versions: HashMap::new(),
-        int_type_id: runtime_tracing::TypeId::default(),
-        float_type_id: runtime_tracing::TypeId::default(),
-        bool_type_id: runtime_tracing::TypeId::default(),
-        string_type_id: runtime_tracing::TypeId::default(),
-        symbol_type_id: runtime_tracing::TypeId::default(),
-        error_type_id: runtime_tracing::TypeId::default(),
+        tracer: Mutex::new(create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Binary)),
+        data: RecorderData {
+            active: false,
+            thread_event_hook_installed: false,
+            id: InternedSymbols::new(),
+            set_class: Qnil.into(),
+            open_struct_class: Qnil.into(),
+            struct_type_versions: HashMap::new(),
+            int_type_id: runtime_tracing::TypeId::default(),
+            float_type_id: runtime_tracing::TypeId::default(),
+            bool_type_id: runtime_tracing::TypeId::default(),
+            string_type_id: runtime_tracing::TypeId::default(),
+            symbol_type_id: runtime_tracing::TypeId::default(),
+            error_type_id: runtime_tracing::TypeId::default(),
+        }
     });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
     rb_data_typed_object_wrap(klass, Box::into_raw(recorder) as *mut c_void, ty)
@@ -227,10 +235,10 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
 
 unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
-    if !recorder.active {
-        if !recorder.thread_event_hook_installed {
+    if !recorder.data.active {
+        if !recorder.data.thread_event_hook_installed {
             thread_register_callback();
-            recorder.thread_event_hook_installed = true;
+            recorder.data.thread_event_hook_installed = true;
         }
 
         let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
@@ -241,18 +249,18 @@ unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
             self_val,
             rb_event_hook_flag_t::RUBY_EVENT_HOOK_FLAG_RAW_ARG,
         );
-        recorder.active = true;
+        recorder.data.active = true;
     }
     Qnil.into()
 }
 
 unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
-    if recorder.active {
+    if recorder.data.active {
         let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
         let func: rb_event_hook_func_t = Some(transmute(raw_cb));
         rb_remove_event_hook_with_data(func, self_val);
-        recorder.active = false;
+        recorder.data.active = false;
     }
     Qnil.into()
 }
@@ -319,7 +327,7 @@ unsafe extern "C" fn call_to_s(arg: VALUE) -> VALUE {
     rb_funcall(data.0, data.1, 0)
 }
 
-unsafe fn value_to_string_exception_safe(recorder: &Recorder, val: VALUE) -> String {
+unsafe fn value_to_string_exception_safe(recorder: &RecorderData, val: VALUE) -> String {
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
         rstring_lossy(val)
     } else {
@@ -335,7 +343,7 @@ unsafe fn value_to_string_exception_safe(recorder: &Recorder, val: VALUE) -> Str
     }
 }
 
-unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRecord {
+unsafe fn to_value(recorder: &mut RecorderData, tracer: &mut dyn TraceWriter, val: VALUE, depth: usize) -> ValueRecord {
     if depth == 0 {
         return ValueRecord::None {
             type_id: recorder.error_type_id,
@@ -362,7 +370,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
     if RB_FLOAT_TYPE_P(val) {
         let f = rb_num2dbl(val);
         let type_id = if recorder.float_type_id == runtime_tracing::NONE_TYPE_ID {
-            let id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Float, "Float");
+            let id = TraceWriter::ensure_type_id(tracer, TypeKind::Float, "Float");
             recorder.float_type_id = id;
             id
         } else {
@@ -388,9 +396,9 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         let ptr = RARRAY_CONST_PTR(val);
         for i in 0..len {
             let elem = *ptr.add(i);
-            elements.push(to_value(recorder, elem, depth - 1));
+            elements.push(to_value(recorder, tracer, elem, depth - 1));
         }
-        let type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Seq, "Array");
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Array");
         return ValueRecord::Sequence {
             elements,
             is_slice: false,
@@ -412,13 +420,14 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
             let val_elem = *pair_ptr.add(1);
             elements.push(struct_value(
                 recorder,
+                tracer,
                 "Pair",
                 &["k", "v"],
                 &[key, val_elem],
                 depth,
             ));
         }
-        let type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Seq, "Hash");
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Hash");
         return ValueRecord::Sequence {
             elements,
             is_slice: false,
@@ -430,6 +439,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         let end_val = rb_funcall(val, recorder.id.end, 0);
         return struct_value(
             recorder,
+            tracer,
             "Range",
             &["begin", "end"],
             &[begin_val, end_val],
@@ -449,9 +459,9 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
             let mut elements = Vec::with_capacity(len);
             for i in 0..len {
                 let elem = *ptr.add(i);
-                elements.push(to_value(recorder, elem, depth - 1));
+                elements.push(to_value(recorder, tracer, elem, depth - 1));
             }
-            let type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Seq, "Set");
+            let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Set");
             return ValueRecord::Sequence {
                 elements,
                 is_slice: false,
@@ -462,13 +472,14 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
     if rb_obj_is_kind_of(val, rb_cTime) != 0 {
         let sec = rb_funcall(val, recorder.id.to_i, 0);
         let nsec = rb_funcall(val, recorder.id.nsec, 0);
-        return struct_value(recorder, "Time", &["sec", "nsec"], &[sec, nsec], depth);
+        return struct_value(recorder, tracer, "Time", &["sec", "nsec"], &[sec, nsec], depth);
     }
     if rb_obj_is_kind_of(val, rb_cRegexp) != 0 {
         let src = rb_funcall(val, recorder.id.source, 0);
         let opts = rb_funcall(val, recorder.id.options, 0);
         return struct_value(
             recorder,
+            tracer,
             "Regexp",
             &["source", "options"],
             &[src, opts],
@@ -485,7 +496,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         {
             let text = value_to_string_exception_safe(recorder, val);
             let type_id =
-                TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
+                TraceWriter::ensure_type_id(tracer, TypeKind::Raw, &class_name);
             return ValueRecord::Raw { r: text, type_id };
         }
         let len = RARRAY_LEN(values) as usize;
@@ -498,7 +509,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
             names.push(cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or("?".to_string()));
             vals.push(*val_ptr.add(i));
         }
-        return struct_value(recorder, &class_name, &names, &vals, depth);
+        return struct_value(recorder, tracer, &class_name, &names, &vals, depth);
     }
     if NIL_P(recorder.open_struct_class) {
         if rb_const_defined(rb_cObject, recorder.id.open_struct_const) != 0 {
@@ -508,7 +519,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
     if !NIL_P(recorder.open_struct_class) && rb_obj_is_kind_of(val, recorder.open_struct_class) != 0
     {
         let h = rb_funcall(val, recorder.id.to_h, 0);
-        return to_value(recorder, h, depth - 1);
+        return to_value(recorder, tracer, h, depth - 1);
     }
     let class_name = cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Object".to_string());
     // generic object
@@ -516,7 +527,7 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
     if !RB_TYPE_P(ivars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         let text = value_to_string_exception_safe(recorder, val);
         let type_id =
-            TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
+            TraceWriter::ensure_type_id(tracer, TypeKind::Raw, &class_name);
         return ValueRecord::Raw { r: text, type_id };
     }
     let len = RARRAY_LEN(ivars) as usize;
@@ -530,14 +541,14 @@ unsafe fn to_value(recorder: &mut Recorder, val: VALUE, depth: usize) -> ValueRe
         vals.push(value);
     }
     if !names.is_empty() {
-        return struct_value(recorder, &class_name, &names, &vals, depth);
+        return struct_value(recorder, tracer, &class_name, &names, &vals, depth);
     }
     let text = value_to_string_exception_safe(recorder, val);
-    let type_id = TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
+    let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Raw, &class_name);
     ValueRecord::Raw { r: text, type_id }
 }
 
-unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) {
+unsafe fn record_variables(recorder: &mut RecorderData, tracer: &mut dyn TraceWriter, binding: VALUE) {
     let vars = rb_funcall(binding, recorder.id.local_variables, 0);
     if !RB_TYPE_P(vars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         return;
@@ -548,13 +559,14 @@ unsafe fn record_variables(recorder: &mut Recorder, binding: VALUE) {
         let sym = *ptr.add(i);
         let name = cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or_default();
         let value = rb_funcall(binding, recorder.id.local_variable_get, 1, sym);
-        let val_rec = to_value(recorder, value, 10);
-        TraceWriter::register_variable_with_full_value(&mut *recorder.tracer, &name, val_rec);
+        let val_rec = to_value(recorder, tracer, value, 10);
+        TraceWriter::register_variable_with_full_value(tracer, &name, val_rec);
     }
 }
 
 unsafe fn collect_parameter_values(
-    recorder: &mut Recorder,
+    recorder: &mut RecorderData,
+    tracer: &mut dyn TraceWriter,
     binding: VALUE,
     defined_class: VALUE,
     mid: ID,
@@ -583,7 +595,7 @@ unsafe fn collect_parameter_values(
         }
         if let Some(name) = cstr_to_string(rb_id2name(rb_sym2id(name_sym))) {
             let value = rb_funcall(binding, recorder.id.local_variable_get, 1, name_sym);
-            let val_rec = to_value(recorder, value, 10);
+            let val_rec = to_value(recorder, tracer, value, 10);
             result.push((name, val_rec));
         }
     }
@@ -591,17 +603,18 @@ unsafe fn collect_parameter_values(
 }
 
 unsafe fn register_parameter_values(
-    recorder: &mut Recorder,
+    recorder: &mut RecorderData,
+    tracer: &mut dyn TraceWriter,
     params: Vec<(String, ValueRecord)>,
 ) -> Vec<FullValueRecord> {
     let mut result = Vec::with_capacity(params.len());
     for (name, val_rec) in params {
         TraceWriter::register_variable_with_full_value(
-            &mut *recorder.tracer,
+            tracer,
             &name,
             val_rec.clone(),
         );
-        let var_id = TraceWriter::ensure_variable_id(&mut *recorder.tracer, &name);
+        let var_id = TraceWriter::ensure_variable_id(tracer, &name);
         result.push(FullValueRecord {
             variable_id: var_id,
             value: val_rec,
@@ -637,40 +650,41 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
         Ok(path_str) => {
             match begin_trace(Path::new(&path_str), fmt) {
                 Ok(t) => {
-                    recorder.tracer = t;
+                    recorder.tracer = Mutex::new(t);
+                    let mut locked_tracer = recorder.tracer.lock().unwrap();
                     // pre-register common types to match the pure Ruby tracer
-                    recorder.int_type_id = TraceWriter::ensure_type_id(
-                        &mut *recorder.tracer,
+                    recorder.data.int_type_id = TraceWriter::ensure_type_id(
+                        &mut **locked_tracer,
                         TypeKind::Int,
                         "Integer",
                     );
-                    recorder.string_type_id = TraceWriter::ensure_type_id(
-                        &mut *recorder.tracer,
+                    recorder.data.string_type_id = TraceWriter::ensure_type_id(
+                        &mut **locked_tracer,
                         TypeKind::String,
                         "String",
                     );
-                    recorder.bool_type_id =
-                        TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Bool, "Bool");
-                    recorder.float_type_id = runtime_tracing::NONE_TYPE_ID;
-                    recorder.symbol_type_id = TraceWriter::ensure_type_id(
-                        &mut *recorder.tracer,
+                    recorder.data.bool_type_id =
+                        TraceWriter::ensure_type_id(&mut **locked_tracer, TypeKind::Bool, "Bool");
+                    recorder.data.float_type_id = runtime_tracing::NONE_TYPE_ID;
+                    recorder.data.symbol_type_id = TraceWriter::ensure_type_id(
+                        &mut **locked_tracer,
                         TypeKind::String,
                         "Symbol",
                     );
-                    recorder.error_type_id = TraceWriter::ensure_type_id(
-                        &mut *recorder.tracer,
+                    recorder.data.error_type_id = TraceWriter::ensure_type_id(
+                        &mut **locked_tracer,
                         TypeKind::Error,
                         "No type",
                     );
                     let path = Path::new("");
                     let func_id = TraceWriter::ensure_function_id(
-                        &mut *recorder.tracer,
+                        &mut **locked_tracer,
                         "<top-level>",
                         path,
                         Line(1),
                     );
                     TraceWriter::add_event(
-                        &mut *recorder.tracer,
+                        &mut **locked_tracer,
                         TraceLowLevelEvent::Call(CallRecord {
                             function_id: func_id,
                             args: vec![],
@@ -705,8 +719,9 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
 unsafe extern "C" fn flush_trace(self_val: VALUE) -> VALUE {
     let recorder_ptr = get_recorder(self_val);
     let recorder = &mut *recorder_ptr;
+    let mut locked_tracer = recorder.tracer.lock().unwrap();
 
-    if let Err(e) = flush_to_dir(&mut *recorder.tracer) {
+    if let Err(e) = flush_to_dir(&mut **locked_tracer) {
         let msg = std::ffi::CString::new(e.to_string())
             .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
         rb_raise(
@@ -726,10 +741,11 @@ unsafe extern "C" fn record_event_api(
     content: VALUE,
 ) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
+    let mut locked_tracer = recorder.tracer.lock().unwrap();
     let path_string = rstring_checked_or_empty(path);
     let line_num = rb_num2long(line) as i64;
-    let content_str = value_to_string_exception_safe(recorder, content);
-    record_event(&mut *recorder.tracer, &path_string, line_num, content_str);
+    let content_str = value_to_string_exception_safe(&recorder.data, content);
+    record_event(&mut **locked_tracer, &path_string, line_num, content_str);
     Qnil.into()
 }
 
@@ -746,9 +762,11 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     }
 
     let recorder = &mut *get_recorder(data);
-    if !recorder.active {
+    if !recorder.data.active {
         return;
     }
+
+    let mut locked_tracer = recorder.tracer.lock().unwrap();
 
     let ev: rb_event_flag_t = rb_tracearg_event_flag(arg);
     let path_val = rb_tracearg_path(arg);
@@ -761,9 +779,9 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 
     if (ev & RUBY_EVENT_LINE) != 0 {
         let binding = rb_tracearg_binding(arg);
-        TraceWriter::register_step(&mut *recorder.tracer, Path::new(&path), Line(line));
+        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         if !NIL_P(binding) {
-            record_variables(recorder, binding);
+            record_variables(&mut recorder.data, &mut **locked_tracer, binding);
         }
     } else if (ev & RUBY_EVENT_CALL) != 0 {
         let binding = rb_tracearg_binding(arg);
@@ -771,65 +789,65 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         let self_val = rb_tracearg_self(arg);
         let mid_sym = rb_tracearg_callee_id(arg);
         let mid = rb_sym2id(mid_sym);
-        let defined_class = rb_funcall(self_val, recorder.id.class, 0);
+        let defined_class = rb_funcall(self_val, recorder.data.id.class, 0);
 
         let param_vals = if NIL_P(binding) {
             Vec::new()
         } else {
-            collect_parameter_values(recorder, binding, defined_class, mid)
+            collect_parameter_values(&mut recorder.data, &mut **locked_tracer, binding, defined_class, mid)
         };
 
         let class_name =
             cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
-        let text = value_to_string_exception_safe(recorder, self_val);
+        let text = value_to_string_exception_safe(&recorder.data, self_val);
         let self_type =
-            TraceWriter::ensure_type_id(&mut *recorder.tracer, TypeKind::Raw, &class_name);
+            TraceWriter::ensure_type_id(&mut **locked_tracer, TypeKind::Raw, &class_name);
         let self_rec = ValueRecord::Raw {
             r: text,
             type_id: self_type,
         };
         TraceWriter::register_variable_with_full_value(
-            &mut *recorder.tracer,
+            &mut **locked_tracer,
             "self",
             self_rec.clone(),
         );
 
-        let mut args = vec![TraceWriter::arg(&mut *recorder.tracer, "self", self_rec)];
+        let mut args = vec![TraceWriter::arg(&mut **locked_tracer, "self", self_rec)];
         if !param_vals.is_empty() {
-            args.extend(register_parameter_values(recorder, param_vals));
+            args.extend(register_parameter_values(&mut recorder.data, &mut **locked_tracer, param_vals));
         }
-        TraceWriter::register_step(&mut *recorder.tracer, Path::new(&path), Line(line));
+        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         let mut name = cstr_to_string(rb_id2name(mid)).unwrap_or_default();
         if class_name != "Object" {
             name = format!("{}#{}", class_name, name);
         }
         let fid = TraceWriter::ensure_function_id(
-            &mut *recorder.tracer,
+            &mut **locked_tracer,
             &name,
             Path::new(&path),
             Line(line),
         );
         TraceWriter::add_event(
-            &mut *recorder.tracer,
+            &mut **locked_tracer,
             TraceLowLevelEvent::Call(CallRecord {
                 function_id: fid,
                 args,
             }),
         );
     } else if (ev & RUBY_EVENT_RETURN) != 0 {
-        TraceWriter::register_step(&mut *recorder.tracer, Path::new(&path), Line(line));
+        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         let ret = rb_tracearg_return_value(arg);
-        let val_rec = to_value(recorder, ret, 10);
+        let val_rec = to_value(&mut recorder.data, &mut **locked_tracer, ret, 10);
         TraceWriter::register_variable_with_full_value(
-            &mut *recorder.tracer,
+            &mut **locked_tracer,
             "<return_value>",
             val_rec.clone(),
         );
-        TraceWriter::register_return(&mut *recorder.tracer, val_rec);
+        TraceWriter::register_return(&mut **locked_tracer, val_rec);
     } else if (ev & RUBY_EVENT_RAISE) != 0 {
         let exc = rb_tracearg_raised_exception(arg);
-        let msg = value_to_string_exception_safe(recorder, exc);
-        TraceWriter::register_special_event(&mut *recorder.tracer, EventLogKind::Error, &msg);
+        let msg = value_to_string_exception_safe(&recorder.data, exc);
+        TraceWriter::register_special_event(&mut **locked_tracer, EventLogKind::Error, &msg);
     }
 }
 
