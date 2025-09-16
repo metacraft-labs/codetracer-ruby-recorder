@@ -29,9 +29,7 @@ use rb_sys::{
     RUBY_INTERNAL_THREAD_EVENT_SUSPENDED, VALUE,
 };
 use runtime_tracing::{
-    create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line,
-    TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeKind, TypeRecord, TypeSpecificInfo,
-    ValueRecord,
+    create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line, ThreadId, TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord
 };
 
 struct InternedSymbols {
@@ -241,7 +239,7 @@ unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
     if !recorder.data.active {
         if !recorder.data.thread_event_hook_installed {
-            thread_register_callback();
+            thread_register_callback(recorder);
             recorder.data.thread_event_hook_installed = true;
         }
 
@@ -875,16 +873,25 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 unsafe extern "C" fn ex_callback(
     event: rb_event_flag_t,
     event_data: *const rb_internal_thread_event_data_t,
-    _user_data: *mut c_void,
+    user_data: *mut c_void,
 ) {
     match event {
-        /*RUBY_INTERNAL_THREAD_EVENT_STARTED => {
-            println!(
+        RUBY_INTERNAL_THREAD_EVENT_STARTED => {
+            /*println!(
                 "RUBY_INTERNAL_THREAD_EVENT_STARTED {}",
                 (*event_data).thread
+            );*/
+            let recorder = user_data as *mut Recorder;
+            //println!("RUBY_INTERNAL_THREAD_EVENT_STARTED entering mutex");
+            let mut locked_tracer = (*recorder).tracer.lock().unwrap();
+            //println!("RUBY_INTERNAL_THREAD_EVENT_STARTED entered mutex");
+            let event = TraceLowLevelEvent::ThreadStart(
+                ThreadId((*event_data).thread)
             );
+            TraceWriter::add_event(&mut **locked_tracer, event);
+            //println!("RUBY_INTERNAL_THREAD_EVENT_STARTED done");
         }
-        RUBY_INTERNAL_THREAD_EVENT_READY => {
+        /*RUBY_INTERNAL_THREAD_EVENT_READY => {
             println!("RUBY_INTERNAL_THREAD_EVENT_READY");
         }
         RUBY_INTERNAL_THREAD_EVENT_RESUMED => {
@@ -900,7 +907,7 @@ unsafe extern "C" fn ex_callback(
     }
 }
 
-unsafe fn thread_register_callback() {
+unsafe fn thread_register_callback(recorder: *mut Recorder) {
     let q = rb_internal_thread_add_event_hook(
         Some(ex_callback),
         RUBY_INTERNAL_THREAD_EVENT_STARTED
@@ -908,7 +915,7 @@ unsafe fn thread_register_callback() {
             | RUBY_INTERNAL_THREAD_EVENT_RESUMED
             | RUBY_INTERNAL_THREAD_EVENT_SUSPENDED
             | RUBY_INTERNAL_THREAD_EVENT_EXITED,
-        ptr::null_mut(),
+        recorder as *mut c_void,
     );
 }
 
