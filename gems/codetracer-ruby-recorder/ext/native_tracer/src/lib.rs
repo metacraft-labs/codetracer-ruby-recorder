@@ -752,6 +752,9 @@ unsafe extern "C" fn record_event_api(
     content: VALUE,
 ) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
+    if recorder.data.in_event_hook {
+        return Qnil.into();
+    }
     let mut locked_tracer = recorder.tracer.lock().unwrap();
     let path_string = rstring_checked_or_empty(path);
     let line_num = rb_num2long(line) as i64;
