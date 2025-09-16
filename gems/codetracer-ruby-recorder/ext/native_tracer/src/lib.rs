@@ -86,6 +86,7 @@ impl InternedSymbols {
 struct Recorder {
     tracer: Box<dyn TraceWriter>,
     active: bool,
+    thread_event_hook_installed: bool,
     id: InternedSymbols,
     set_class: VALUE,
     open_struct_class: VALUE,
@@ -208,6 +209,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     let recorder = Box::new(Recorder {
         tracer: create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Binary),
         active: false,
+        thread_event_hook_installed: false,
         id: InternedSymbols::new(),
         set_class: Qnil.into(),
         open_struct_class: Qnil.into(),
@@ -226,7 +228,10 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
 unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
     if !recorder.active {
-        thread_register_callback();
+        if !recorder.thread_event_hook_installed {
+            thread_register_callback();
+            recorder.thread_event_hook_installed = true;
+        }
 
         let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
         let func: rb_event_hook_func_t = Some(transmute(raw_cb));
