@@ -889,19 +889,12 @@ unsafe extern "C" fn ex_callback(
 ) {
     match event {
         RUBY_INTERNAL_THREAD_EVENT_STARTED => {
-            /*println!(
-                "RUBY_INTERNAL_THREAD_EVENT_STARTED {}",
-                (*event_data).thread
-            );*/
             let recorder = user_data as *mut Recorder;
-            //println!("RUBY_INTERNAL_THREAD_EVENT_STARTED entering mutex");
             let mut locked_tracer = (*recorder).tracer.lock().unwrap();
-            //println!("RUBY_INTERNAL_THREAD_EVENT_STARTED entered mutex");
             let event = TraceLowLevelEvent::ThreadStart(
                 ThreadId((*event_data).thread)
             );
             TraceWriter::add_event(&mut **locked_tracer, event);
-            //println!("RUBY_INTERNAL_THREAD_EVENT_STARTED done");
         }
         /*RUBY_INTERNAL_THREAD_EVENT_READY => {
             println!("RUBY_INTERNAL_THREAD_EVENT_READY");
