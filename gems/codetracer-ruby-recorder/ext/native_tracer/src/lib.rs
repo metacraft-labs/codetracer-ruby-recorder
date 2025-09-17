@@ -12,6 +12,7 @@ use std::{
 };
 
 use rb_sys::{
+    rb_eval_string,
     rb_add_event_hook2, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct, rb_cThread, rb_cTime,
     rb_check_typeddata, rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1,
     rb_data_type_t, rb_data_typed_object_wrap, rb_define_alloc_func, rb_define_class,
@@ -88,6 +89,7 @@ struct RecorderData {
     active: bool,
     in_event_hook: bool,
     thread_event_hook_installed: bool,
+    last_thread_id: Option<u64>,
     id: InternedSymbols,
     set_class: VALUE,
     open_struct_class: VALUE,
@@ -223,6 +225,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
             active: false,
             in_event_hook: false,
             thread_event_hook_installed: false,
+            last_thread_id: None,
             id: InternedSymbols::new(),
             set_class: Qnil.into(),
             open_struct_class: Qnil.into(),
@@ -800,6 +803,19 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     if should_ignore_path(&path) {
         recorder.data.in_event_hook = false;
         return;
+    }
+
+    let thread_id: u64 = rb_eval_string(c"Thread.current".as_ptr() as *const c_char).try_into().unwrap();
+    let thread_changed = if let Some(last_thread_id) = recorder.data.last_thread_id {
+        last_thread_id != thread_id
+    } else {
+        true
+    };
+    if thread_changed {
+        TraceWriter::add_event(
+            &mut **locked_tracer,
+            TraceLowLevelEvent::ThreadSwitch(ThreadId(thread_id)));
+        recorder.data.last_thread_id = Some(thread_id);
     }
 
     if (ev & RUBY_EVENT_LINE) != 0 {
