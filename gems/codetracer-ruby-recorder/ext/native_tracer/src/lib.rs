@@ -12,20 +12,19 @@ use std::{
 };
 
 use rb_sys::{
-    rb_eval_string,
     rb_add_event_hook2, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct, rb_cThread, rb_cTime,
     rb_check_typeddata, rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1,
     rb_data_type_t, rb_data_typed_object_wrap, rb_define_alloc_func, rb_define_class,
-    rb_define_method, rb_eIOError, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t,
-    rb_funcall, rb_id2name, rb_id2sym, rb_intern, rb_internal_thread_add_event_hook,
-    rb_internal_thread_event_data_t, rb_method_boundp, rb_num2dbl, rb_num2long, rb_obj_classname,
-    rb_obj_is_kind_of, rb_protect, rb_raise, rb_remove_event_hook_with_data, rb_set_errinfo,
-    rb_sym2id, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id, rb_tracearg_event_flag,
-    rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception, rb_tracearg_return_value,
-    rb_tracearg_self, Qfalse, Qnil, Qtrue, ID, NIL_P, RARRAY_CONST_PTR, RARRAY_LEN,
-    RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN, RSTRING_PTR,
-    RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN,
-    RUBY_INTERNAL_THREAD_EVENT_EXITED, RUBY_INTERNAL_THREAD_EVENT_READY,
+    rb_define_method, rb_eIOError, rb_eval_string, rb_event_flag_t, rb_event_hook_flag_t,
+    rb_event_hook_func_t, rb_funcall, rb_id2name, rb_id2sym, rb_intern,
+    rb_internal_thread_add_event_hook, rb_internal_thread_event_data_t, rb_method_boundp,
+    rb_num2dbl, rb_num2long, rb_obj_classname, rb_obj_is_kind_of, rb_protect, rb_raise,
+    rb_remove_event_hook_with_data, rb_set_errinfo, rb_sym2id, rb_trace_arg_t, rb_tracearg_binding,
+    rb_tracearg_callee_id, rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path,
+    rb_tracearg_raised_exception, rb_tracearg_return_value, rb_tracearg_self, Qfalse, Qnil, Qtrue,
+    ID, NIL_P, RARRAY_CONST_PTR, RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P,
+    RB_TYPE_P, RSTRING_LEN, RSTRING_PTR, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE,
+    RUBY_EVENT_RETURN, RUBY_INTERNAL_THREAD_EVENT_EXITED, RUBY_INTERNAL_THREAD_EVENT_READY,
     RUBY_INTERNAL_THREAD_EVENT_RESUMED, RUBY_INTERNAL_THREAD_EVENT_STARTED,
     RUBY_INTERNAL_THREAD_EVENT_SUSPENDED, VALUE,
 };
@@ -805,7 +804,9 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         return;
     }
 
-    let thread_id: u64 = rb_eval_string(c"Thread.current".as_ptr() as *const c_char).try_into().unwrap();
+    let thread_id: u64 = rb_eval_string(c"Thread.current".as_ptr() as *const c_char)
+        .try_into()
+        .unwrap();
     let thread_changed = if let Some(last_thread_id) = recorder.data.last_thread_id {
         last_thread_id != thread_id
     } else {
@@ -814,7 +815,8 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     if thread_changed {
         TraceWriter::add_event(
             &mut **locked_tracer,
-            TraceLowLevelEvent::ThreadSwitch(ThreadId(thread_id)));
+            TraceLowLevelEvent::ThreadSwitch(ThreadId(thread_id)),
+        );
         recorder.data.last_thread_id = Some(thread_id);
     }
 
