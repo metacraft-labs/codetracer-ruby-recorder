@@ -12,7 +12,7 @@ use std::{
 };
 
 use rb_sys::{
-    rb_add_event_hook2, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct, rb_cTime,
+    rb_add_event_hook2, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct, rb_cThread, rb_cTime,
     rb_check_typeddata, rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1,
     rb_data_type_t, rb_data_typed_object_wrap, rb_define_alloc_func, rb_define_class,
     rb_define_method, rb_eIOError, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t,
@@ -444,6 +444,9 @@ unsafe fn to_value(
             is_slice: false,
             type_id,
         };
+    }
+    if rb_obj_is_kind_of(val, rb_cThread) != 0 {
+        return struct_value(recorder, tracer, "Thread", &[] as &[&str], &[], depth);
     }
     if rb_obj_is_kind_of(val, rb_cRange) != 0 {
         let begin_val = rb_funcall(val, recorder.id.begin, 0);
