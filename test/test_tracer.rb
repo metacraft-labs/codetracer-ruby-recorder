@@ -16,6 +16,16 @@ class TraceTest < Minitest::Test
     FileUtils.mkdir_p(TMP_DIR)
   end
 
+  def filter_trace(trace)
+    result = []
+    trace.each {|a|
+      if not a.has_key?("ThreadSwitch")
+        result << a
+      end
+    }
+    result
+  end
+
   def run_trace(tracer_script, program_name, *args)
     base = File.basename(program_name, '.rb')
     tracer_name = tracer_script.include?('pure') ? 'pure' : 'native'
@@ -27,7 +37,7 @@ class TraceTest < Minitest::Test
       stdout, stderr, status = Open3.capture3(RbConfig.ruby, tracer_script, '--out-dir', out_dir, program, *args)
       raise "trace failed: #{stderr}" unless status.success?
       trace_file = File.join(out_dir, 'trace.json')
-      trace = JSON.parse(File.read(trace_file)) if File.exist?(trace_file)
+      trace = filter_trace(JSON.parse(File.read(trace_file))) if File.exist?(trace_file)
       program_out = stdout.lines.reject { |l| l.start_with?('call ') || l.start_with?('return') }.join
       [trace, program_out]
     end
@@ -46,7 +56,7 @@ class TraceTest < Minitest::Test
       )
       raise "trace failed: #{stderr}" unless status.success?
       trace_file = File.join(out_dir, 'trace.json')
-      trace = JSON.parse(File.read(trace_file)) if File.exist?(trace_file)
+      trace = filter_trace(JSON.parse(File.read(trace_file))) if File.exist?(trace_file)
       program_out = stdout.lines.reject { |l| l.start_with?('call ') || l.start_with?('return') }.join
       [trace, program_out]
     end
