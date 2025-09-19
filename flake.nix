@@ -47,7 +47,9 @@
     in {
       default = pkgs.mkShell {
         packages = with pkgs; [
-          ruby
+          # WARNING: `3.4` needed in `./gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs`
+          #          for the `thread` field of `rb_internal_thread_event_data_t`
+          ruby_3_4
 
           # The native extension is implemented in Rust
           (rust-toolchain-for system)
