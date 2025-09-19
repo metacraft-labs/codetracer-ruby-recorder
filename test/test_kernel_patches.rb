@@ -139,21 +139,21 @@ class TestKernelPatches < Minitest::Test
     assert_equal __FILE__, event_p[:path], "Path for p mismatch"
     assert_equal expected_line_p_detailed, event_p[:lineno], "Line number for p mismatch"
     # p calls inspect on each argument and joins with newline if multiple, but here it's one string then obj
-    assert_equal "\"detailed_p\"\n{:key=>\"value\", :number=>123}\n", event_p[:content], "Content for p mismatch"
+    assert_equal "\"detailed_p\"\n{key: \"value\", number: 123}\n", event_p[:content], "Content for p mismatch"
 
 
     event_puts = @tracer1.events[1]
     assert_equal __FILE__, event_puts[:path], "Path for puts mismatch"
     assert_equal expected_line_puts_detailed, event_puts[:lineno], "Line number for puts mismatch"
     # puts calls to_s on each argument and prints each on a new line
-    assert_equal "detailed_puts\n{:key=>\"value\", :number=>123}\n", event_puts[:content], "Content for puts mismatch"
+    assert_equal "detailed_puts\n{key: \"value\", number: 123}\n", event_puts[:content], "Content for puts mismatch"
 
 
     event_print = @tracer1.events[2]
     assert_equal __FILE__, event_print[:path], "Path for print mismatch"
     assert_equal expected_line_print_detailed, event_print[:lineno], "Line number for print mismatch"
     # print calls to_s on each argument and prints them sequentially
-    assert_equal "detailed_print{:key=>\"value\", :number=>123}", event_print[:content], "Content for print mismatch"
+    assert_equal "detailed_print{key: \"value\", number: 123}", event_print[:content], "Content for print mismatch"
 
     CodeTracer::KernelPatches.uninstall(@tracer1)
   end
