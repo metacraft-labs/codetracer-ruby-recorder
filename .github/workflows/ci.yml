@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            pacman -S mingw-w64-ucrt-x86_64-capnproto
+            pacman -S --noconfirm mingw-w64-ucrt-x86_64-capnproto
           #  ridk enable
           fi
           just build-extension
