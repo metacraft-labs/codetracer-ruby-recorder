@@ -73,6 +73,8 @@ jobs:
           ruby-version: '3.4'
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
       - name: Install Ruby dependencies
         run: bundle install
       - name: Setup just
