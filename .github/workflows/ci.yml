@@ -34,9 +34,10 @@ jobs:
         with:
           ruby-version: '3.4'
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
+          targets: x86_64-pc-windows-gnu
       - name: Install Ruby dependencies
         run: bundle install
       - name: Setup just
@@ -72,10 +73,7 @@ jobs:
         with:
           ruby-version: '3.4'
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          targets: x86_64-pc-windows-gnu
+        uses: dtolnay/rust-toolchain@stable
       - name: Install Ruby dependencies
         run: bundle install
       - name: Setup just
