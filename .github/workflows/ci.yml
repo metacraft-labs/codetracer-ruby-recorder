@@ -53,6 +53,7 @@ jobs:
       - name: Setup just
         uses: extractions/setup-just@v1
       - name: Build extension
+        shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             ridk enable
