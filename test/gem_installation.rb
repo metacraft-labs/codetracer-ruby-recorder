@@ -11,9 +11,9 @@ class GemInstallationTest < Minitest::Test
 
       if gem_bin == 'codetracer-ruby-recorder'
         system('just', 'build-extension', exception: true)
-        dlext = RbConfig::CONFIG['DLEXT']
-        ext_path = File.join(gem_dir, 'ext', 'native_tracer', 'target', 'release', "codetracer_ruby_recorder.#{dlext}")
-        FileUtils.rm_f(ext_path)
+        ###WHY?!?!?! dlext = RbConfig::CONFIG['DLEXT']
+        ###WHY?!?!?! ext_path = File.join(gem_dir, 'ext', 'native_tracer', 'target', 'release', "codetracer_ruby_recorder.#{dlext}")
+        ###WHY?!?!?! FileUtils.rm_f(ext_path)
       end
 
       Dir.mktmpdir('gemhome') do |gem_home|
