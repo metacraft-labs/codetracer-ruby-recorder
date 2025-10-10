@@ -11,6 +11,11 @@ bench pattern="*" write_report="console":
 
 build-extension:
     cargo build {{ cargo_build_target_opt }} --release --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
+    if [ -d "gems/codetracer-ruby-recorder/ext/native_tracer/target/x86_64-pc-windows-gnu/release" ]; then \
+        rm -rf gems/codetracer-ruby-recorder/ext/native_tracer/target/release; \
+        cp -r gems/codetracer-ruby-recorder/ext/native_tracer/target/x86_64-pc-windows-gnu/release gems/codetracer-ruby-recorder/ext/native_tracer/target; \
+        mv gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder.dll gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder.so; \
+    fi
 
 format-rust:
     cargo fmt --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
