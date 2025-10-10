@@ -1,5 +1,7 @@
 alias t := test
 
+cargo_build_target_opt := if os_family() == "windows" { "--target x86_64-pc-windows-gnu" } else { "" }
+
 test:
     ruby -Itest test/gem_installation.rb
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
@@ -8,7 +10,7 @@ bench pattern="*" write_report="console":
     ruby test/benchmarks/run_benchmarks.rb '{{pattern}}' --write-report={{write_report}}
 
 build-extension:
-    cargo build --release --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
+    cargo build {{ cargo_build_target_opt }} --release --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
 
 format-rust:
     cargo fmt --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
