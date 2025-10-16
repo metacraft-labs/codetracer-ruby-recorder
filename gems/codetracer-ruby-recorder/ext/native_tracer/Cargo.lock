@@ -117,9 +117,57 @@ dependencies = [
 name = "codetracer_ruby_recorder"
 version = "0.1.0"
 dependencies = [
+ "codetracer_trace_types",
+ "codetracer_trace_writer",
  "rb-sys",
  "rb-sys-env",
- "runtime_tracing",
+]
+
+[[package]]
+name = "codetracer_trace_format_capnp"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37ce75c3c44afe5100f2a163ef819dc6eeb9ead0729f05f78e2962b695be34f4"
+dependencies = [
+ "capnp",
+ "capnpc",
+ "codetracer_trace_types",
+]
+
+[[package]]
+name = "codetracer_trace_format_cbor_zstd"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b49be80d50bce87f88251c9488c54e5441569ee60f0f0056a63792f6944ff2d9"
+
+[[package]]
+name = "codetracer_trace_types"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd8fb115bb062d45ab7fcb9be3ef9b122b1ae417d16abd9efe7d4bfeebf60b0d"
+dependencies = [
+ "base64",
+ "num-derive",
+ "num-traits",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_repr",
+]
+
+[[package]]
+name = "codetracer_trace_writer"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "397104457fd56c4d573d2496b0cd310eba2484292d73c62396600953b9762d74"
+dependencies = [
+ "cbor4ii",
+ "codetracer_trace_format_capnp",
+ "codetracer_trace_format_cbor_zstd",
+ "codetracer_trace_types",
+ "ruzstd",
+ "serde_json",
+ "zeekstd",
 ]
 
 [[package]]
@@ -139,15 +187,6 @@ name = "embedded-io"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
-
-[[package]]
-name = "fscommon"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "315ce685aca5ddcc5a3e7e436ef47d4a5d0064462849b6f0f628c28140103531"
-dependencies = [
- "log",
-]
 
 [[package]]
 name = "getrandom"
@@ -219,12 +258,6 @@ dependencies = [
  "cfg-if",
  "windows-targets",
 ]
-
-[[package]]
-name = "log"
-version = "0.4.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "memchr"
@@ -356,27 +389,6 @@ name = "regex-syntax"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
-
-[[package]]
-name = "runtime_tracing"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16c8697e99c07e9c5a580ab906a19b81b814f4cf1573da0657dd387a49d49b08"
-dependencies = [
- "base64",
- "capnp",
- "capnpc",
- "cbor4ii",
- "fscommon",
- "num-derive",
- "num-traits",
- "ruzstd",
- "schemars",
- "serde",
- "serde_json",
- "serde_repr",
- "zeekstd",
-]
 
 [[package]]
 name = "rustc-hash"

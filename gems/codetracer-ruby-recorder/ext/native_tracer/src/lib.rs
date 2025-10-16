@@ -11,6 +11,13 @@ use std::{
     string::FromUtf8Error,
 };
 
+use codetracer_trace_types::{
+    CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line, ThreadId, TraceLowLevelEvent,
+    TypeId, TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord, NONE_TYPE_ID,
+};
+use codetracer_trace_writer::{
+    create_trace_writer, trace_writer::TraceWriter, TraceEventsFileFormat,
+};
 use rb_sys::{
     rb_add_event_hook2, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct, rb_cThread, rb_cTime,
     rb_check_typeddata, rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1,
@@ -27,11 +34,6 @@ use rb_sys::{
     RUBY_EVENT_RETURN, RUBY_INTERNAL_THREAD_EVENT_EXITED, RUBY_INTERNAL_THREAD_EVENT_READY,
     RUBY_INTERNAL_THREAD_EVENT_RESUMED, RUBY_INTERNAL_THREAD_EVENT_STARTED,
     RUBY_INTERNAL_THREAD_EVENT_SUSPENDED, VALUE,
-};
-use runtime_tracing::{
-    create_trace_writer, CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line,
-    ThreadId, TraceEventsFileFormat, TraceLowLevelEvent, TraceWriter, TypeKind, TypeRecord,
-    TypeSpecificInfo, ValueRecord,
 };
 
 struct InternedSymbols {
@@ -93,12 +95,12 @@ struct RecorderData {
     set_class: VALUE,
     open_struct_class: VALUE,
     struct_type_versions: HashMap<String, usize>,
-    int_type_id: runtime_tracing::TypeId,
-    float_type_id: runtime_tracing::TypeId,
-    bool_type_id: runtime_tracing::TypeId,
-    string_type_id: runtime_tracing::TypeId,
-    symbol_type_id: runtime_tracing::TypeId,
-    error_type_id: runtime_tracing::TypeId,
+    int_type_id: TypeId,
+    float_type_id: TypeId,
+    bool_type_id: TypeId,
+    string_type_id: TypeId,
+    symbol_type_id: TypeId,
+    error_type_id: TypeId,
 }
 
 struct Recorder {
@@ -120,7 +122,7 @@ fn should_ignore_path(path: &str) -> bool {
     PATTERNS.iter().any(|p| path.contains(p))
 }
 
-fn value_type_id(val: &ValueRecord) -> runtime_tracing::TypeId {
+fn value_type_id(val: &ValueRecord) -> TypeId {
     use ValueRecord::*;
     match val {
         Int { type_id, .. }
@@ -136,7 +138,7 @@ fn value_type_id(val: &ValueRecord) -> runtime_tracing::TypeId {
         | Error { type_id, .. }
         | BigInt { type_id, .. }
         | None { type_id } => *type_id,
-        Cell { .. } => runtime_tracing::NONE_TYPE_ID,
+        Cell { .. } => NONE_TYPE_ID,
     }
 }
 
@@ -229,12 +231,12 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
             set_class: Qnil.into(),
             open_struct_class: Qnil.into(),
             struct_type_versions: HashMap::new(),
-            int_type_id: runtime_tracing::TypeId::default(),
-            float_type_id: runtime_tracing::TypeId::default(),
-            bool_type_id: runtime_tracing::TypeId::default(),
-            string_type_id: runtime_tracing::TypeId::default(),
-            symbol_type_id: runtime_tracing::TypeId::default(),
-            error_type_id: runtime_tracing::TypeId::default(),
+            int_type_id: TypeId::default(),
+            float_type_id: TypeId::default(),
+            bool_type_id: TypeId::default(),
+            string_type_id: TypeId::default(),
+            symbol_type_id: TypeId::default(),
+            error_type_id: TypeId::default(),
         },
     });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
@@ -275,14 +277,13 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
 
 fn begin_trace(
     dir: &Path,
-    format: runtime_tracing::TraceEventsFileFormat,
+    format: TraceEventsFileFormat,
 ) -> Result<Box<dyn TraceWriter>, Box<dyn std::error::Error>> {
     let mut tracer = create_trace_writer("ruby", &vec![], format);
     std::fs::create_dir_all(dir)?;
     let events = match format {
-        runtime_tracing::TraceEventsFileFormat::Json => dir.join("trace.json"),
-        runtime_tracing::TraceEventsFileFormat::BinaryV0
-        | runtime_tracing::TraceEventsFileFormat::Binary => dir.join("trace.bin"),
+        TraceEventsFileFormat::Json => dir.join("trace.json"),
+        TraceEventsFileFormat::BinaryV0 | TraceEventsFileFormat::Binary => dir.join("trace.bin"),
     };
     let metadata = dir.join("trace_metadata.json");
     let paths = dir.join("trace_paths.json");
@@ -382,7 +383,7 @@ unsafe fn to_value(
     }
     if RB_FLOAT_TYPE_P(val) {
         let f = rb_num2dbl(val);
-        let type_id = if recorder.float_type_id == runtime_tracing::NONE_TYPE_ID {
+        let type_id = if recorder.float_type_id == NONE_TYPE_ID {
             let id = TraceWriter::ensure_type_id(tracer, TypeKind::Float, "Float");
             recorder.float_type_id = id;
             id
@@ -658,13 +659,13 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
             .unwrap_or_default()
             .as_str()
         {
-            "binaryv0" => runtime_tracing::TraceEventsFileFormat::BinaryV0,
-            "binary" | "bin" => runtime_tracing::TraceEventsFileFormat::Binary,
-            "json" => runtime_tracing::TraceEventsFileFormat::Json,
+            "binaryv0" => TraceEventsFileFormat::BinaryV0,
+            "binary" | "bin" => TraceEventsFileFormat::Binary,
+            "json" => TraceEventsFileFormat::Json,
             _ => rb_raise(rb_eIOError, c"Unknown format".as_ptr() as *const c_char),
         }
     } else {
-        runtime_tracing::TraceEventsFileFormat::Json
+        TraceEventsFileFormat::Json
     };
 
     match rstring_checked(out_dir) {
@@ -683,7 +684,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
                     );
                     recorder.data.bool_type_id =
                         TraceWriter::ensure_type_id(&mut **locked_tracer, TypeKind::Bool, "Bool");
-                    recorder.data.float_type_id = runtime_tracing::NONE_TYPE_ID;
+                    recorder.data.float_type_id = NONE_TYPE_ID;
                     recorder.data.symbol_type_id = TraceWriter::ensure_type_id(
                         &mut **locked_tracer,
                         TypeKind::String,
