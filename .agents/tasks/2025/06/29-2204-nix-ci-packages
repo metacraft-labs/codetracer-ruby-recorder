@@ -1,0 +1,1 @@
+Make sure the nix packages exposed in the flake are tested in the Nix CI run. Make sure that the nix packaging process is tested on macOS as well. The CI workflows should confirm that the nix packages are working with some basic smoke tests on each platform.

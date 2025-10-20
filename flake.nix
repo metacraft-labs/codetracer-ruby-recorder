@@ -104,10 +104,11 @@
 
     packages = forEachSystem (system: let
       pkgs = import nixpkgs { inherit system; };
-      buildGem = gemdir: pkgs.rubyPackages.buildRubyGem {
-        pname = builtins.baseNameOf gemdir;
+      buildGem = gemdir: pkgs.buildRubyGem {
+        gemName = builtins.baseNameOf gemdir;
         version = builtins.readFile ./version.txt;
-        src = gemdir;
+        src = ./.;
+        sourceRoot = gemdir;
       };
     in {
       codetracer-ruby-recorder = buildGem ./gems/codetracer-ruby-recorder;
