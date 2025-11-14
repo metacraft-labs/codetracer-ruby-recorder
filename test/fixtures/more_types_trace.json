@@ -347,7 +347,7 @@
           {
             "kind": "Float",
             "type_id": 5,
-            "f": 1.5
+            "f": "1.5"
           },
           {
             "kind": "Sequence",
