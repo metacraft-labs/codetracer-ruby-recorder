@@ -305,7 +305,7 @@ class TraceRecord
 
   def float_value(f)
     ti = load_type_id(FLOAT, 'Float')
-    ValueRecord.new(kind: 'Float', type_id: ti, f: f)
+    ValueRecord.new(kind: 'Float', type_id: ti, f: f.to_s)
   end
 
   def string_value(text)
