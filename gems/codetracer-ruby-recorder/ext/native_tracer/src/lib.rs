@@ -137,6 +137,7 @@ fn value_type_id(val: &ValueRecord) -> TypeId {
         | Raw { type_id, .. }
         | Error { type_id, .. }
         | BigInt { type_id, .. }
+        | Char { type_id, .. }
         | None { type_id } => *type_id,
         Cell { .. } => NONE_TYPE_ID,
     }
