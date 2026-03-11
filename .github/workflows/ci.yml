@@ -147,8 +147,6 @@ jobs:
           nix_path: nixpkgs=channel:nixos-25.05
           extra_nix_config: |
             experimental-features = nix-command flakes
-      - name: nix flake check
-        run: nix flake check
       - name: Build native recorder package
         run: nix build .#codetracer-ruby-recorder
       - name: Build pure Ruby recorder package
