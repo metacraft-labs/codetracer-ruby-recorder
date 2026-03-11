@@ -46,3 +46,8 @@ lint:
     just lint-nix
 
 alias fmt := format
+
+# Bump version in version.txt (usage: just bump-version 0.2.0)
+bump-version version:
+    echo "{{version}}" > version.txt
+    @echo "version.txt → {{version}}"
