@@ -22,6 +22,12 @@ module CodeTracer
           puts opts
           exit
         end
+        opts.on('-V', '--version', 'Print version and exit') do
+          version_file = File.join(__dir__, '..', '..', 'version.txt')
+          version = File.exist?(version_file) ? File.read(version_file).strip : 'unknown'
+          puts "codetracer-ruby-recorder #{version}"
+          exit
+        end
       end
       parser.order!(argv)
 
