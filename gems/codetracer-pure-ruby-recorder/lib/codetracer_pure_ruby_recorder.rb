@@ -205,7 +205,7 @@ module CodeTracer
       if args.length == 2
         caller, content = args
         begin
-          location = caller[0].split[0].split(':')[0..1]
+          location = parse_caller_location(caller[0])
           path, line = location[0], location[1].to_i
           @record.register_step(path, line)
         rescue
@@ -214,10 +214,33 @@ module CodeTracer
         @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content, "")]
       elsif args.length == 3
         path, line, content = args
-        record_event(["#{path}:#{line}"], content)
+        @record.register_step(path, line)
+        @record.events << [:Event, RecordEvent.new(EVENT_KIND_WRITE, content, "")]
       else
         raise ArgumentError, "wrong number of arguments"
       end
+    end
+
+    # Parse a caller location string like "path:line ..." into [path, line_str].
+    # Handles Windows drive-letter paths (e.g. "D:/foo/bar.rb:42 in ...").
+    def parse_caller_location(loc)
+      # Strip everything after the first space (method info)
+      loc = loc.split[0]
+      # On Windows, paths start with a drive letter followed by ':'.
+      # Split on ':' and recombine the drive letter prefix if present.
+      parts = loc.split(':')
+      if parts.length >= 3 && parts[0].length == 1 && parts[0] =~ /[A-Za-z]/
+        # Drive letter detected: "D" + ":/path/to/file.rb" + "42"
+        path = "#{parts[0]}:#{parts[1]}"
+        line_str = parts[2]
+      elsif parts.length >= 2
+        path = parts[0]
+        line_str = parts[1]
+      else
+        path = loc
+        line_str = "0"
+      end
+      [path, line_str]
     end
 
     def record_exception(tp)
