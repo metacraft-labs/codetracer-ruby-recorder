@@ -72,6 +72,39 @@ file. ALWAYS remove older remarks if they are no longer true.
 
 You can consult this file before starting your coding tasks.
 
+# Windows development
+
+### Environment setup
+```bash
+# Bootstrap (first time)
+pwsh -File non-nix-build/windows/bootstrap-windows-diy.ps1
+
+# Install Ruby via MSYS2
+pacman -S mingw-w64-x86_64-ruby
+
+# Git Bash / MSYS2
+source non-nix-build/windows/env.sh
+
+# PowerShell
+. .\non-nix-build\windows\env.ps1
+```
+
+### Build (Windows)
+```bash
+just build-extension       # compile Rust native extension (GNU target)
+```
+
+### Test (Windows)
+```bash
+just test
+```
+
+### Dependencies
+- Rust 1.92.0 with `x86_64-pc-windows-gnu` target (via bootstrap)
+- Cap'n Proto 1.3.0 (via bootstrap)
+- Ruby 3.3+ (via MSYS2 pacman)
+- MSYS2 MinGW64 toolchain
+
 # Code quality guidelines
 
 - ALWAYS strive to achieve high code quality.
@@ -87,7 +120,7 @@ You can consult this file before starting your coding tasks.
 # Code commenting guidelines
 
 - Document public APIs and complex modules using standard code documentation conventions.
-- Comment the intention behind you code extensively. Omit comments only for very obvious
+- Comment the intention behind your code extensively. Omit comments only for very obvious
   facts that almost any developer would know.
 - Maintain the comments together with the code to keep them meaningful and current.
 - When the code is based on specific formats, standards or well-specified behavior of
@@ -97,5 +130,5 @@ You can consult this file before starting your coding tasks.
 # Writing git commit messages
 
 - You MUST use multiline git commit messages.
-- Use the convential commits style for the first line of the commit message.
+- Use the conventional commits style for the first line of the commit message.
 - Use the summary section of your final response as the remaining lines in the commit message.
