@@ -87,6 +87,7 @@ module CodeTracer
       @ignore_list = []
       @out_dir = out_dir
       @debug = debug
+      @call_depth = 0
       @record.debug = debug if @record.respond_to?(:debug=)
       setup_tracepoints
     end
@@ -167,15 +168,16 @@ module CodeTracer
         if @debug
           codetracer_original_puts "call #{method_name} with #{tp.parameters}"
         end
+        @call_depth += 1
         arg_records = prepare_args(tp)
         @record.register_step(tp.path, tp.lineno)
         @record.register_call(tp.path, tp.lineno, method_name, arg_records)
-      else
       end
     end
 
     def record_return(tp)
-      if self.tracks_call?(tp)
+      if self.tracks_call?(tp) && @call_depth > 0
+        @call_depth -= 1
         if @debug
           codetracer_original_puts 'return'
         end
@@ -192,7 +194,7 @@ module CodeTracer
     def record_step(tp)
       if self.tracks_call?(tp)
         @record.register_step(tp.path, tp.lineno)
-        variables = self.load_variables(tp.binding)
+        variables = load_variables(tp.binding)
         variables.each do |(name, value)|
           @record.register_variable(name, value)
         end
@@ -277,13 +279,13 @@ module CodeTracer
     def load_variables(binding)
       return [] if binding.nil?
 
-      binding.local_variables.filter_map do |name|
+      binding.local_variables.each_with_object([]) do |name, result|
         v = binding.local_variable_get(name)
 
         next if v.equal?(self) || v.equal?(@record)
 
         out = @record.to_value(v)
-        [name, out]
+        result << [name, out]
       end
     end
   end
