@@ -22,12 +22,12 @@ pacman -S mingw-w64-x86_64-ruby
 
 **Git Bash / MSYS2:**
 ```sh
-source non-nix-build/windows/env.sh
+source env.sh
 ```
 
 **PowerShell:**
 ```powershell
-. .\non-nix-build\windows\env.ps1
+. .\env.ps1
 ```
 
 ### Build & test

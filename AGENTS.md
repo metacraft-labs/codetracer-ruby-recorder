@@ -83,10 +83,10 @@ pwsh -File non-nix-build/windows/bootstrap-windows-diy.ps1
 pacman -S mingw-w64-x86_64-ruby
 
 # Git Bash / MSYS2
-source non-nix-build/windows/env.sh
+source env.sh
 
 # PowerShell
-. .\non-nix-build\windows\env.ps1
+. .\env.ps1
 ```
 
 ### Build (Windows)
