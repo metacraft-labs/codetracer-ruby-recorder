@@ -54,13 +54,25 @@ else
     INSTALL_ROOT="$WINDOWS_DIY_INSTALL_ROOT"
 fi
 
-# Run bootstrap if cargo not found
+# Install missing tools via env.ps1 (PowerShell has the install logic)
 CARGO_EXE="$INSTALL_ROOT/cargo/bin/cargo.exe"
-if [[ ! -f "$CARGO_EXE" ]]; then
-    echo "Running bootstrap..." >&2
-    if ! pwsh -NoProfile -ExecutionPolicy Bypass -File "$SCRIPT_DIR/bootstrap-windows-diy.ps1"; then
-        _ct_rbenv_error "Bootstrap failed"
-    fi
+if [[ ! -f "$CARGO_EXE" ]] || [[ ! -f "$INSTALL_ROOT/capnp/${TOOLCHAIN[CAPNP_VERSION]}/prebuilt/capnproto-tools-win32-${TOOLCHAIN[CAPNP_VERSION]}/capnp.exe" ]]; then
+    echo "Installing missing tools via env.ps1..." >&2
+    _ct_rbenv_to_windows_path() {
+        if command -v cygpath >/dev/null 2>&1; then
+            cygpath -w "$1"
+        else
+            echo "$1"
+        fi
+    }
+    _ct_rbenv_resolve_pwsh() {
+        if command -v pwsh >/dev/null 2>&1; then echo "pwsh"; return; fi
+        if command -v powershell.exe >/dev/null 2>&1; then echo "powershell.exe"; return; fi
+        echo "PowerShell not found" >&2; return 1
+    }
+    _ct_rbenv_pwsh=$(_ct_rbenv_resolve_pwsh) || _ct_rbenv_error "PowerShell not found"
+    _ct_rbenv_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    "$_ct_rbenv_pwsh" -NoProfile -ExecutionPolicy Bypass -File "$(_ct_rbenv_to_windows_path "$_ct_rbenv_root_dir/env.ps1")" || _ct_rbenv_error "Tool installation failed"
 fi
 
 export RUSTUP_HOME="$INSTALL_ROOT/rustup"
