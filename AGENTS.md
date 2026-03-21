@@ -76,16 +76,13 @@ You can consult this file before starting your coding tasks.
 
 ### Environment setup
 ```bash
-# Bootstrap (first time)
-pwsh -File non-nix-build/windows/bootstrap-windows-diy.ps1
-
 # Install Ruby via MSYS2
 pacman -S mingw-w64-x86_64-ruby
 
-# Git Bash / MSYS2
+# Git Bash / MSYS2 (auto-installs Rust & Cap'n Proto on first run)
 source env.sh
 
-# PowerShell
+# PowerShell (auto-installs Rust & Cap'n Proto on first run)
 . .\env.ps1
 ```
 

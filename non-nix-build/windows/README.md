@@ -8,17 +8,12 @@ Standalone Windows dev environment for the Ruby recorder.
 
 ## Quick start
 
-### Bootstrap (first time)
-```powershell
-pwsh -File non-nix-build\windows\bootstrap-windows-diy.ps1
-```
-
 ### Install Ruby via MSYS2
 ```sh
 pacman -S mingw-w64-x86_64-ruby
 ```
 
-### Activate environment
+### Activate environment (auto-installs Rust & Cap'n Proto on first run)
 
 **Git Bash / MSYS2:**
 ```sh
@@ -40,8 +35,8 @@ just test              # run tests
 
 | Tool | Version | Source |
 |------|---------|--------|
-| Rust | 1.92.0 (GNU target) | bootstrap script |
-| Cap'n Proto | 1.3.0 | bootstrap script |
+| Rust | 1.92.0 (GNU target) | env.ps1 / env.sh (auto-installed) |
+| Cap'n Proto | 1.3.0 | env.ps1 / env.sh (auto-installed) |
 | Ruby | 3.3+ | MSYS2 pacman |
 
 ## Notes

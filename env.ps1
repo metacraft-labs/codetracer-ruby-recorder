@@ -2,6 +2,7 @@
 # Usage: . .\env.ps1
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 $scriptDir = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "non-nix-build\windows"
 
 # Parse toolchain versions
@@ -17,25 +18,71 @@ Get-Content $toolchainFile | ForEach-Object {
 
 $installRoot = if ($env:WINDOWS_DIY_INSTALL_ROOT) { $env:WINDOWS_DIY_INSTALL_ROOT }
                else { Join-Path $env:LOCALAPPDATA "codetracer/windows-diy" }
+New-Item -ItemType Directory -Force -Path $installRoot | Out-Null
 
-# Run bootstrap if needed
-$cargoExe = Join-Path $installRoot "cargo/bin/cargo.exe"
-if (-not (Test-Path $cargoExe)) {
-    Write-Host "Running bootstrap..."
-    & pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptDir "bootstrap-windows-diy.ps1")
+$arch = if ((Get-CimInstance Win32_ComputerSystem).SystemType -match "ARM") { "arm64" } else { "x64" }
+
+# --- Ensure Rust ---
+$rustupHome = Join-Path $installRoot "rustup"
+$cargoHome = Join-Path $installRoot "cargo"
+$env:RUSTUP_HOME = $rustupHome
+$env:CARGO_HOME = $cargoHome
+$rustcExe = Join-Path $cargoHome "bin/rustc.exe"
+$rustupExe = Join-Path $cargoHome "bin/rustup.exe"
+$rustToolchain = $toolchain["RUST_TOOLCHAIN_VERSION"]
+
+$needRust = $true
+if (Test-Path $rustcExe) {
+    $rustcVer = (& $rustcExe --version 2>&1)
+    if ($rustcVer -match "^rustc $([regex]::Escape($rustToolchain)) ") {
+        Write-Host "Rust $rustToolchain already installed"
+        $needRust = $false
+    }
 }
+if ($needRust) {
+    Write-Host "Installing Rust $rustToolchain..."
+    New-Item -ItemType Directory -Force -Path $rustupHome | Out-Null
+    New-Item -ItemType Directory -Force -Path $cargoHome | Out-Null
+    $rustupInit = Join-Path $env:TEMP "rustup-init.exe"
+    $target = if ($arch -eq "arm64") { "aarch64-pc-windows-msvc" } else { "x86_64-pc-windows-msvc" }
+    $rustupUrl = "https://static.rust-lang.org/rustup/dist/$target/rustup-init.exe"
+    Invoke-WebRequest -Uri $rustupUrl -OutFile $rustupInit
+    & $rustupInit --default-toolchain $rustToolchain --profile minimal -y --no-modify-path
+    if ($LASTEXITCODE -ne 0) { throw "rustup-init failed" }
+    Remove-Item $rustupInit -Force -ErrorAction SilentlyContinue
+}
+# GNU target for MSYS2 Ruby extension compilation
+& $rustupExe target add x86_64-pc-windows-gnu 2>&1 | Out-Null
+& $rustupExe component add clippy 2>&1 | Out-Null
 
-# Set environment
-$env:RUSTUP_HOME = Join-Path $installRoot "rustup"
-$env:CARGO_HOME = Join-Path $installRoot "cargo"
+# --- Ensure Cap'n Proto ---
+$capnpVersion = $toolchain["CAPNP_VERSION"]
+$capnpDir = Join-Path $installRoot "capnp/$capnpVersion/prebuilt/capnproto-tools-win32-$capnpVersion"
+$capnpExe = Join-Path $capnpDir "capnp.exe"
 
-$capnpDir = Join-Path $installRoot "capnp/$($toolchain.CAPNP_VERSION)/prebuilt/capnproto-tools-win32-$($toolchain.CAPNP_VERSION)"
+if (Test-Path $capnpExe) {
+    Write-Host "Cap'n Proto $capnpVersion already installed"
+} else {
+    if ($arch -ne "x64") { throw "Cap'n Proto prebuilt only available for x64" }
+    Write-Host "Installing Cap'n Proto $capnpVersion..."
+    $capnpUrl = "https://capnproto.org/capnproto-c++-win32-$capnpVersion.zip"
+    $capnpZip = Join-Path $env:TEMP "capnp-$capnpVersion.zip"
+    Invoke-WebRequest -Uri $capnpUrl -OutFile $capnpZip
+    $hash = (Get-FileHash -Path $capnpZip -Algorithm SHA256).Hash
+    $expected = $toolchain["CAPNP_WIN_X64_SHA256"]
+    if ($hash -ne $expected) { throw "Cap'n Proto SHA256 mismatch: got $hash, expected $expected" }
+    $capnpParent = Split-Path -Parent $capnpDir
+    New-Item -ItemType Directory -Force -Path $capnpParent | Out-Null
+    Expand-Archive -Path $capnpZip -DestinationPath $capnpParent -Force
+    Remove-Item $capnpZip
+    Write-Host "Installed Cap'n Proto to $capnpDir"
+}
 
 # Rust GNU target for Ruby extension
 $env:CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu"
 
-# Idempotent PATH update: only prepend entries not already present
-$pathEntries = @("$($env:CARGO_HOME)\bin", $capnpDir)
+# Set PATH
+$pathEntries = @("$cargoHome\bin", $capnpDir)
 foreach ($entry in $pathEntries) {
     if ($env:Path -notlike "*$entry*") {
         $env:Path = "$entry;$($env:Path)"
