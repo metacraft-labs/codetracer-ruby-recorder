@@ -221,7 +221,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         tracer: Mutex::new(create_trace_writer(
             "ruby",
             &vec![],
-            TraceEventsFileFormat::Binary,
+            TraceEventsFileFormat::Ctfs,
         )),
         data: RecorderData {
             active: false,
@@ -668,7 +668,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
             _ => rb_raise(rb_eIOError, c"Unknown format".as_ptr() as *const c_char),
         }
     } else {
-        TraceEventsFileFormat::Json
+        TraceEventsFileFormat::Ctfs
     };
 
     match rstring_checked(out_dir) {
