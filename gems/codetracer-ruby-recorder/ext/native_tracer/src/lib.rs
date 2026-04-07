@@ -285,6 +285,7 @@ fn begin_trace(
     let events = match format {
         TraceEventsFileFormat::Json => dir.join("trace.json"),
         TraceEventsFileFormat::BinaryV0 | TraceEventsFileFormat::Binary => dir.join("trace.bin"),
+        TraceEventsFileFormat::Ctfs => dir.join("trace.ct"),
     };
     let metadata = dir.join("trace_metadata.json");
     let paths = dir.join("trace_paths.json");
@@ -663,6 +664,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
             "binaryv0" => TraceEventsFileFormat::BinaryV0,
             "binary" | "bin" => TraceEventsFileFormat::Binary,
             "json" => TraceEventsFileFormat::Json,
+            "ctfs" | "ct" => TraceEventsFileFormat::Ctfs,
             _ => rb_raise(rb_eIOError, c"Unknown format".as_ptr() as *const c_char),
         }
     } else {
