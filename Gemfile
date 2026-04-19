@@ -4,6 +4,7 @@ source "https://rubygems.org"
 
 gem "codetracer-ruby-recorder", path: "gems/codetracer-ruby-recorder"
 gem "codetracer-pure-ruby-recorder", path: "gems/codetracer-pure-ruby-recorder"
+gem "codetracer-rack", path: "gems/codetracer-rack"
 
 # Development and debugging gems (optional - install separately if needed)
 # gem "debug", "~> 1.7"      # Ruby debugging with rdbg

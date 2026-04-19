@@ -4,6 +4,13 @@ PATH
     codetracer-pure-ruby-recorder (0.1.0)
 
 PATH
+  remote: gems/codetracer-rack
+  specs:
+    codetracer-rack (0.1.0)
+      json
+      rack (>= 2.0)
+
+PATH
   remote: gems/codetracer-ruby-recorder
   specs:
     codetracer-ruby-recorder (0.1.0)
@@ -21,6 +28,7 @@ GEM
       racc
     prism (1.4.0)
     racc (1.8.1)
+    rack (3.2.6)
     rainbow (3.1.1)
     regexp_parser (2.10.0)
     rubocop (1.77.0)
@@ -48,6 +56,7 @@ PLATFORMS
 
 DEPENDENCIES
   codetracer-pure-ruby-recorder!
+  codetracer-rack!
   codetracer-ruby-recorder!
   rubocop (~> 1.77)
 
