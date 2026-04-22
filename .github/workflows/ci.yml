@@ -16,6 +16,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+      - name: Clone codetracer-trace-format (Cargo path dependency)
+        shell: bash
+        run: |
+          PINS=".github/sibling-pins"
+          PINS_JSON=".github/sibling-pins.json"
+          TF_REF="main"
+          if [ -f "${PINS}" ]; then
+            PIN="$(grep '^codetracer-trace-format ' "${PINS}" | cut -d' ' -f2)" || true
+            [ -n "${PIN}" ] && TF_REF="${PIN}"
+          elif [ -f "${PINS_JSON}" ]; then
+            TF_REF="$(python3 -c "import json,sys; d=json.load(open('${PINS_JSON}')); print(d.get('codetracer-trace-format',''))" 2>/dev/null)" || true
+          fi
+          rm -rf "${GITHUB_WORKSPACE}/../codetracer-trace-format"
+          if ! git clone --depth 1 --branch "${TF_REF:-main}" --single-branch \
+            "https://github.com/metacraft-labs/codetracer-trace-format.git" \
+            "${GITHUB_WORKSPACE}/../codetracer-trace-format" 2>/dev/null; then
+            rm -rf "${GITHUB_WORKSPACE}/../codetracer-trace-format"
+            git clone --no-checkout "https://github.com/metacraft-labs/codetracer-trace-format.git" \
+              "${GITHUB_WORKSPACE}/../codetracer-trace-format"
+            git -C "${GITHUB_WORKSPACE}/../codetracer-trace-format" checkout "${TF_REF:-main}"
+          fi
       - name: Install system dependencies
         shell: bash
         run: |
@@ -60,6 +81,26 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+      - name: Clone codetracer-trace-format (Cargo path dependency)
+        run: |
+          PINS=".github/sibling-pins"
+          PINS_JSON=".github/sibling-pins.json"
+          TF_REF="main"
+          if [ -f "${PINS}" ]; then
+            PIN="$(grep '^codetracer-trace-format ' "${PINS}" | cut -d' ' -f2)" || true
+            [ -n "${PIN}" ] && TF_REF="${PIN}"
+          elif [ -f "${PINS_JSON}" ]; then
+            TF_REF="$(python3 -c "import json,sys; d=json.load(open('${PINS_JSON}')); print(d.get('codetracer-trace-format',''))" 2>/dev/null)" || true
+          fi
+          rm -rf "${GITHUB_WORKSPACE}/../codetracer-trace-format"
+          if ! git clone --depth 1 --branch "${TF_REF:-main}" --single-branch \
+            "https://github.com/metacraft-labs/codetracer-trace-format.git" \
+            "${GITHUB_WORKSPACE}/../codetracer-trace-format" 2>/dev/null; then
+            rm -rf "${GITHUB_WORKSPACE}/../codetracer-trace-format"
+            git clone --no-checkout "https://github.com/metacraft-labs/codetracer-trace-format.git" \
+              "${GITHUB_WORKSPACE}/../codetracer-trace-format"
+            git -C "${GITHUB_WORKSPACE}/../codetracer-trace-format" checkout "${TF_REF:-main}"
+          fi
       - name: Install system dependencies
         shell: bash
         run: |
