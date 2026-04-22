@@ -11,6 +11,7 @@ require 'net/http'
 require 'json'
 require 'socket'
 require 'time'
+require 'tmpdir'
 require 'rack'
 require 'uri'
 require_relative '../gems/codetracer-rack/lib/codetracer-rack'
@@ -130,7 +131,7 @@ end
 
 class TestRackIntegration < Minitest::Test
   def setup
-    @manifest_path = "/tmp/codetracer_rack_integration_#{$PROCESS_ID}.jsonl"
+    @manifest_path = File.join(Dir.tmpdir, "codetracer_rack_integration_#{$PROCESS_ID}.jsonl")
     ENV['CODETRACER_SPAN_MANIFEST'] = @manifest_path
     File.delete(@manifest_path) if File.exist?(@manifest_path)
 

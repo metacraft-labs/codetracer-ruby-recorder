@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'tmpdir'
 
 module CodeTracer
   module Rack
@@ -92,9 +93,9 @@ module CodeTracer
 
       # Appends a completed span as a JSON line to the manifest file.
       # The manifest path is configurable via the CODETRACER_SPAN_MANIFEST
-      # environment variable, defaulting to /tmp/codetracer_spans.jsonl.
+      # environment variable, defaulting to <tmpdir>/codetracer_spans.jsonl.
       def write_span_to_manifest(span)
-        manifest_path = ENV['CODETRACER_SPAN_MANIFEST'] || '/tmp/codetracer_spans.jsonl'
+        manifest_path = ENV['CODETRACER_SPAN_MANIFEST'] || File.join(Dir.tmpdir, 'codetracer_spans.jsonl')
         File.open(manifest_path, 'a') do |f|
           f.puts(span.to_json)
         end

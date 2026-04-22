@@ -130,6 +130,8 @@ jobs:
           nix_path: nixpkgs=channel:nixos-25.05
           extra_nix_config: |
             experimental-features = nix-command flakes
+      - name: Install Ruby dependencies via Nix
+        run: nix develop -c bundle install
       - name: Build extension via Nix
         run: nix develop -c just build-extension
       - name: Run tests via Nix

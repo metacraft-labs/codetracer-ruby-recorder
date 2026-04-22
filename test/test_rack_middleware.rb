@@ -3,12 +3,13 @@
 require 'English'
 require 'minitest/autorun'
 require 'json'
+require 'tmpdir'
 require 'rack'
 require_relative '../gems/codetracer-rack/lib/codetracer-rack'
 
 class TestRackMiddleware < Minitest::Test
   def setup
-    @manifest_path = "/tmp/codetracer_test_spans_#{$PROCESS_ID}.jsonl"
+    @manifest_path = File.join(Dir.tmpdir, "codetracer_test_spans_#{$PROCESS_ID}.jsonl")
     ENV['CODETRACER_SPAN_MANIFEST'] = @manifest_path
     File.delete(@manifest_path) if File.exist?(@manifest_path)
   end
