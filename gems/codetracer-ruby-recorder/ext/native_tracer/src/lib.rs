@@ -15,7 +15,7 @@ use codetracer_trace_types::{
     CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line, ThreadId, TraceLowLevelEvent,
     TypeId, TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord, NONE_TYPE_ID,
 };
-use codetracer_trace_writer::{
+use codetracer_trace_writer_nim::{
     create_trace_writer, trace_writer::TraceWriter, TraceEventsFileFormat,
 };
 use rb_sys::{
@@ -284,7 +284,9 @@ fn begin_trace(
     std::fs::create_dir_all(dir)?;
     let events = match format {
         TraceEventsFileFormat::Json => dir.join("trace.json"),
-        TraceEventsFileFormat::BinaryV0 | TraceEventsFileFormat::Binary => dir.join("trace.bin"),
+        TraceEventsFileFormat::BinaryV0
+        | TraceEventsFileFormat::Binary
+        | TraceEventsFileFormat::Ctfs => dir.join("trace.bin"),
     };
     let metadata = dir.join("trace_metadata.json");
     let paths = dir.join("trace_paths.json");
@@ -648,7 +650,7 @@ unsafe fn register_parameter_values(
 
 unsafe fn record_event(tracer: &mut dyn TraceWriter, path: &str, line: i64, content: String) {
     TraceWriter::register_step(tracer, Path::new(path), Line(line));
-    TraceWriter::register_special_event(tracer, EventLogKind::Write, &content)
+    TraceWriter::register_special_event(tracer, EventLogKind::Write, "", &content)
 }
 
 unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) -> VALUE {
@@ -902,7 +904,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     } else if (ev & RUBY_EVENT_RAISE) != 0 {
         let exc = rb_tracearg_raised_exception(arg);
         let msg = value_to_string_exception_safe(&recorder.data, exc);
-        TraceWriter::register_special_event(&mut **locked_tracer, EventLogKind::Error, &msg);
+        TraceWriter::register_special_event(&mut **locked_tracer, EventLogKind::Error, "", &msg);
     }
     recorder.data.in_event_hook = false;
 }
