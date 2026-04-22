@@ -53,7 +53,7 @@ jobs:
           nimble install -y stew results
           nim c --app:staticlib --mm:arc --noMain -d:release -p:src \
             -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
-          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "\$GITHUB_ENV"
+          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
       - name: Install system dependencies
         shell: bash
         run: |
