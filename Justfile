@@ -16,6 +16,19 @@ build-extension:
         cp -r gems/codetracer-ruby-recorder/ext/native_tracer/target/x86_64-pc-windows-gnu/release gems/codetracer-ruby-recorder/ext/native_tracer/target; \
         mv gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder.dll gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder.so; \
     fi
+    # Ensure the expected filename exists as a real file (not an absolute symlink)
+    # so that gem build/install works correctly.
+    @release_dir="gems/codetracer-ruby-recorder/ext/native_tracer/target/release"; \
+    dlext=$(ruby -e 'print RbConfig::CONFIG["DLEXT"]' 2>/dev/null || echo "so"); \
+    target="$release_dir/codetracer_ruby_recorder.$dlext"; \
+    if [ -L "$target" ]; then \
+        real=$(readlink -f "$target"); \
+        rm "$target"; \
+        cp "$real" "$target"; \
+    elif [ ! -f "$target" ]; then \
+        src="$release_dir/libcodetracer_ruby_recorder.$dlext"; \
+        if [ -f "$src" ]; then cp "$src" "$target"; fi; \
+    fi
 
 format-rust:
     cargo fmt --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml

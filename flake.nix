@@ -158,6 +158,7 @@
           git-lfs
 
           capnproto # Required for the native tracer's Cap'n Proto serialization
+          zstd # Required for linking the Nim trace writer (libzstd)
         ] ++ pkgs.lib.optionals isLinux [
           # C standard library headers required for Ruby C extension compilation on Linux
           # Without this, build fails with "stdarg.h file not found" error

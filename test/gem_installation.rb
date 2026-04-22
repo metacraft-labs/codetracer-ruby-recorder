@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'minitest/autorun'
 require 'fileutils'
 require 'open3'
@@ -11,14 +13,14 @@ class GemInstallationTest < Minitest::Test
 
       if gem_bin == 'codetracer-ruby-recorder'
         system('just', 'build-extension', exception: true)
-        ###WHY?!?!?! dlext = RbConfig::CONFIG['DLEXT']
-        ###WHY?!?!?! ext_path = File.join(gem_dir, 'ext', 'native_tracer', 'target', 'release', "codetracer_ruby_recorder.#{dlext}")
-        ###WHY?!?!?! FileUtils.rm_f(ext_path)
+        # ##WHY?!?!?! dlext = RbConfig::CONFIG['DLEXT']
+        # ##WHY?!?!?! ext_path = File.join(gem_dir, 'ext', 'native_tracer', 'target', 'release', "codetracer_ruby_recorder.#{dlext}")
+        # ##WHY?!?!?! FileUtils.rm_f(ext_path)
       end
 
       Dir.mktmpdir('gemhome') do |gem_home|
         gemspec = Dir[File.join(gem_dir, '*.gemspec')].first
-        gem_build = IO.popen(%W[gem -C #{gem_dir} build #{File.basename(gemspec)}], err: [:child, :out]) { |io| io.read }
+        gem_build = IO.popen(%W[gem -C #{gem_dir} build #{File.basename(gemspec)}], err: %i[child out], &:read)
         gem_file = gem_build.lines.grep(/File:/).first.split.last
         gem_file = File.expand_path(File.join(gem_dir, gem_file))
 
@@ -27,19 +29,25 @@ class GemInstallationTest < Minitest::Test
 
         out_dir = File.join('test', 'tmp', "gem_install_#{gem_bin.tr('-', '_')}")
         FileUtils.rm_rf(out_dir)
-        stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, '-S', gem_bin, '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
+        stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, '-S', gem_bin, '--out-dir', out_dir,
+                                                File.join('test', 'programs', 'addition.rb'))
         raise "#{gem_bin} failed: #{stderr}" unless status.success?
+
         assert_equal "3\n", stdout
-        assert File.exist?(File.join(out_dir, 'trace.json'))
+        # The native recorder produces binary .ct files (CTFS format) while
+        # the pure recorder produces trace.json.
+        trace_exists = File.exist?(File.join(out_dir, 'trace.json')) ||
+                       !Dir.glob(File.join(out_dir, '*.ct')).empty?
+        assert trace_exists, "No trace output found in #{out_dir}"
 
         out_dir_lib = File.join('test', 'tmp', "gem_install_#{gem_bin.tr('-', '_')}_lib")
         FileUtils.rm_rf(out_dir_lib)
 
         recorder_class = if gem_bin == 'codetracer-ruby-recorder'
-          "CodeTracer::RubyRecorder"
-        else
-          "CodeTracer::PureRubyRecorder"
-        end
+                           'CodeTracer::RubyRecorder'
+                         else
+                           'CodeTracer::PureRubyRecorder'
+                         end
 
         script = <<~RUBY
           require '#{gem_module}'
@@ -57,6 +65,7 @@ class GemInstallationTest < Minitest::Test
         File.write(script_path, script)
         stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, script_path)
         raise "#{gem_module} library failed: #{stderr}" unless status.success?
+
         expected_out = <<~OUT
           start trace
           this will not be traced
@@ -64,7 +73,11 @@ class GemInstallationTest < Minitest::Test
           tracing disabled
         OUT
         assert_equal expected_out, stdout
-        assert File.exist?(File.join(out_dir_lib, 'trace.json'))
+        # The native recorder produces binary .ct files (CTFS format) while
+        # the pure recorder produces trace.json.
+        trace_exists = File.exist?(File.join(out_dir_lib, 'trace.json')) ||
+                       !Dir.glob(File.join(out_dir_lib, '*.ct')).empty?
+        assert trace_exists, "No trace output found in #{out_dir_lib}"
       end
     end
   end

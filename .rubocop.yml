@@ -1,0 +1,64 @@
+# Rubocop configuration for codetracer-ruby-recorder.
+#
+# This configuration is deliberately permissive. The codebase was developed
+# without rubocop and has many pre-existing style deviations. We disable
+# cops that produce false positives or flag intentional patterns, keeping
+# only those that catch genuine bugs.
+
+AllCops:
+  NewCops: enable
+  SuggestExtensions: false
+  TargetRubyVersion: 3.2
+  Exclude:
+    - 'vendor/**/*'
+    - 'gems/*/vendor/**/*'
+
+# Disable all Metrics cops — method/class size limits are too aggressive
+# for recorder internals that necessarily have large switch statements.
+Metrics:
+  Enabled: false
+
+# Disable all Layout cops — the codebase uses a consistent but non-standard
+# style that rubocop flags extensively.
+Layout:
+  Enabled: false
+
+# Disable all Style cops — too many false positives on intentional patterns.
+Style:
+  Enabled: false
+
+# Disable all Naming cops.
+Naming:
+  Enabled: false
+
+# Keep Lint enabled but disable specific cops that flag intentional patterns.
+Lint/ScriptPermission:
+  Enabled: false
+Lint/UnusedMethodArgument:
+  Enabled: false
+Lint/RescueException:
+  Enabled: false
+Lint/DuplicateBranch:
+  Enabled: false
+Lint/EmptyWhen:
+  Enabled: false
+Lint/NonAtomicFileOperation:
+  Enabled: false
+Lint/RedundantRequireStatement:
+  Enabled: false
+Lint/RedundantStringCoercion:
+  Enabled: false
+Lint/AmbiguousOperatorPrecedence:
+  Enabled: false
+
+# Disable Gemspec cops.
+Gemspec:
+  Enabled: false
+
+# Disable Bundler cops.
+Bundler:
+  Enabled: false
+
+# Disable Security cops — eval is used intentionally in the recorder.
+Security:
+  Enabled: false
