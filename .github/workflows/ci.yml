@@ -37,6 +37,23 @@ jobs:
               "${GITHUB_WORKSPACE}/../codetracer-trace-format"
             git -C "${GITHUB_WORKSPACE}/../codetracer-trace-format" checkout "${TF_REF:-main}"
           fi
+
+      - name: Install Nim
+        uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: "2.2.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Nim trace writer library
+        run: |
+          git clone --depth 1 \
+            "https://github.com/metacraft-labs/codetracer-trace-format-nim.git" \
+            "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
+          cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
+          nimble install -y stew results
+          nim c --app:staticlib --mm:arc --noMain -d:release -p:src \
+            -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
+          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "\$GITHUB_ENV"
       - name: Install system dependencies
         shell: bash
         run: |
