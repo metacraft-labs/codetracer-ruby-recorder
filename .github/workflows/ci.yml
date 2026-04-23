@@ -28,20 +28,12 @@ jobs:
           curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
           echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
-      - name: Build Nim trace writer library
-        shell: bash
-        run: |
-          cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
-          nimble install -y stew results
-          nim c --app:staticlib --mm:arc --noMain -d:release -p:src \
-            -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
-          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
       - name: Install system dependencies
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             sudo apt-get update
-            sudo apt-get install -y --no-install-recommends libclang-dev capnproto libcapnp-dev pkg-config
+            sudo apt-get install -y --no-install-recommends libclang-dev capnproto libcapnp-dev pkg-config libzstd-dev
             # Set environment variables for Rust/bindgen
             LLVM_VERSION=$(ls /usr/lib/ | grep llvm | sort -V | tail -1)
             echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
@@ -49,6 +41,20 @@ jobs:
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             brew install capnp pkg-config zstd
           fi
+      - name: Build Nim trace writer library
+        shell: bash
+        run: |
+          cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
+          nimble install -y stew results
+          NIM_EXTRA_FLAGS=""
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            ZSTD_PREFIX=$(brew --prefix zstd)
+            NIM_EXTRA_FLAGS="--passC:-I$ZSTD_PREFIX/include --passL:-L$ZSTD_PREFIX/lib --passL:-lzstd"
+          fi
+          nim c --app:staticlib --mm:arc --noMain -d:release --passC:'-fPIC' -p:src \
+            $NIM_EXTRA_FLAGS \
+            -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
+          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -91,23 +97,22 @@ jobs:
           curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
           echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
-      - name: Build Nim trace writer library
-        run: |
-          cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
-          nimble install -y stew results
-          nim c --app:staticlib --mm:arc --noMain -d:release -p:src \
-            -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
-          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
-
       - name: Install system dependencies
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libclang-dev capnproto libcapnp-dev pkg-config
+          sudo apt-get install -y --no-install-recommends libclang-dev capnproto libcapnp-dev pkg-config libzstd-dev
           # Set environment variables for Rust/bindgen
           LLVM_VERSION=$(ls /usr/lib/ | grep llvm | sort -V | tail -1)
           echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
           echo "CLANG_PATH=/usr/bin/clang" >> $GITHUB_ENV
+      - name: Build Nim trace writer library
+        run: |
+          cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
+          nimble install -y stew results
+          nim c --app:staticlib --mm:arc --noMain -d:release --passC:'-fPIC' -p:src \
+            -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
+          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
