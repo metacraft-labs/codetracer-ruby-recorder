@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "codetracer-trace-format": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776875322,
+        "narHash": "sha256-oZ9eldtMcWD1doqsjy4YBzh2qBeLdQSu7mbnoligYI8=",
+        "owner": "metacraft-labs",
+        "repo": "codetracer-trace-format",
+        "rev": "92eb000c9987a9bc78ee148c635c36cf39b1e1b1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "metacraft-labs",
+        "repo": "codetracer-trace-format",
+        "type": "github"
+      }
+    },
     "fenix": {
       "inputs": {
         "nixpkgs": [
@@ -112,6 +128,7 @@
     },
     "root": {
       "inputs": {
+        "codetracer-trace-format": "codetracer-trace-format",
         "fenix": "fenix",
         "nixpkgs": "nixpkgs",
         "pre-commit-hooks": "pre-commit-hooks"
