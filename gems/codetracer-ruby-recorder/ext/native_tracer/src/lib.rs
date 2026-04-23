@@ -2,7 +2,6 @@
 
 use std::sync::Mutex;
 use std::{
-    collections::HashMap,
     ffi::CStr,
     mem::transmute,
     os::raw::{c_char, c_int, c_void},
@@ -12,11 +11,11 @@ use std::{
 };
 
 use codetracer_trace_types::{
-    CallRecord, EventLogKind, FieldTypeRecord, FullValueRecord, Line, ThreadId, TraceLowLevelEvent,
-    TypeId, TypeKind, TypeRecord, TypeSpecificInfo, ValueRecord, NONE_TYPE_ID,
+    CallRecord, EventLogKind, FullValueRecord, Line, ThreadId, TraceLowLevelEvent, TypeId, TypeKind,
+    ValueRecord, NONE_TYPE_ID,
 };
 use codetracer_trace_writer_nim::{
-    create_trace_writer, trace_writer::TraceWriter, TraceEventsFileFormat,
+    create_trace_writer, trace_writer::TraceWriter, StreamingValueEncoder, TraceEventsFileFormat,
 };
 use rb_sys::{
     rb_add_event_hook2, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct, rb_cThread, rb_cTime,
@@ -94,7 +93,6 @@ struct RecorderData {
     id: InternedSymbols,
     set_class: VALUE,
     open_struct_class: VALUE,
-    struct_type_versions: HashMap<String, usize>,
     int_type_id: TypeId,
     float_type_id: TypeId,
     bool_type_id: TypeId,
@@ -106,6 +104,10 @@ struct RecorderData {
 struct Recorder {
     tracer: Mutex<Box<dyn TraceWriter>>,
     data: RecorderData,
+    /// Reusable streaming CBOR encoder — avoids building intermediate
+    /// `ValueRecord` trees when encoding Ruby values.  Reset between
+    /// each top-level value encoding.
+    streaming_encoder: StreamingValueEncoder,
 }
 
 fn should_ignore_path(path: &str) -> bool {
@@ -122,67 +124,9 @@ fn should_ignore_path(path: &str) -> bool {
     PATTERNS.iter().any(|p| path.contains(p))
 }
 
-fn value_type_id(val: &ValueRecord) -> TypeId {
-    use ValueRecord::*;
-    match val {
-        Int { type_id, .. }
-        | Float { type_id, .. }
-        | Bool { type_id, .. }
-        | String { type_id, .. }
-        | Sequence { type_id, .. }
-        | Tuple { type_id, .. }
-        | Struct { type_id, .. }
-        | Variant { type_id, .. }
-        | Reference { type_id, .. }
-        | Raw { type_id, .. }
-        | Error { type_id, .. }
-        | BigInt { type_id, .. }
-        | Char { type_id, .. }
-        | None { type_id } => *type_id,
-        Cell { .. } => NONE_TYPE_ID,
-    }
-}
-
-unsafe fn struct_value<T: AsRef<str> + ToString>(
-    recorder: &mut RecorderData,
-    tracer: &mut dyn TraceWriter,
-    class_name: &str,
-    field_names: &[T],
-    field_values: &[VALUE],
-    depth: usize,
-) -> ValueRecord {
-    let mut vals = Vec::with_capacity(field_values.len());
-    for &v in field_values {
-        vals.push(to_value(recorder, tracer, v, depth - 1));
-    }
-
-    let version_entry = recorder
-        .struct_type_versions
-        .entry(class_name.to_string())
-        .or_insert(0);
-    let name_version = format!("{} (#{})", class_name, *version_entry);
-    *version_entry += 1;
-    let mut field_types = Vec::with_capacity(field_names.len());
-    for (n, v) in field_names.iter().zip(&vals) {
-        field_types.push(FieldTypeRecord {
-            name: (*n).to_string(),
-            type_id: value_type_id(v),
-        });
-    }
-    let typ = TypeRecord {
-        kind: TypeKind::Struct,
-        lang_type: name_version,
-        specific_info: TypeSpecificInfo::Struct {
-            fields: field_types,
-        },
-    };
-    let type_id = TraceWriter::ensure_raw_type_id(tracer, typ);
-
-    ValueRecord::Struct {
-        field_values: vals,
-        type_id,
-    }
-}
+// Legacy tree-based helpers (value_type_id, struct_value, to_value) have been
+// removed — the streaming encoder (M59) encodes Ruby values directly to CBOR
+// bytes without building intermediate ValueRecord trees.
 
 unsafe extern "C" fn recorder_free(ptr: *mut c_void) {
     if !ptr.is_null() {
@@ -231,7 +175,6 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
             id: InternedSymbols::new(),
             set_class: Qnil.into(),
             open_struct_class: Qnil.into(),
-            struct_type_versions: HashMap::new(),
             int_type_id: TypeId::default(),
             float_type_id: TypeId::default(),
             bool_type_id: TypeId::default(),
@@ -239,6 +182,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
             symbol_type_id: TypeId::default(),
             error_type_id: TypeId::default(),
         },
+        streaming_encoder: StreamingValueEncoder::new(),
     });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
     rb_data_typed_object_wrap(klass, Box::into_raw(recorder) as *mut c_void, ty)
@@ -355,34 +299,40 @@ unsafe fn value_to_string_exception_safe(recorder: &RecorderData, val: VALUE) ->
     }
 }
 
-unsafe fn to_value(
+/// Maximum recursion depth for streaming encoding. Prevents stack overflow
+/// from deeply nested Ruby structures and stays within the encoder's
+/// compound nesting limit (32 levels).
+const MAX_STREAMING_DEPTH: usize = 10;
+
+/// Encode a Ruby `VALUE` directly to CBOR bytes using the streaming encoder,
+/// bypassing intermediate `ValueRecord` tree allocation.
+///
+/// This is the M59 fast path — analogous to the Python M58 streaming encoder.
+/// Ruby objects are walked recursively and encoded via `StreamingValueEncoder`
+/// C FFI calls.
+unsafe fn encode_ruby_value_streaming(
     recorder: &mut RecorderData,
     tracer: &mut dyn TraceWriter,
+    encoder: &mut StreamingValueEncoder,
     val: VALUE,
     depth: usize,
-) -> ValueRecord {
+) {
     if depth == 0 {
-        return ValueRecord::None {
-            type_id: recorder.error_type_id,
-        };
+        encoder.write_none(recorder.error_type_id);
+        return;
     }
     if NIL_P(val) {
-        return ValueRecord::None {
-            type_id: recorder.error_type_id,
-        };
+        encoder.write_none(recorder.error_type_id);
+        return;
     }
     if val == (Qtrue as VALUE) || val == (Qfalse as VALUE) {
-        return ValueRecord::Bool {
-            b: val == (Qtrue as VALUE),
-            type_id: recorder.bool_type_id,
-        };
+        encoder.write_bool(val == (Qtrue as VALUE), recorder.bool_type_id);
+        return;
     }
     if RB_INTEGER_TYPE_P(val) {
         let i = rb_num2long(val) as i64;
-        return ValueRecord::Int {
-            i,
-            type_id: recorder.int_type_id,
-        };
+        encoder.write_int(i, recorder.int_type_id);
+        return;
     }
     if RB_FLOAT_TYPE_P(val) {
         let f = rb_num2dbl(val);
@@ -393,78 +343,73 @@ unsafe fn to_value(
         } else {
             recorder.float_type_id
         };
-        return ValueRecord::Float { f, type_id };
+        encoder.write_float(f, type_id);
+        return;
     }
     if RB_SYMBOL_P(val) {
-        return ValueRecord::String {
-            text: cstr_to_string(rb_id2name(rb_sym2id(val))).unwrap_or_default(),
-            type_id: recorder.symbol_type_id,
-        };
+        let text = cstr_to_string(rb_id2name(rb_sym2id(val))).unwrap_or_default();
+        encoder.write_string(&text, recorder.symbol_type_id);
+        return;
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
-        return ValueRecord::String {
-            text: rstring_lossy(val),
-            type_id: recorder.string_type_id,
-        };
+        let text = rstring_lossy(val);
+        encoder.write_string(&text, recorder.string_type_id);
+        return;
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         let len = RARRAY_LEN(val) as usize;
-        let mut elements = Vec::with_capacity(len);
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Array");
+        encoder.begin_sequence(type_id, len);
         let ptr = RARRAY_CONST_PTR(val);
         for i in 0..len {
             let elem = *ptr.add(i);
-            elements.push(to_value(recorder, tracer, elem, depth - 1));
+            encode_ruby_value_streaming(recorder, tracer, encoder, elem, depth - 1);
         }
-        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Array");
-        return ValueRecord::Sequence {
-            elements,
-            is_slice: false,
-            type_id,
-        };
+        encoder.end_compound();
+        return;
     }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_HASH) {
         let pairs = rb_funcall(val, recorder.id.to_a, 0);
         let len = RARRAY_LEN(pairs) as usize;
         let ptr = RARRAY_CONST_PTR(pairs);
-        let mut elements = Vec::with_capacity(len);
+        let seq_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Hash");
+        encoder.begin_sequence(seq_type_id, len);
         for i in 0..len {
             let pair = *ptr.add(i);
             if !RB_TYPE_P(pair, rb_sys::ruby_value_type::RUBY_T_ARRAY) || RARRAY_LEN(pair) < 2 {
+                // Emit none for malformed pairs to preserve element count.
+                encoder.write_none(recorder.error_type_id);
                 continue;
             }
             let pair_ptr = RARRAY_CONST_PTR(pair);
             let key = *pair_ptr.add(0);
             let val_elem = *pair_ptr.add(1);
-            elements.push(struct_value(
-                recorder,
-                tracer,
-                "Pair",
-                &["k", "v"],
-                &[key, val_elem],
-                depth,
-            ));
+            // Encode each pair as a 2-element tuple with fields "k" and "v",
+            // matching the struct_value("Pair", ...) encoding in the legacy path.
+            let pair_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, "Pair");
+            encoder.begin_tuple(pair_type_id, 2);
+            encode_ruby_value_streaming(recorder, tracer, encoder, key, depth - 1);
+            encode_ruby_value_streaming(recorder, tracer, encoder, val_elem, depth - 1);
+            encoder.end_compound();
         }
-        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Hash");
-        return ValueRecord::Sequence {
-            elements,
-            is_slice: false,
-            type_id,
-        };
+        encoder.end_compound();
+        return;
     }
     if rb_obj_is_kind_of(val, rb_cThread) != 0 {
-        return struct_value(recorder, tracer, "Thread", &[] as &[&str], &[], depth);
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, "Thread");
+        encoder.begin_tuple(type_id, 0);
+        encoder.end_compound();
+        return;
     }
     if rb_obj_is_kind_of(val, rb_cRange) != 0 {
         let begin_val = rb_funcall(val, recorder.id.begin, 0);
         let end_val = rb_funcall(val, recorder.id.end, 0);
-        return struct_value(
-            recorder,
-            tracer,
-            "Range",
-            &["begin", "end"],
-            &[begin_val, end_val],
-            depth,
-        );
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, "Range");
+        encoder.begin_tuple(type_id, 2);
+        encode_ruby_value_streaming(recorder, tracer, encoder, begin_val, depth - 1);
+        encode_ruby_value_streaming(recorder, tracer, encoder, end_val, depth - 1);
+        encoder.end_compound();
+        return;
     }
     if NIL_P(recorder.set_class) {
         if rb_const_defined(rb_cObject, recorder.id.set_const) != 0 {
@@ -476,42 +421,35 @@ unsafe fn to_value(
         if RB_TYPE_P(arr, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
             let len = RARRAY_LEN(arr) as usize;
             let ptr = RARRAY_CONST_PTR(arr);
-            let mut elements = Vec::with_capacity(len);
+            let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Set");
+            encoder.begin_sequence(type_id, len);
             for i in 0..len {
                 let elem = *ptr.add(i);
-                elements.push(to_value(recorder, tracer, elem, depth - 1));
+                encode_ruby_value_streaming(recorder, tracer, encoder, elem, depth - 1);
             }
-            let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Set");
-            return ValueRecord::Sequence {
-                elements,
-                is_slice: false,
-                type_id,
-            };
+            encoder.end_compound();
+            return;
         }
     }
     if rb_obj_is_kind_of(val, rb_cTime) != 0 {
         let sec = rb_funcall(val, recorder.id.to_i, 0);
         let nsec = rb_funcall(val, recorder.id.nsec, 0);
-        return struct_value(
-            recorder,
-            tracer,
-            "Time",
-            &["sec", "nsec"],
-            &[sec, nsec],
-            depth,
-        );
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, "Time");
+        encoder.begin_tuple(type_id, 2);
+        encode_ruby_value_streaming(recorder, tracer, encoder, sec, depth - 1);
+        encode_ruby_value_streaming(recorder, tracer, encoder, nsec, depth - 1);
+        encoder.end_compound();
+        return;
     }
     if rb_obj_is_kind_of(val, rb_cRegexp) != 0 {
         let src = rb_funcall(val, recorder.id.source, 0);
         let opts = rb_funcall(val, recorder.id.options, 0);
-        return struct_value(
-            recorder,
-            tracer,
-            "Regexp",
-            &["source", "options"],
-            &[src, opts],
-            depth,
-        );
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, "Regexp");
+        encoder.begin_tuple(type_id, 2);
+        encode_ruby_value_streaming(recorder, tracer, encoder, src, depth - 1);
+        encode_ruby_value_streaming(recorder, tracer, encoder, opts, depth - 1);
+        encoder.end_compound();
+        return;
     }
     if rb_obj_is_kind_of(val, rb_cStruct) != 0 {
         let class_name =
@@ -523,19 +461,18 @@ unsafe fn to_value(
         {
             let text = value_to_string_exception_safe(recorder, val);
             let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Raw, &class_name);
-            return ValueRecord::Raw { r: text, type_id };
+            encoder.write_raw(&text, type_id);
+            return;
         }
         let len = RARRAY_LEN(values) as usize;
-        let mem_ptr = RARRAY_CONST_PTR(members);
         let val_ptr = RARRAY_CONST_PTR(values);
-        let mut names = Vec::with_capacity(len);
-        let mut vals = Vec::with_capacity(len);
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, &class_name);
+        encoder.begin_tuple(type_id, len);
         for i in 0..len {
-            let sym = *mem_ptr.add(i);
-            names.push(cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or("?".to_string()));
-            vals.push(*val_ptr.add(i));
+            encode_ruby_value_streaming(recorder, tracer, encoder, *val_ptr.add(i), depth - 1);
         }
-        return struct_value(recorder, tracer, &class_name, &names, &vals, depth);
+        encoder.end_compound();
+        return;
     }
     if NIL_P(recorder.open_struct_class) {
         if rb_const_defined(rb_cObject, recorder.id.open_struct_const) != 0 {
@@ -545,37 +482,57 @@ unsafe fn to_value(
     if !NIL_P(recorder.open_struct_class) && rb_obj_is_kind_of(val, recorder.open_struct_class) != 0
     {
         let h = rb_funcall(val, recorder.id.to_h, 0);
-        return to_value(recorder, tracer, h, depth - 1);
+        encode_ruby_value_streaming(recorder, tracer, encoder, h, depth - 1);
+        return;
     }
     let class_name = cstr_to_string(rb_obj_classname(val)).unwrap_or_else(|| "Object".to_string());
-    // generic object
+    // Generic object: encode instance variables as a tuple.
     let ivars = rb_funcall(val, recorder.id.instance_variables, 0);
     if !RB_TYPE_P(ivars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         let text = value_to_string_exception_safe(recorder, val);
         let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Raw, &class_name);
-        return ValueRecord::Raw { r: text, type_id };
+        encoder.write_raw(&text, type_id);
+        return;
     }
     let len = RARRAY_LEN(ivars) as usize;
     let ptr = RARRAY_CONST_PTR(ivars);
-    let mut names = Vec::with_capacity(len);
-    let mut vals: Vec<VALUE> = Vec::with_capacity(len);
-    for i in 0..len {
-        let sym = *ptr.add(i);
-        names.push(cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or("?".to_string()));
-        let value = rb_funcall(val, recorder.id.instance_variable_get, 1, sym);
-        vals.push(value);
-    }
-    if !names.is_empty() {
-        return struct_value(recorder, tracer, &class_name, &names, &vals, depth);
+    if len > 0 {
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, &class_name);
+        encoder.begin_tuple(type_id, len);
+        for i in 0..len {
+            let sym = *ptr.add(i);
+            let value = rb_funcall(val, recorder.id.instance_variable_get, 1, sym);
+            encode_ruby_value_streaming(recorder, tracer, encoder, value, depth - 1);
+        }
+        encoder.end_compound();
+        return;
     }
     let text = value_to_string_exception_safe(recorder, val);
     let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Raw, &class_name);
-    ValueRecord::Raw { r: text, type_id }
+    encoder.write_raw(&text, type_id);
 }
 
-unsafe fn record_variables(
+/// Encode a single Ruby value to CBOR bytes, resetting the encoder first.
+/// Returns a copy of the CBOR bytes suitable for passing to
+/// `register_variable_cbor` or `register_return_cbor`.
+unsafe fn encode_ruby_value_to_cbor(
     recorder: &mut RecorderData,
     tracer: &mut dyn TraceWriter,
+    encoder: &mut StreamingValueEncoder,
+    val: VALUE,
+) -> Vec<u8> {
+    encoder.reset();
+    encode_ruby_value_streaming(recorder, tracer, encoder, val, MAX_STREAMING_DEPTH);
+    encoder.get_bytes_copy()
+}
+
+/// Streaming variant of `record_variables`. Encodes Ruby local variables
+/// directly to CBOR bytes and registers them via `register_variable_cbor`,
+/// avoiding intermediate `ValueRecord` tree allocations.
+unsafe fn record_variables_streaming(
+    recorder: &mut RecorderData,
+    tracer: &mut dyn TraceWriter,
+    encoder: &mut StreamingValueEncoder,
     binding: VALUE,
 ) {
     let vars = rb_funcall(binding, recorder.id.local_variables, 0);
@@ -588,18 +545,26 @@ unsafe fn record_variables(
         let sym = *ptr.add(i);
         let name = cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or_default();
         let value = rb_funcall(binding, recorder.id.local_variable_get, 1, sym);
-        let val_rec = to_value(recorder, tracer, value, 10);
-        TraceWriter::register_variable_with_full_value(tracer, &name, val_rec);
+        let cbor = encode_ruby_value_to_cbor(recorder, tracer, encoder, value);
+        TraceWriter::register_variable_cbor(tracer, &name, &cbor);
     }
 }
 
-unsafe fn collect_parameter_values(
+// Legacy record_variables has been removed — replaced by
+// record_variables_streaming (M59).
+
+/// Streaming variant of parameter collection. Encodes each parameter value
+/// directly to CBOR bytes using the streaming encoder, registers it via
+/// `register_variable_cbor`, and returns (name, variable_id) pairs for
+/// constructing `CallRecord.args`.
+unsafe fn collect_and_register_params_streaming(
     recorder: &mut RecorderData,
     tracer: &mut dyn TraceWriter,
+    encoder: &mut StreamingValueEncoder,
     binding: VALUE,
     defined_class: VALUE,
     mid: ID,
-) -> Vec<(String, ValueRecord)> {
+) -> Vec<FullValueRecord> {
     let method_sym = rb_id2sym(mid);
     if rb_method_boundp(defined_class, mid, 0) == 0 {
         return Vec::new();
@@ -624,29 +589,25 @@ unsafe fn collect_parameter_values(
         }
         if let Some(name) = cstr_to_string(rb_id2name(rb_sym2id(name_sym))) {
             let value = rb_funcall(binding, recorder.id.local_variable_get, 1, name_sym);
-            let val_rec = to_value(recorder, tracer, value, 10);
-            result.push((name, val_rec));
+            let cbor = encode_ruby_value_to_cbor(recorder, tracer, encoder, value);
+            TraceWriter::register_variable_cbor(tracer, &name, &cbor);
+            let var_id = TraceWriter::ensure_variable_id(tracer, &name);
+            // We still need a ValueRecord for FullValueRecord in CallRecord.args.
+            // Use a lightweight None sentinel — the CBOR data is already registered
+            // and the reader will use CBOR for the actual value.
+            result.push(FullValueRecord {
+                variable_id: var_id,
+                value: ValueRecord::None {
+                    type_id: recorder.error_type_id,
+                },
+            });
         }
     }
     result
 }
 
-unsafe fn register_parameter_values(
-    recorder: &mut RecorderData,
-    tracer: &mut dyn TraceWriter,
-    params: Vec<(String, ValueRecord)>,
-) -> Vec<FullValueRecord> {
-    let mut result = Vec::with_capacity(params.len());
-    for (name, val_rec) in params {
-        TraceWriter::register_variable_with_full_value(tracer, &name, val_rec.clone());
-        let var_id = TraceWriter::ensure_variable_id(tracer, &name);
-        result.push(FullValueRecord {
-            variable_id: var_id,
-            value: val_rec,
-        });
-    }
-    result
-}
+// Legacy collect_parameter_values / register_parameter_values have been
+// removed — replaced by collect_and_register_params_streaming (M59).
 
 unsafe fn record_event(tracer: &mut dyn TraceWriter, path: &str, line: i64, content: String) {
     TraceWriter::register_step(tracer, Path::new(path), Line(line));
@@ -824,11 +785,20 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         recorder.data.last_thread_id = Some(thread_id);
     }
 
+    // Borrow the streaming encoder alongside the tracer. The encoder lives
+    // on `Recorder` (outside the Mutex), so there is no aliasing conflict.
+    let encoder = &mut recorder.streaming_encoder;
+
     if (ev & RUBY_EVENT_LINE) != 0 {
         let binding = rb_tracearg_binding(arg);
         TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         if !NIL_P(binding) {
-            record_variables(&mut recorder.data, &mut **locked_tracer, binding);
+            record_variables_streaming(
+                &mut recorder.data,
+                &mut **locked_tracer,
+                encoder,
+                binding,
+            );
         }
     } else if (ev & RUBY_EVENT_CALL) != 0 {
         let binding = rb_tracearg_binding(arg);
@@ -838,40 +808,40 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         let mid = rb_sym2id(mid_sym);
         let defined_class = rb_funcall(self_val, recorder.data.id.class, 0);
 
-        let param_vals = if NIL_P(binding) {
+        let param_args = if NIL_P(binding) {
             Vec::new()
         } else {
-            collect_parameter_values(
+            collect_and_register_params_streaming(
                 &mut recorder.data,
                 &mut **locked_tracer,
+                encoder,
                 binding,
                 defined_class,
                 mid,
             )
         };
 
+        // Encode `self` via streaming encoder.
         let class_name =
             cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
         let text = value_to_string_exception_safe(&recorder.data, self_val);
         let self_type =
             TraceWriter::ensure_type_id(&mut **locked_tracer, TypeKind::Raw, &class_name);
-        let self_rec = ValueRecord::Raw {
-            r: text,
-            type_id: self_type,
-        };
-        TraceWriter::register_variable_with_full_value(
-            &mut **locked_tracer,
-            "self",
-            self_rec.clone(),
-        );
+        encoder.reset();
+        encoder.write_raw(&text, self_type);
+        let self_cbor = encoder.get_bytes_copy();
+        TraceWriter::register_variable_cbor(&mut **locked_tracer, "self", &self_cbor);
 
-        let mut args = vec![TraceWriter::arg(&mut **locked_tracer, "self", self_rec)];
-        if !param_vals.is_empty() {
-            args.extend(register_parameter_values(
-                &mut recorder.data,
-                &mut **locked_tracer,
-                param_vals,
-            ));
+        let self_var_id = TraceWriter::ensure_variable_id(&mut **locked_tracer, "self");
+        let self_arg = FullValueRecord {
+            variable_id: self_var_id,
+            value: ValueRecord::None {
+                type_id: recorder.data.error_type_id,
+            },
+        };
+        let mut args = vec![self_arg];
+        if !param_args.is_empty() {
+            args.extend(param_args);
         }
         TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         let mut name = cstr_to_string(rb_id2name(mid)).unwrap_or_default();
@@ -894,13 +864,14 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     } else if (ev & RUBY_EVENT_RETURN) != 0 {
         TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         let ret = rb_tracearg_return_value(arg);
-        let val_rec = to_value(&mut recorder.data, &mut **locked_tracer, ret, 10);
-        TraceWriter::register_variable_with_full_value(
+        let cbor = encode_ruby_value_to_cbor(
+            &mut recorder.data,
             &mut **locked_tracer,
-            "<return_value>",
-            val_rec.clone(),
+            encoder,
+            ret,
         );
-        TraceWriter::register_return(&mut **locked_tracer, val_rec);
+        TraceWriter::register_variable_cbor(&mut **locked_tracer, "<return_value>", &cbor);
+        TraceWriter::register_return_cbor(&mut **locked_tracer, &cbor);
     } else if (ev & RUBY_EVENT_RAISE) != 0 {
         let exc = rb_tracearg_raised_exception(arg);
         let msg = value_to_string_exception_safe(&recorder.data, exc);
