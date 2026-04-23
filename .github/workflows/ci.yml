@@ -65,7 +65,7 @@ jobs:
             echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
             echo "CLANG_PATH=/usr/bin/clang" >> $GITHUB_ENV
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install capnp pkg-config
+            brew install capnp pkg-config zstd
           fi
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
