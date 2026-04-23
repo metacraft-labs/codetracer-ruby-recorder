@@ -54,6 +54,7 @@ jobs:
           nim c --app:staticlib --mm:arc --noMain -d:release --passC:'-fPIC' -p:src \
             $NIM_EXTRA_FLAGS \
             -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
+          nim c -d:release -p:src $NIM_EXTRA_FLAGS -o:ct-print src/codetracer_ct_print.nim
           echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -112,6 +113,7 @@ jobs:
           nimble install -y stew results
           nim c --app:staticlib --mm:arc --noMain -d:release --passC:'-fPIC' -p:src \
             -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
+          nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
           echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
