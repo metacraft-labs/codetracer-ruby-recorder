@@ -72,7 +72,8 @@ module CodeTracer
       # Verify trace files were actually produced — the native extension can
       # load successfully but fail to capture events if built against a
       # different Ruby version (ABI mismatch).
-      trace_produced = File.exist?(File.join(out_dir, 'trace.bin')) ||
+      trace_produced = Dir.glob(File.join(out_dir, '*.ct')).any? ||
+                       File.exist?(File.join(out_dir, 'trace.bin')) ||
                        File.exist?(File.join(out_dir, 'trace.json'))
       unless trace_produced
         warn "codetracer-ruby-recorder: WARNING: no trace file produced in #{out_dir}"
