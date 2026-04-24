@@ -41,12 +41,12 @@ module CodeTracer
       program_args = argv.dup
 
       out_dir = options[:out_dir] || ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pwd
-      format = (options[:format] || 'json').to_sym
+      format = (options[:format] || 'binary').to_sym
       trace_ruby_file(program, out_dir, program_args, format)
       0
     end
 
-    def self.trace_ruby_file(program, out_dir, program_args = [], format = :json)
+    def self.trace_ruby_file(program, out_dir, program_args = [], format = :binary)
       recorder = RubyRecorder.new(out_dir, format)
       return 1 unless recorder.available?
 
@@ -76,7 +76,7 @@ module CodeTracer
       parse_argv_and_trace_ruby_file(argv)
     end
 
-    def initialize(out_dir, format = :json)
+    def initialize(out_dir, format = :binary)
       @recorder = nil
       @active = false
       load_native_recorder(out_dir, format)
@@ -117,7 +117,7 @@ module CodeTracer
 
     private
 
-    def load_native_recorder(out_dir, format = :json)
+    def load_native_recorder(out_dir, format = :binary)
       begin
         # Load native extension at module level
         ext_dir = File.expand_path('../ext/native_tracer/target/release', __dir__)
