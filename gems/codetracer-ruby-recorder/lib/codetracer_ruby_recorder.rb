@@ -68,6 +68,18 @@ module CodeTracer
         recorder.stop
         recorder.flush_trace
       end
+
+      # Verify trace files were actually produced — the native extension can
+      # load successfully but fail to capture events if built against a
+      # different Ruby version (ABI mismatch).
+      trace_produced = File.exist?(File.join(out_dir, 'trace.bin')) ||
+                       File.exist?(File.join(out_dir, 'trace.json'))
+      unless trace_produced
+        warn "codetracer-ruby-recorder: WARNING: no trace file produced in #{out_dir}"
+        warn "  The native extension may need to be rebuilt for Ruby #{RUBY_VERSION}."
+        warn "  Run: cd #{File.expand_path('..', __dir__)} && just build-extension"
+        return 1
+      end
       0
     end
 
