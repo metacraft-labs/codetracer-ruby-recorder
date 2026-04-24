@@ -629,7 +629,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
             _ => rb_raise(rb_eIOError, c"Unknown format".as_ptr() as *const c_char),
         }
     } else {
-        TraceEventsFileFormat::Json
+        TraceEventsFileFormat::Binary
     };
 
     match rstring_checked(out_dir) {
