@@ -15,7 +15,7 @@ module CodeTracer
         opts.on('-o DIR', '--out-dir DIR', 'Directory to write trace files') do |dir|
           options[:out_dir] = dir
         end
-        opts.on('-f FORMAT', '--format FORMAT', 'trace format: json or binary') do |fmt|
+        opts.on('-f FORMAT', '--format FORMAT', 'trace format: ctfs, json, or binary') do |fmt|
           options[:format] = fmt
         end
         opts.on('-h', '--help', 'Print this help') do
@@ -41,12 +41,12 @@ module CodeTracer
       program_args = argv.dup
 
       out_dir = options[:out_dir] || ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pwd
-      format = (options[:format] || 'binary').to_sym
+      format = (options[:format] || 'ctfs').to_sym
       trace_ruby_file(program, out_dir, program_args, format)
       0
     end
 
-    def self.trace_ruby_file(program, out_dir, program_args = [], format = :binary)
+    def self.trace_ruby_file(program, out_dir, program_args = [], format = :ctfs)
       recorder = RubyRecorder.new(out_dir, format)
       return 1 unless recorder.available?
 
@@ -89,7 +89,7 @@ module CodeTracer
       parse_argv_and_trace_ruby_file(argv)
     end
 
-    def initialize(out_dir, format = :binary)
+    def initialize(out_dir, format = :ctfs)
       @recorder = nil
       @active = false
       load_native_recorder(out_dir, format)
@@ -130,7 +130,7 @@ module CodeTracer
 
     private
 
-    def load_native_recorder(out_dir, format = :binary)
+    def load_native_recorder(out_dir, format = :ctfs)
       begin
         # Load native extension at module level
         ext_dir = File.expand_path('../ext/native_tracer/target/release', __dir__)

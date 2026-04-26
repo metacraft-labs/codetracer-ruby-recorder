@@ -165,7 +165,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         tracer: Mutex::new(create_trace_writer(
             "ruby",
             &vec![],
-            TraceEventsFileFormat::Binary,
+            TraceEventsFileFormat::Ctfs,
         )),
         data: RecorderData {
             active: false,
@@ -228,9 +228,8 @@ fn begin_trace(
     std::fs::create_dir_all(dir)?;
     let events = match format {
         TraceEventsFileFormat::Json => dir.join("trace.json"),
-        TraceEventsFileFormat::BinaryV0
-        | TraceEventsFileFormat::Binary
-        | TraceEventsFileFormat::Ctfs => dir.join("trace.bin"),
+        TraceEventsFileFormat::Ctfs => dir.join("trace.ct"),
+        TraceEventsFileFormat::BinaryV0 | TraceEventsFileFormat::Binary => dir.join("trace.bin"),
     };
     let metadata = dir.join("trace_metadata.json");
     let paths = dir.join("trace_paths.json");
@@ -626,10 +625,11 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
             "binaryv0" => TraceEventsFileFormat::BinaryV0,
             "binary" | "bin" => TraceEventsFileFormat::Binary,
             "json" => TraceEventsFileFormat::Json,
+            "ctfs" | "ct" => TraceEventsFileFormat::Ctfs,
             _ => rb_raise(rb_eIOError, c"Unknown format".as_ptr() as *const c_char),
         }
     } else {
-        TraceEventsFileFormat::Binary
+        TraceEventsFileFormat::Ctfs
     };
 
     match rstring_checked(out_dir) {
