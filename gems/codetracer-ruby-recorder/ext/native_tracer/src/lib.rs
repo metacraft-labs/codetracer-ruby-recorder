@@ -11,8 +11,8 @@ use std::{
 };
 
 use codetracer_trace_types::{
-    CallRecord, EventLogKind, FullValueRecord, Line, ThreadId, TraceLowLevelEvent, TypeId, TypeKind,
-    ValueRecord, NONE_TYPE_ID,
+    CallRecord, EventLogKind, FullValueRecord, Line, ThreadId, TraceLowLevelEvent, TypeId,
+    TypeKind, ValueRecord, NONE_TYPE_ID,
 };
 use codetracer_trace_writer_nim::{
     create_trace_writer, trace_writer::TraceWriter, StreamingValueEncoder, TraceEventsFileFormat,
@@ -245,6 +245,10 @@ fn flush_to_dir(tracer: &mut dyn TraceWriter) -> Result<(), Box<dyn std::error::
     TraceWriter::finish_writing_trace_events(tracer)?;
     TraceWriter::finish_writing_trace_metadata(tracer)?;
     TraceWriter::finish_writing_trace_paths(tracer)?;
+    // For the CTFS multi-stream backend, `close()` is the step that
+    // actually writes the `.ct` container file to disk. Without this
+    // call, CTFS traces produce no output files.
+    TraceWriter::close(tracer)?;
     Ok(())
 }
 
@@ -793,12 +797,7 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         let binding = rb_tracearg_binding(arg);
         TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         if !NIL_P(binding) {
-            record_variables_streaming(
-                &mut recorder.data,
-                &mut **locked_tracer,
-                encoder,
-                binding,
-            );
+            record_variables_streaming(&mut recorder.data, &mut **locked_tracer, encoder, binding);
         }
     } else if (ev & RUBY_EVENT_CALL) != 0 {
         let binding = rb_tracearg_binding(arg);
@@ -864,12 +863,8 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     } else if (ev & RUBY_EVENT_RETURN) != 0 {
         TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         let ret = rb_tracearg_return_value(arg);
-        let cbor = encode_ruby_value_to_cbor(
-            &mut recorder.data,
-            &mut **locked_tracer,
-            encoder,
-            ret,
-        );
+        let cbor =
+            encode_ruby_value_to_cbor(&mut recorder.data, &mut **locked_tracer, encoder, ret);
         TraceWriter::register_variable_cbor(&mut **locked_tracer, "<return_value>", &cbor);
         TraceWriter::register_return_cbor(&mut **locked_tracer, &cbor);
     } else if (ev & RUBY_EVENT_RAISE) != 0 {
