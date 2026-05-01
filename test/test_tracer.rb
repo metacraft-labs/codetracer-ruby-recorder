@@ -640,6 +640,90 @@ class TraceTest < Minitest::Test
     assert_equal expected_out, native_out
   end
 
+  # Regression test for the empty-calltrace bug.
+  #
+  # The native (Nim-backed CTFS) recorder previously emitted call entries via
+  # `TraceWriter::add_event(TraceLowLevelEvent::Call(..))`, which the
+  # `NimTraceWriter` silently drops because it has no in-memory event buffer.
+  # The fix uses `register_call(function_id, args)` which routes through the
+  # FFI `trace_writer_register_call` hook and into the multi-stream call
+  # writer.  This regression test asserts that the native recorder produces
+  # at least one call event for a program that contains a function call.
+  #
+  # Reproduction of the upstream symptom: the codetracer GUI's
+  # `[PIPELINE] syncCalltraceData` log reported `received 0 lines,
+  # totalCalls=0` for `rb_sudoku_solver` because `call_count` returned 0
+  # despite the program having dozens of method invocations.
+  def test_native_calltrace_non_empty
+    base = 'addition'
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      out_dir = File.join(TMP_DIR, "#{base}_native_calls")
+      FileUtils.rm_rf(out_dir)
+      FileUtils.mkdir_p(out_dir)
+      program = File.join('test', 'programs', "#{base}.rb")
+      _stdout, stderr, status = Open3.capture3(
+        RbConfig.ruby,
+        'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder',
+        '--out-dir', out_dir, program
+      )
+      assert status.success?, "trace failed: #{stderr}"
+
+      ct_files = Dir.glob(File.join(out_dir, '*.ct'))
+      refute_empty ct_files, 'native recorder did not produce a .ct trace'
+
+      # ct-print --summary reports the call count from the multi-stream
+      # call writer.  A working recorder must emit at least one Call entry
+      # for the addition.rb program (the `add(1, 2)` invocation).
+      assert File.exist?(CT_PRINT), "ct-print binary not found at #{CT_PRINT}"
+      stdout, stderr, status = Open3.capture3(CT_PRINT, '--summary', ct_files.first)
+      assert status.success?, "ct-print --summary failed: #{stderr}"
+
+      calls_line = stdout.lines.find { |l| l =~ /^\s*calls:\s*(\d+)/ }
+      refute_nil calls_line, "ct-print --summary did not report a calls line:\n#{stdout}"
+      call_count = calls_line[/^\s*calls:\s*(\d+)/, 1].to_i
+      assert_operator call_count, :>=, 1,
+                      "expected native recorder to emit >=1 call for addition.rb, got #{call_count}.\n#{stdout}"
+    end
+  end
+
+  # Stronger version of the test above: assert that named user-defined
+  # methods reach the call stream.  This guards against regressions where
+  # the recorder emits Call events for the implicit top-level frame but
+  # not for user-defined methods (which the rb_sudoku_solver fixture
+  # exercises heavily).
+  def test_native_calltrace_includes_user_methods
+    base = 'array_sum'
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      out_dir = File.join(TMP_DIR, "#{base}_native_user_calls")
+      FileUtils.rm_rf(out_dir)
+      FileUtils.mkdir_p(out_dir)
+      program = File.join('test', 'programs', "#{base}.rb")
+      _stdout, stderr, status = Open3.capture3(
+        RbConfig.ruby,
+        'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder',
+        '--out-dir', out_dir, program
+      )
+      assert status.success?, "trace failed: #{stderr}"
+
+      ct_files = Dir.glob(File.join(out_dir, '*.ct'))
+      refute_empty ct_files, 'native recorder did not produce a .ct trace'
+
+      stdout, stderr, status = Open3.capture3(CT_PRINT, '--json-events', ct_files.first)
+      assert status.success?, "ct-print --json-events failed: #{stderr}"
+
+      # Parse only the `call` events out of the JSON stream.  We can't
+      # JSON.parse the whole document because CBOR value bytes contain
+      # invalid UTF-8; instead grep for type=call entries with their
+      # `function` name on the next-but-2 line.  Force binary encoding
+      # so the regex engine doesn't choke on raw CBOR bytes embedded in
+      # `data` fields.
+      stdout.force_encoding(Encoding::ASCII_8BIT)
+      function_names = stdout.scan(/"type":\s*"call",[\s\S]*?"function":\s*"([^"]+)"/).flatten
+      assert function_names.include?('sum'),
+             "expected `sum` to appear in native call stream; got #{function_names.inspect}"
+    end
+  end
+
   def test_pure_debug_smoke
     Dir.chdir(File.expand_path('..', __dir__)) do
       env = { 'CODETRACER_RUBY_RECORDER_DEBUG' => '1' }

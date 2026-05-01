@@ -11,8 +11,8 @@ use std::{
 };
 
 use codetracer_trace_types::{
-    CallRecord, EventLogKind, FullValueRecord, Line, ThreadId, TraceLowLevelEvent, TypeId,
-    TypeKind, ValueRecord, NONE_TYPE_ID,
+    EventLogKind, FullValueRecord, Line, ThreadId, TraceLowLevelEvent, TypeId, TypeKind,
+    ValueRecord, NONE_TYPE_ID,
 };
 use codetracer_trace_writer_nim::{
     create_trace_writer, trace_writer::TraceWriter, StreamingValueEncoder, TraceEventsFileFormat,
@@ -670,13 +670,12 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
                         path,
                         Line(1),
                     );
-                    TraceWriter::add_event(
-                        &mut **locked_tracer,
-                        TraceLowLevelEvent::Call(CallRecord {
-                            function_id: func_id,
-                            args: vec![],
-                        }),
-                    );
+                    // Use register_call (not add_event) — the NimTraceWriter
+                    // backing the CTFS multi-stream output silently drops
+                    // TraceLowLevelEvent variants since it does not maintain
+                    // an in-memory event buffer.  register_call is the
+                    // canonical FFI hook that emits the Call record.
+                    TraceWriter::register_call(&mut **locked_tracer, func_id, vec![]);
                 }
                 Err(e) => {
                     let msg = std::ffi::CString::new(e.to_string())
@@ -853,13 +852,11 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
             Path::new(&path),
             Line(line),
         );
-        TraceWriter::add_event(
-            &mut **locked_tracer,
-            TraceLowLevelEvent::Call(CallRecord {
-                function_id: fid,
-                args,
-            }),
-        );
+        // Emit the call via register_call (the NimTraceWriter handles args
+        // through preceding register_variable_cbor calls — see lines above
+        // for `self` and per-parameter registration).  add_event is a no-op
+        // for the CTFS multi-stream backend.
+        TraceWriter::register_call(&mut **locked_tracer, fid, args);
     } else if (ev & RUBY_EVENT_RETURN) != 0 {
         TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         let ret = rb_tracearg_return_value(arg);
