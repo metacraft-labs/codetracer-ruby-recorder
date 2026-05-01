@@ -11,8 +11,7 @@ use std::{
 };
 
 use codetracer_trace_types::{
-    EventLogKind, FullValueRecord, Line, ThreadId, TraceLowLevelEvent, TypeId, TypeKind,
-    ValueRecord, NONE_TYPE_ID,
+    EventLogKind, FullValueRecord, Line, TypeId, TypeKind, ValueRecord, NONE_TYPE_ID,
 };
 use codetracer_trace_writer_nim::{
     create_trace_writer, trace_writer::TraceWriter, StreamingValueEncoder, TraceEventsFileFormat,
@@ -807,10 +806,15 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         true
     };
     if thread_changed {
-        TraceWriter::add_event(
-            &mut **locked_tracer,
-            TraceLowLevelEvent::ThreadSwitch(ThreadId(thread_id)),
-        );
+        // Use the dedicated `register_thread_switch` entry point: the previous
+        // `TraceWriter::add_event(TraceLowLevelEvent::ThreadSwitch(...))` call
+        // dispatched into a silent no-op on the Nim multi-stream backend, so
+        // every thread-switch was lost.  See codetracer-trace-format-nim's
+        // `registerThreadSwitch` proc for the multi-stream lowering, and the
+        // headless Rust tests in
+        // `codetracer-trace-format/codetracer_trace_writer_nim/tests/thread_events.rs`
+        // for the round-trip verification.
+        TraceWriter::register_thread_switch(&mut **locked_tracer, thread_id);
         recorder.data.last_thread_id = Some(thread_id);
     }
 
@@ -910,16 +914,17 @@ unsafe extern "C" fn ex_callback(
 ) {
     match event {
         RUBY_INTERNAL_THREAD_EVENT_STARTED => {
+            // Same rationale as the ThreadSwitch site above: prior to the
+            // dedicated `register_thread_*` entry points in the Nim multi-
+            // stream backend, this event was silently dropped.
             let recorder = user_data as *mut Recorder;
             let mut locked_tracer = (*recorder).tracer.lock().unwrap();
-            let event = TraceLowLevelEvent::ThreadStart(ThreadId((*event_data).thread));
-            TraceWriter::add_event(&mut **locked_tracer, event);
+            TraceWriter::register_thread_start(&mut **locked_tracer, (*event_data).thread);
         }
         RUBY_INTERNAL_THREAD_EVENT_EXITED => {
             let recorder = user_data as *mut Recorder;
             let mut locked_tracer = (*recorder).tracer.lock().unwrap();
-            let event = TraceLowLevelEvent::ThreadExit(ThreadId((*event_data).thread));
-            TraceWriter::add_event(&mut **locked_tracer, event);
+            TraceWriter::register_thread_exit(&mut **locked_tracer, (*event_data).thread);
         }
         /*RUBY_INTERNAL_THREAD_EVENT_READY => {
             println!("RUBY_INTERNAL_THREAD_EVENT_READY");
