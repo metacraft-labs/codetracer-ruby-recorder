@@ -614,6 +614,12 @@ unsafe fn collect_and_register_params_streaming(
             let value = rb_funcall(binding, recorder.id.local_variable_get, 1, name_sym);
             let cbor = encode_ruby_value_to_cbor(recorder, tracer, encoder, value);
             TraceWriter::register_variable_cbor(tracer, &name, &cbor);
+            // Stage the same CBOR bytes on the writer's pending-call-args
+            // buffer so the next `register_call` attaches them to the
+            // call record's `args` field.  Without this the CTFS call
+            // record has empty `args` and the frontend's calltrace pane
+            // renders calls as `f()` instead of `f(name=value)`.
+            TraceWriter::register_call_arg(tracer, &name, &cbor);
             let var_id = TraceWriter::ensure_variable_id(tracer, &name);
             // We still need a ValueRecord for FullValueRecord in CallRecord.args.
             // Use a lightweight None sentinel — the CBOR data is already registered
@@ -849,6 +855,11 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         encoder.write_raw(&text, self_type);
         let self_cbor = encoder.get_bytes_copy();
         TraceWriter::register_variable_cbor(&mut **locked_tracer, "self", &self_cbor);
+        // Also stage `self` as the first call arg so the frontend's
+        // calltrace pane can render the receiver alongside the method
+        // name (matches the Ruby convention of method calls being
+        // dispatched on a receiver).
+        TraceWriter::register_call_arg(&mut **locked_tracer, "self", &self_cbor);
 
         let self_var_id = TraceWriter::ensure_variable_id(&mut **locked_tracer, "self");
         let self_arg = FullValueRecord {
