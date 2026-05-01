@@ -216,6 +216,26 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
         let func: rb_event_hook_func_t = Some(transmute(raw_cb));
         rb_remove_event_hook_with_data(func, self_val);
         recorder.data.active = false;
+
+        // Close the implicit top-level call opened in `initialize`.
+        //
+        // The Nim multi-stream call writer pairs `register_call` with
+        // `register_return`: the call record is only persisted when its
+        // matching return arrives (it stores the entry/exit step range
+        // computed from the step counter at call/return time).  Without
+        // this closing return, the `<top-level>` call record is never
+        // written, leaving steps that occur before the first user call
+        // (e.g. class definition steps in rb_sudoku_solver) with no
+        // enclosing call entry.  The downstream db-backend's
+        // `call_key_for_step` then returns CallKey(-1) for those steps
+        // and the calltrace pane renders nothing.
+        let mut locked_tracer = recorder.tracer.lock().unwrap();
+        TraceWriter::register_return(
+            &mut **locked_tracer,
+            ValueRecord::None {
+                type_id: recorder.data.error_type_id,
+            },
+        );
     }
     Qnil.into()
 }
