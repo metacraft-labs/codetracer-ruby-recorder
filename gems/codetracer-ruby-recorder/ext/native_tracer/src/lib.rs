@@ -36,7 +36,10 @@ use rb_sys::{
 
 #[cfg(test)]
 mod shared_trace_storage_adapter_tests {
-    use codetracer_ctfs::trace_storage::{TraceStorageConfig, TRACE_STORAGE_SCHEMA};
+    use codetracer_ctfs::trace_storage::{
+        ManagedTraceSender, ManagedUploadKind, ManagedUploadObject, ManagedUploadReceipt,
+        SenderError, SenderHealth, SharedSenderBackend, TraceStorageConfig, TRACE_STORAGE_SCHEMA,
+    };
 
     #[test]
     fn ruby_recorder_binds_shared_trace_storage_config() {
@@ -48,6 +51,81 @@ mod shared_trace_storage_adapter_tests {
         assert_eq!(config.schema, TRACE_STORAGE_SCHEMA);
         assert_eq!(config.replication.target_replicas, 2);
         assert!(config.shard_policy.enabled);
+    }
+
+    #[derive(Default)]
+    struct RubyBindingBackend {
+        uploaded: Vec<String>,
+    }
+
+    impl SharedSenderBackend for RubyBindingBackend {
+        fn upload_slice(
+            &mut self,
+            object: &ManagedUploadObject,
+        ) -> Result<ManagedUploadReceipt, SenderError> {
+            self.upload(object)
+        }
+
+        fn upload_materialized_artifact(
+            &mut self,
+            object: &ManagedUploadObject,
+        ) -> Result<ManagedUploadReceipt, SenderError> {
+            self.upload(object)
+        }
+
+        fn upload_manifest(
+            &mut self,
+            object: &ManagedUploadObject,
+        ) -> Result<ManagedUploadReceipt, SenderError> {
+            self.upload(object)
+        }
+
+        fn finalize(
+            &mut self,
+            _request: &codetracer_ctfs::trace_storage::ManagedFinalizeRequest,
+        ) -> Result<(), SenderError> {
+            Ok(())
+        }
+
+        fn health(&self) -> SenderHealth {
+            SenderHealth {
+                healthy: true,
+                message: "ruby binding backend".to_string(),
+            }
+        }
+    }
+
+    impl RubyBindingBackend {
+        fn upload(
+            &mut self,
+            object: &ManagedUploadObject,
+        ) -> Result<ManagedUploadReceipt, SenderError> {
+            self.uploaded.push(object.object_key.clone());
+            Ok(ManagedUploadReceipt {
+                object_key: object.object_key.clone(),
+                storage_pool_id: "shared-local".to_string(),
+                storage_server_id: "local-storage-1".to_string(),
+                storage_endpoint_uri: "local://codetracer-ci/storage-service".to_string(),
+            })
+        }
+    }
+
+    #[test]
+    fn ruby_recorder_uses_shared_managed_sender_for_materialized_artifacts() {
+        let mut sender = ManagedTraceSender::new(RubyBindingBackend::default(), "ruby-finalize");
+        sender
+            .upload_materialized_artifact(ManagedUploadObject {
+                object_key: "traces/tenant/ruby/materialized-trace-v1.json".to_string(),
+                local_path: "/tmp/ruby/materialized-trace-v1.json".to_string(),
+                content_length: 256,
+                sha256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                    .to_string(),
+                kind: ManagedUploadKind::MaterializedArtifact {
+                    artifact_kind: "materialized_trace_v1".to_string(),
+                },
+            })
+            .unwrap();
+        assert_eq!(sender.backend().uploaded.len(), 1);
     }
 }
 
