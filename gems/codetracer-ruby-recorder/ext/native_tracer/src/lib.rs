@@ -198,6 +198,7 @@ struct RecorderData {
 struct Recorder {
     tracer: Mutex<Box<dyn TraceWriter>>,
     data: RecorderData,
+    out_dir: String,
     /// Reusable streaming CBOR encoder — avoids building intermediate
     /// `ValueRecord` trees when encoding Ruby values.  Reset between
     /// each top-level value encoding.
@@ -276,6 +277,7 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
             symbol_type_id: TypeId::default(),
             error_type_id: TypeId::default(),
         },
+        out_dir: String::new(),
         streaming_encoder: StreamingValueEncoder::new(),
     });
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
@@ -761,6 +763,7 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
             match begin_trace(Path::new(&path_str), fmt) {
                 Ok(t) => {
                     recorder.tracer = Mutex::new(t);
+                    recorder.out_dir = path_str;
                     let mut locked_tracer = recorder.tracer.lock().unwrap();
                     // pre-register common types to match the pure Ruby tracer
                     recorder.data.int_type_id =
@@ -835,6 +838,24 @@ unsafe extern "C" fn flush_trace(self_val: VALUE) -> VALUE {
             c"Failed to flush trace: %s".as_ptr() as *const c_char,
             msg.as_ptr(),
         );
+    }
+    if std::env::var("CODETRACER_MANAGED_UPLOAD_URL")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .is_some()
+    {
+        if let Err(e) = codetracer_ctfs::trace_storage::upload_materialized_artifacts_from_env(
+            Path::new(&recorder.out_dir),
+            "ruby",
+        ) {
+            let msg = std::ffi::CString::new(e.message)
+                .unwrap_or_else(|_| std::ffi::CString::new("managed upload failed").unwrap());
+            rb_raise(
+                rb_eIOError,
+                c"Failed to upload materialized trace: %s".as_ptr() as *const c_char,
+                msg.as_ptr(),
+            );
+        }
     }
 
     Qnil.into()

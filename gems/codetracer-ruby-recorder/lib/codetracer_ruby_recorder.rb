@@ -136,17 +136,16 @@ module CodeTracer
         ext_dir = File.expand_path('../ext/native_tracer/target/release', __dir__)
         dlext = RbConfig::CONFIG['DLEXT']
         target_path = File.join(ext_dir, "codetracer_ruby_recorder.#{dlext}")
-        unless File.exist?(target_path)
-          extensions = %w[so bundle dylib dll]
-          alt_path = extensions
-                    .map { |ext| File.join(ext_dir, "libcodetracer_ruby_recorder.#{ext}") }
-                    .find { |path| File.exist?(path) }
-          if alt_path
-            begin
-              File.symlink(alt_path, target_path)
-            rescue StandardError
-              FileUtils.cp(alt_path, target_path)
-            end
+        extensions = %w[so bundle dylib dll]
+        alt_path = extensions
+                  .map { |ext| File.join(ext_dir, "libcodetracer_ruby_recorder.#{ext}") }
+                  .find { |path| File.exist?(path) }
+        if alt_path && (!File.exist?(target_path) || File.mtime(alt_path) > File.mtime(target_path))
+          begin
+            FileUtils.rm_f(target_path)
+            File.symlink(alt_path, target_path)
+          rescue StandardError
+            FileUtils.cp(alt_path, target_path)
           end
         end
 
