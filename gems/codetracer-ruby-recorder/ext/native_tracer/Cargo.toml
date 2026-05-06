@@ -13,6 +13,7 @@ crate-type = ["cdylib"]
 rb-sys = "0.9"
 codetracer_trace_types = { path = "../../../../../codetracer-trace-format/codetracer_trace_types" }
 codetracer_trace_writer_nim = { path = "../../../../../codetracer-trace-format/codetracer_trace_writer_nim" }
+codetracer_ctfs = { path = "../../../../../codetracer-trace-format/codetracer_ctfs" }
 
 [build-dependencies]
 rb-sys-env = "0.2"

@@ -34,6 +34,23 @@ use rb_sys::{
     RUBY_INTERNAL_THREAD_EVENT_SUSPENDED, VALUE,
 };
 
+#[cfg(test)]
+mod shared_trace_storage_adapter_tests {
+    use codetracer_ctfs::trace_storage::{TraceStorageConfig, TRACE_STORAGE_SCHEMA};
+
+    #[test]
+    fn ruby_recorder_binds_shared_trace_storage_config() {
+        let config = TraceStorageConfig::from_json(include_str!(
+            "../../../../../../codetracer-trace-format/codetracer_ctfs/tests/fixtures/trace_storage/storage_config.full.json"
+        ))
+        .expect("shared trace-storage fixture parses through codetracer_ctfs");
+
+        assert_eq!(config.schema, TRACE_STORAGE_SCHEMA);
+        assert_eq!(config.replication.target_replicas, 2);
+        assert!(config.shard_policy.enabled);
+    }
+}
+
 struct InternedSymbols {
     to_s: ID,
     local_variables: ID,
