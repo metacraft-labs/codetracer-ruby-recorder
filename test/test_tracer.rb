@@ -5,6 +5,7 @@ require 'json'
 require 'fileutils'
 require 'open3'
 require 'rbconfig'
+require 'set'
 require 'tmpdir'
 
 class TraceTest < Minitest::Test
@@ -752,13 +753,56 @@ class TraceTest < Minitest::Test
   PURE_RECORDER_BIN   = 'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder'
 
   # Record `addition.rb` with the native recorder and pipe the produced
-  # *.ct bundle through `ct-print --json`, then assert structural
-  # anchors: program metadata, function names (`<top-level>` and the
-  # user-defined `add`), and a non-trivial step / call count.  This is
-  # the canonical replacement for the deleted `--format json` / `--format
-  # binary` content assertions: instead of asking the recorder for JSON
-  # we record CTFS and convert via `ct print`, exactly as
-  # `Recorder-CLI-Conventions.md` §4 mandates.
+  # *.ct bundle through `ct-print --full --strip-paths`, then assert exact
+  # decoded values.  This mirrors the cairo / cardano / circom / flow /
+  # fuel / leo / miden / move / polkavm / solana / ton (Int round-trip),
+  # evm (Raw byte), js (String / Raw) and python (String / None)
+  # precedents — record a real program, then convert the produced CTFS
+  # bundle through `ct print` and assert on the decoded representation.
+  # See `Recorder-CLI-Conventions.md` §4 — CTFS-only output, with
+  # `ct print` as the canonical conversion tool.
+  #
+  # Why exact-value assertions matter: the previous `--json` layer only
+  # checked for substring presence ("does the trace mention `add`
+  # somewhere"), so a recorder regression that silently dropped or
+  # corrupted a value would not be caught.  The `--full` layer pins:
+  #
+  #   - **Strict `value.kind` invariant** — every step var, call arg,
+  #     and return value must decode to one of the known ValueRecord
+  #     variants (Int / Float / String / Bool / Raw / None / Void /
+  #     Sequence / Struct / Tuple).  A new variant fires the test
+  #     loudly so the next maintainer can extend the assertion rather
+  #     than silently weakening it.  The check recurses through
+  #     Sequence.elements and Struct.field_values so nested values are
+  #     validated too.
+  #   - **Exact (varname, value) pair assertions** — e.g. `add`'s `a`
+  #     and `b` parameters decode back to `ValueRecord::Int { i: 1 }`
+  #     and `ValueRecord::Int { i: 2 }`, and its return value decodes
+  #     to `ValueRecord::Int { i: 3 }`.  The `<top-level>` synthetic
+  #     frame returns `ValueRecord::Void`.
+  #   - **Function / path / counts / call-sequence anchors** —
+  #     7 steps, 2 calls, 1 io; calls are `<top-level>` then `add`;
+  #     path table contains `addition.rb`; function table contains
+  #     `<top-level>` and `add` (`end_with?` checks for tolerance to
+  #     future namespacing like `Object#add`).
+  #   - **IO event** — a single `ioStdout` write of `"3\n"` (the
+  #     `puts add(1, 2)` output, including the trailing newline that
+  #     `puts` appends).
+  #
+  # The canonical fixture (`test/programs/addition.rb`) is:
+  #
+  #     def add(a, b)        # line 1
+  #       a + b              # line 2
+  #     end                  # line 3
+  #
+  #     puts add(1, 2)       # line 5
+  #
+  # Each binding must surface in the trace as a step / call_entry event
+  # with a decoded ValueRecord.  The Ruby native recorder uses
+  # ValueRecord::Int for typed integer args / locals / return values
+  # and ValueRecord::Raw for opaque self pointers (e.g. `"main"`); both
+  # are valid current behaviour.  The strict invariant fires if a
+  # brand-new variant appears (e.g. BigInt / Bignum support lands).
   def test_recorded_trace_via_ct_print_json
     skip 'native recorder extension not built' unless native_extension_built?
     skip 'ct-print not available' unless File.exist?(CT_PRINT)
@@ -777,6 +821,11 @@ class TraceTest < Minitest::Test
       ct_files = Dir.glob(File.join(out_dir, '*.ct'))
       refute_empty ct_files, "expected a *.ct bundle in #{out_dir}, got #{Dir.entries(out_dir).inspect}"
 
+      # ----------------------------------------------------------------
+      # Layer 1 (legacy): ct-print --json — substring presence checks.
+      # Kept as a safety net so a regression in the textual rendering
+      # is caught even if --full's JSON shape evolves.
+      # ----------------------------------------------------------------
       json_stdout, json_stderr, json_status = Open3.capture3(CT_PRINT, '--json', ct_files.first)
       assert json_status.success?, "ct-print --json failed: #{json_stderr}"
 
@@ -804,6 +853,240 @@ class TraceTest < Minitest::Test
       paths = digest['paths'] || []
       assert paths.any? { |p| p.include?('addition.rb') },
              "expected addition.rb in paths: #{paths.inspect}"
+
+      # ----------------------------------------------------------------
+      # Layer 2 (the upgrade): ct-print --full — exact decoded values.
+      # `--strip-paths` rewrites absolute workdir / tmp prefixes to
+      # placeholders so JSON stays diff-stable across machines.  `--full`
+      # decodes every CBOR ValueRecord back to a structured JSON object
+      # (e.g. `{"kind":"Int","i":3,"type_id":0}`) — without it, values
+      # would be opaque blobs we could only substring-match against.
+      # ----------------------------------------------------------------
+      full_stdout, full_stderr, full_status = Open3.capture3(
+        CT_PRINT, '--full', '--strip-paths', ct_files.first
+      )
+      assert full_status.success?, "ct-print --full failed: #{full_stderr}"
+
+      bundle = JSON.parse(full_stdout)
+
+      # ---- Function table: <top-level> + add -----------------------
+      # The Ruby native recorder names the synthetic top-level frame
+      # `<top-level>` (mirrors python's `<__main__>` and js's
+      # `<module>`).  `end_with?` checks stay tolerant of any future
+      # namespacing prefix the recorder might add (e.g.
+      # `Object#add`).
+      assert bundle['functions'].any? { |f| f.end_with?('<top-level>') },
+             "missing <top-level> in functions: #{bundle['functions'].inspect}"
+      assert bundle['functions'].any? { |f| f.end_with?('add') && !f.end_with?('<top-level>') },
+             "missing add in functions: #{bundle['functions'].inspect}"
+
+      # ---- Path table: the canonical fixture path ------------------
+      # `--strip-paths` rewrites absolute prefixes; the trailing
+      # component is the only stable assertion.
+      assert bundle['paths'].any? { |p| p.end_with?('addition.rb') },
+             "missing addition.rb in paths: #{bundle['paths'].inspect}"
+
+      # ---- Counts — stable for the canonical fixture ---------------
+      # The Ruby native recorder produces a deterministic event count
+      # for this fixture under TracePoint instrumentation:
+      #   - 7 step events (1 sekThreadSwitch synthetic, plus 6
+      #     sekDeltaStep events covering the `def add` line,
+      #     the `puts add(1, 2)` call site, the `add` body's `a + b`
+      #     return-edge, and the post-call top-level steps)
+      #   - 2 call entries (synthetic <top-level> wrapper + add)
+      #   - 1 io event (the `puts add(1, 2)` write to stdout)
+      # If these change, that's a real regression to investigate, not
+      # a flake — pin the values strictly.
+      assert_equal 7, bundle['counts']['steps'],
+                   "expected 7 steps, got #{bundle['counts']['steps']}; " \
+                   "full counts: #{bundle['counts'].inspect}"
+      assert_equal 2, bundle['counts']['calls'],
+                   "expected 2 calls, got #{bundle['counts']['calls']}; " \
+                   "full counts: #{bundle['counts'].inspect}"
+      assert_equal 1, bundle['counts']['io_events'],
+                   "expected 1 io_event, got #{bundle['counts']['io_events']}; " \
+                   "full counts: #{bundle['counts'].inspect}"
+
+      # ---- Call sequence: <top-level> first, then add --------------
+      call_sequence = bundle['events']
+                      .select { |e| e['kind'] == 'call_entry' }
+                      .map { |e| e['function'] }
+      assert_equal 2, call_sequence.size,
+                   "expected 2 call_entry events, got #{call_sequence.size}: #{call_sequence.inspect}"
+      assert call_sequence[0].end_with?('<top-level>'),
+             "first call must enter <top-level>, got #{call_sequence[0].inspect}"
+      assert call_sequence[1].end_with?('add'),
+             "second call must enter add, got #{call_sequence[1].inspect}"
+
+      # ---- Strict ValueRecord variant invariant --------------------
+      # Every step var / call arg / return value that surfaces must
+      # carry a `value.kind` field belonging to the expected, finite
+      # set of known ValueRecord variants.  If a brand-new variant
+      # appears (e.g. BigInt support lands), this fires loudly so the
+      # next maintainer extends the exact-value layer rather than
+      # silently accepting it.  The check recurses through nested
+      # Sequence.elements and Struct.field_values too.
+      allowed_kinds = %w[Int Float String Bool Raw None Void Sequence Struct Tuple].to_set
+
+      check_kinds = lambda do |value, ctx|
+        kind = value['kind']
+        assert_includes allowed_kinds, kind,
+                        "#{ctx}: unknown ValueRecord kind=#{kind.inspect}; " \
+                        'if a new variant has landed for the Ruby recorder, ' \
+                        'extend this test to assert on it explicitly rather ' \
+                        'than weakening the check'
+        Array(value['elements']).each_with_index do |nested, i|
+          check_kinds.call(nested, "#{ctx}.elements[#{i}]")
+        end
+        Array(value['field_values']).each_with_index do |nested, i|
+          check_kinds.call(nested, "#{ctx}.field_values[#{i}]")
+        end
+      end
+
+      bundle['events'].each do |ev|
+        case ev['kind']
+        when 'step'
+          ev['vars'].each do |v|
+            check_kinds.call(v['value'], "step #{ev['step_index']} var #{v['varname'].inspect}")
+          end
+        when 'call_entry'
+          ev['args'].each do |a|
+            check_kinds.call(a['value'],
+                             "call_entry #{ev['function'].inspect} arg #{a['varname'].inspect}")
+          end
+        when 'call_exit'
+          check_kinds.call(ev['return_value'],
+                           "call_exit #{ev['function'].inspect} return_value")
+        end
+      end
+
+      # ---- Exact decoded call-arg values: add(a=1, b=2) ------------
+      # The Ruby native recorder uses ValueRecord::Int for typed
+      # integer call arguments — ct-print --full decodes it to
+      # `{"kind":"Int","i":1,...}`.  This is the Ruby analogue of
+      # cairo's `(a, 10)` Int round-trip and the cardano / circom /
+      # ... family.
+      add_call = bundle['events'].find do |e|
+        e['kind'] == 'call_entry' && e['function'].end_with?('add') && !e['function'].end_with?('<top-level>')
+      end
+      refute_nil add_call, 'no call_entry for add'
+
+      a_arg = add_call['args'].find { |a| a['varname'] == 'a' }
+      refute_nil a_arg, "add call_entry missing `a` arg; args=#{add_call['args'].inspect}"
+      assert_equal 'Int', a_arg['value']['kind'],
+                   "add(a=...) should decode as Int, got #{a_arg['value']['kind'].inspect}"
+      assert_equal 1, a_arg['value']['i'],
+                   "add(a=...) should be 1, got #{a_arg['value']['i'].inspect}"
+
+      b_arg = add_call['args'].find { |a| a['varname'] == 'b' }
+      refute_nil b_arg, "add call_entry missing `b` arg; args=#{add_call['args'].inspect}"
+      assert_equal 'Int', b_arg['value']['kind'],
+                   "add(b=...) should decode as Int, got #{b_arg['value']['kind'].inspect}"
+      assert_equal 2, b_arg['value']['i'],
+                   "add(b=...) should be 2, got #{b_arg['value']['i'].inspect}"
+
+      # The Ruby recorder also surfaces an implicit `self` pseudo-arg
+      # for the top-level Object context.  At top-level, `self` is the
+      # `main` object — encoded as ValueRecord::Raw { r: "main" } (no
+      # typed Object variant exists in the recorder's value schema).
+      # If that ever changes (e.g. self gets dropped or upgraded to a
+      # typed Struct variant), the strict kind invariant above fires
+      # and this assertion has to be revised.
+      self_arg = add_call['args'].find { |a| a['varname'] == 'self' }
+      refute_nil self_arg, "add call_entry missing `self` arg; args=#{add_call['args'].inspect}"
+      assert_equal 'Raw', self_arg['value']['kind'],
+                   "add(self=...) should decode as Raw, got #{self_arg['value']['kind'].inspect}"
+      assert_equal 'main', self_arg['value']['r'],
+                   "add(self=...) should be \"main\", got #{self_arg['value']['r'].inspect}"
+
+      # ---- Exact decoded return value: add returns 3 ---------------
+      # `1 + 2` returns `3`.  The Ruby native recorder snapshots the
+      # typed integer return value via ValueRecord::Int.  The strict
+      # `kind == "Int"` invariant means: if a future recorder upgrade
+      # emits a different variant, this fails loudly.
+      add_exit = bundle['events'].find do |e|
+        e['kind'] == 'call_exit' && e['function'].end_with?('add') && !e['function'].end_with?('<top-level>')
+      end
+      refute_nil add_exit, 'no call_exit for add'
+      assert_equal 'Int', add_exit['return_value']['kind'],
+                   "add return_value should decode as Int, got #{add_exit['return_value']['kind'].inspect}"
+      assert_equal 3, add_exit['return_value']['i'],
+                   "add should return 3, got #{add_exit['return_value']['i'].inspect}"
+
+      # ---- <top-level> returns Void --------------------------------
+      # The synthetic top-level frame has no explicit return value;
+      # the recorder marks it with ValueRecord::Void.  This is the
+      # Ruby analogue of python's `main → None` precedent.
+      top_exit = bundle['events'].find do |e|
+        e['kind'] == 'call_exit' && e['function'].end_with?('<top-level>')
+      end
+      refute_nil top_exit, 'no call_exit for <top-level>'
+      assert_equal 'Void', top_exit['return_value']['kind'],
+                   "<top-level> return_value should decode as Void, got " \
+                   "#{top_exit['return_value']['kind'].inspect}"
+
+      # ---- Exact (varname, value) step-var pairs -------------------
+      # Collect every (varname, kind, payload) triple surfaced by
+      # step events.  The Ruby native recorder snapshots typed
+      # integer locals via ValueRecord::Int, so `a = 1` and
+      # `b = 2` should both surface with the `Int` kind.  The
+      # implicit `<return_value>` synthetic local at the top-level
+      # call site decodes to the `add(1, 2)` result, `Int(3)`.
+      # `self` surfaces as ValueRecord::Raw { r: "main" } at the
+      # top-level call site.  This is the Ruby analogue of
+      # cairo's `a=10, b=32, sum_val=42, ...` round-trip.
+      observed_step_vars = []
+      bundle['events'].each do |ev|
+        next unless ev['kind'] == 'step'
+
+        ev['vars'].each do |v|
+          observed_step_vars << [
+            v['varname'],
+            v['value']['kind'],
+            # `Int.i`, `String.text`, `Raw.r` — pick whichever
+            # payload field is populated so the assertion stays
+            # readable.
+            v['value']['i'] || v['value']['text'] || v['value']['r']
+          ]
+        end
+      end
+
+      expected_step_vars = [
+        # Top-level call site (`puts add(1, 2)`): both literal
+        # integer arguments are surfaced as locals before the call
+        # is dispatched, plus the implicit `self` pointer.
+        ['a',               'Int', 1],
+        ['b',               'Int', 2],
+        ['self',            'Raw', 'main'],
+        # `add`'s body — same parameter pair, with the same Int
+        # decoding, so the step-var snapshot inside `add` mirrors
+        # the call-arg snapshot.
+        ['a',               'Int', 1],
+        ['b',               'Int', 2],
+        # Synthetic `<return_value>` pseudo-local at the top-level
+        # frame: holds the Int(3) result of `add(1, 2)`.
+        ['<return_value>',  'Int', 3]
+      ]
+      expected_step_vars.each do |want|
+        assert_includes observed_step_vars, want,
+                        "expected step variable #{want.inspect} in --full output; " \
+                        "observed = #{observed_step_vars.inspect}"
+      end
+
+      # ---- IO event: `puts add(1, 2)` writes "3\n" -----------------
+      # The single io event must be a stdout write of "3\n" (puts
+      # appends a trailing newline; the recorder captures the raw
+      # bytes written to stdout, so the newline must be present).
+      io_events = bundle['events'].select { |e| e['kind'] == 'io' }
+      assert_equal 1, io_events.size,
+                   "expected exactly 1 io event, got #{io_events.size}: #{io_events.inspect}"
+      io = io_events.first
+      assert_equal 'ioStdout', io['io_kind'],
+                   "io event should be ioStdout, got #{io['io_kind'].inspect}"
+      assert_equal "3\n", io['text'],
+                   "io event text should be \"3\\n\", got #{io['text'].inspect}"
+      assert_equal "3\n".bytesize, io['bytes_len'],
+                   "io event bytes_len should be #{"3\n".bytesize}, got #{io['bytes_len']}"
     end
   end
 
