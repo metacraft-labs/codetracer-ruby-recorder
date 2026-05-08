@@ -14,6 +14,17 @@ module CodeTracer
 
     attr_reader :ignore_list, :record, :debug
 
+    # Parse the disabled environment variable, accepting `1` / `true`
+    # (case-insensitive) as truthy.  Any other value (including unset)
+    # leaves recording enabled.  Convention §5
+    # (`Recorder-CLI-Conventions.md`).
+    def self.disabled_via_env?
+      raw = ENV['CODETRACER_RUBY_RECORDER_DISABLED']
+      return false if raw.nil?
+
+      raw.strip.downcase == '1' || raw.strip.downcase == 'true'
+    end
+
     def self.parse_argv_and_trace_ruby_file(argv)
       require 'optparse'
       lib_dir = File.expand_path('../lib', __dir__)
@@ -22,9 +33,52 @@ module CodeTracer
       options = {}
       parser = OptionParser.new do |opts|
         opts.banner = "usage: codetracer-pure-ruby-recorder [options] <program> [<program args>]"
-        opts.on('-o DIR', '--out-dir DIR', 'Directory to write trace files') { |dir| options[:out_dir] = dir }
-        opts.on('-h', '--help', 'Print this help') { puts opts; exit }
+        opts.separator ''
+        opts.separator 'Options:'
+        opts.on('-o DIR', '--out-dir DIR',
+                'Directory to write trace files ' \
+                '(falls back to $CODETRACER_RUBY_RECORDER_OUT_DIR, then cwd).') do |dir|
+          options[:out_dir] = dir
+        end
+        opts.on('-h', '--help', 'Print this help and exit') do
+          puts opts
+          puts ''
+          puts 'Output format:'
+          puts '  This pure-Ruby fallback recorder writes the legacy 3-file JSON shape'
+          puts '  (trace.json, trace_metadata.json, trace_paths.json).  The canonical'
+          puts '  native recorder (codetracer-ruby-recorder) writes a single CTFS'
+          puts '  bundle (*.ct).  There is no format-selector flag or environment'
+          puts '  variable.  To convert a recorded CTFS trace to JSON or human-readable'
+          puts '  text, use `ct print` (shipped with codetracer-trace-format-nim).'
+          puts ''
+          puts 'Environment variables:'
+          puts '  CODETRACER_RUBY_RECORDER_OUT_DIR   Default output directory'
+          puts '                                      (overridden by --out-dir).'
+          puts '  CODETRACER_RUBY_RECORDER_DISABLED  Set to 1 or true to skip recording'
+          puts '                                      entirely; the script still runs.'
+          puts '  CODETRACER_RUBY_RECORDER_DEBUG     Enable additional debug logging.'
+          exit
+        end
+        opts.on('-V', '--version', 'Print version and exit') do
+          version_file = File.join(__dir__, '..', '..', 'version.txt')
+          version = File.exist?(version_file) ? File.read(version_file).strip : 'unknown'
+          puts "codetracer-pure-ruby-recorder #{version}"
+          exit
+        end
       end
+
+      # Reject the legacy --format flag explicitly so callers see a clear
+      # failure rather than silently writing the default format while
+      # believing they asked for something else.  Convention §4: CTFS-only;
+      # the pure recorder has no format selector either way.
+      if argv.any? { |a| a == '--format' || a == '-f' || a.start_with?('--format=') || a.start_with?('-f=') }
+        $stderr.puts 'codetracer-pure-ruby-recorder: error: the --format / -f flag is not accepted.'
+        $stderr.puts '  The native recorder writes CTFS; this pure fallback writes the legacy'
+        $stderr.puts '  3-file JSON shape.  Use `ct print` (shipped with codetracer-trace-format-nim)'
+        $stderr.puts '  to convert a recorded CTFS *.ct file to JSON or human-readable text.'
+        exit 2
+      end
+
       parser.order!(argv)
 
       program = argv.shift
@@ -37,6 +91,23 @@ module CodeTracer
       program_args = argv.dup
 
       out_dir = options[:out_dir] || ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pwd
+
+      # CODETRACER_RUBY_RECORDER_DISABLED short-circuits the recorder
+      # entirely: the target program still runs (so callers get the same
+      # stdout / exit behaviour) but no trace is written.  Convention §5.
+      if disabled_via_env?
+        original_argv = ARGV.dup
+        ARGV.clear
+        ARGV.concat(program_args)
+        begin
+          Kernel.load(program)
+        ensure
+          ARGV.clear
+          ARGV.concat(original_argv)
+        end
+        return 0
+      end
+
       trace_ruby_file(program, out_dir, program_args)
       0
     end

@@ -336,17 +336,16 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     Qnil.into()
 }
 
-fn begin_trace(
-    dir: &Path,
-    format: TraceEventsFileFormat,
-) -> Result<Box<dyn TraceWriter>, Box<dyn std::error::Error>> {
-    let mut tracer = create_trace_writer("ruby", &vec![], format);
+// Hard-pinned to the canonical CTFS multi-stream output per
+// `codetracer-specs/Recorder-CLI-Conventions.md` §4 (CTFS-only).  The
+// recorder no longer accepts a format parameter: the JSON / Binary /
+// BinaryV0 dispatch arms have been removed.  `ct print` (shipped with
+// codetracer-trace-format-nim) is the canonical way to convert a
+// recorded `*.ct` bundle into JSON or human-readable text.
+fn begin_trace(dir: &Path) -> Result<Box<dyn TraceWriter>, Box<dyn std::error::Error>> {
+    let mut tracer = create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Ctfs);
     std::fs::create_dir_all(dir)?;
-    let events = match format {
-        TraceEventsFileFormat::Json => dir.join("trace.json"),
-        TraceEventsFileFormat::Ctfs => dir.join("trace.ct"),
-        TraceEventsFileFormat::BinaryV0 | TraceEventsFileFormat::Binary => dir.join("trace.bin"),
-    };
+    let events = dir.join("trace.ct");
     let metadata = dir.join("trace_metadata.json");
     let paths = dir.join("trace_paths.json");
 
@@ -743,24 +742,29 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
     let recorder_ptr = get_recorder(self_val);
     let recorder = &mut *recorder_ptr;
 
-    let fmt = if !NIL_P(format) && RB_SYMBOL_P(format) {
-        match cstr_to_string(rb_id2name(rb_sym2id(format)))
-            .unwrap_or_default()
-            .as_str()
-        {
-            "binaryv0" => TraceEventsFileFormat::BinaryV0,
-            "binary" | "bin" => TraceEventsFileFormat::Binary,
-            "json" => TraceEventsFileFormat::Json,
-            "ctfs" | "ct" => TraceEventsFileFormat::Ctfs,
-            _ => rb_raise(rb_eIOError, c"Unknown format".as_ptr() as *const c_char),
+    // CTFS-only per `Recorder-CLI-Conventions.md` §4.  The second
+    // positional argument is preserved for backward FFI compatibility
+    // (Ruby's `rb_define_method` registered this method with arity 2)
+    // but only `:ctfs` / `:ct` are accepted.  Any other format symbol
+    // raises a clear error so callers cannot silently ask for JSON or
+    // binary and believe they got it.  Use `ct print` (shipped with
+    // codetracer-trace-format-nim) to convert the produced *.ct bundle
+    // into JSON or human-readable text.
+    if !NIL_P(format) && RB_SYMBOL_P(format) {
+        let name = cstr_to_string(rb_id2name(rb_sym2id(format))).unwrap_or_default();
+        match name.as_str() {
+            "ctfs" | "ct" => {}
+            _ => rb_raise(
+                rb_eIOError,
+                c"codetracer-ruby-recorder is CTFS-only; use `ct print` to convert the trace."
+                    .as_ptr() as *const c_char,
+            ),
         }
-    } else {
-        TraceEventsFileFormat::Ctfs
-    };
+    }
 
     match rstring_checked(out_dir) {
         Ok(path_str) => {
-            match begin_trace(Path::new(&path_str), fmt) {
+            match begin_trace(Path::new(&path_str)) {
                 Ok(t) => {
                     recorder.tracer = Mutex::new(t);
                     recorder.out_dir = path_str;

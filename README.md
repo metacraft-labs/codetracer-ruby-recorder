@@ -33,39 +33,53 @@ recorder.flush_trace
 
 ### Usage
 
-you can currently use it directly with
+The native recorder writes a single CTFS trace bundle (`*.ct`) per
+`codetracer-specs/Recorder-CLI-Conventions.md` §4 (CTFS-only).  There is
+no `--format` flag: to inspect a recorded trace as JSON or human-readable
+text, run `ct print` (shipped with
+[`codetracer-trace-format-nim`](https://github.com/metacraft-labs/codetracer-trace-format-nim))
+on the produced `*.ct` file.
 
 ```bash
-ruby gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder [--out-dir DIR] <path to ruby file> [-- <program args>]
-# produces several trace json files in DIR,
-# or in `$CODETRACER_RUBY_RECORDER_OUT_DIR` if DIR is not provided.
-# Defaults to the current directory.
-# Use `--` to stop option parsing and pass arguments to the program.
+ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder [--out-dir DIR] <path to ruby file> [-- <program args>]
+# Writes a `*.ct` CTFS bundle into DIR (defaults to ./, or
+# $CODETRACER_RUBY_RECORDER_OUT_DIR when set).
+# Use `--` to pass arguments to the traced program.
 # Pass --help to list all options.
 ```
 
-You can also invoke a lightweight CLI that loads the native tracer extension
-directly:
+The pure-Ruby fallback (no native extension) preserves the legacy 3-file
+JSON output shape and is intended for environments where the Rust native
+extension cannot be built:
 
 ```bash
-ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder [--out-dir DIR] [--format json|binary] <path to ruby file> [-- <program args>]
-# Uses DIR or `$CODETRACER_RUBY_RECORDER_OUT_DIR` to choose where traces are saved.
-# `--format` selects the trace format (`json` or `binary`).
-# Use `--` to pass arguments to the traced program.
+ruby gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder [--out-dir DIR] <path to ruby file> [-- <program args>]
+# Produces trace.json / trace_metadata.json / trace_paths.json in DIR.
 ```
 
-Example recording a binary trace while passing arguments to the program:
+Example recording a CTFS trace while passing arguments to the program:
 
 ```bash
-ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder --format=binary --out-dir traces examples/runtime_code_execution.rb -- 2
+ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder --out-dir traces examples/runtime_code_execution.rb -- 2
+
+# Inspect the resulting bundle:
+ct-print --json traces/*.ct
 ```
 
 however you probably want to use it in combination with CodeTracer, which would be released soon.
 
 ### ENV variables
 
-* if you pass `CODETRACER_RUBY_RECORDER_DEBUG=1`, you enable some additional debug-related logging
-* `CODETRACER_RUBY_RECORDER_OUT_DIR` can be used to specify the directory for trace files
+* `CODETRACER_RUBY_RECORDER_OUT_DIR` — fallback for `--out-dir`.  CLI flags
+  always take precedence (convention §5).
+* `CODETRACER_RUBY_RECORDER_DISABLED` — set to `1` or `true` to skip
+  recording entirely; the target script still runs (convention §5).
+* `CODETRACER_RUBY_RECORDER_DEBUG=1` — enable additional debug-related logging.
+
+There is no `--format` flag and no `CODETRACER_FORMAT` environment
+variable: the recorder is CTFS-only.  Use `ct print` to convert the
+recorded `*.ct` trace to JSON or text for debugging or golden-snapshot
+fixtures.
 
 ## Development Setup
 

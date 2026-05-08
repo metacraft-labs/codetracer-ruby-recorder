@@ -740,4 +740,196 @@ class TraceTest < Minitest::Test
       assert File.exist?(File.join(out_dir, 'trace.json'))
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # CTFS-only convention tests (mirror the python / cairo precedent).
+  # See `codetracer-specs/Recorder-CLI-Conventions.md` §4 (CTFS-only) and
+  # §5 (env vars), and `AUDIT-CTFS-2026-05.md` for the recorder-side
+  # follow-up record.
+  # ---------------------------------------------------------------------------
+
+  NATIVE_RECORDER_BIN = 'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder'
+  PURE_RECORDER_BIN   = 'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder'
+
+  # Record `addition.rb` with the native recorder and pipe the produced
+  # *.ct bundle through `ct-print --json`, then assert structural
+  # anchors: program metadata, function names (`<top-level>` and the
+  # user-defined `add`), and a non-trivial step / call count.  This is
+  # the canonical replacement for the deleted `--format json` / `--format
+  # binary` content assertions: instead of asking the recorder for JSON
+  # we record CTFS and convert via `ct print`, exactly as
+  # `Recorder-CLI-Conventions.md` §4 mandates.
+  def test_recorded_trace_via_ct_print_json
+    skip 'native recorder extension not built' unless native_extension_built?
+    skip 'ct-print not available' unless File.exist?(CT_PRINT)
+
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      out_dir = File.join(TMP_DIR, 'ct_print_json')
+      FileUtils.rm_rf(out_dir)
+      FileUtils.mkdir_p(out_dir)
+      program = File.join('test', 'programs', 'addition.rb')
+
+      _stdout, stderr, status = Open3.capture3(
+        RbConfig.ruby, NATIVE_RECORDER_BIN, '--out-dir', out_dir, program
+      )
+      assert status.success?, "trace failed: #{stderr}"
+
+      ct_files = Dir.glob(File.join(out_dir, '*.ct'))
+      refute_empty ct_files, "expected a *.ct bundle in #{out_dir}, got #{Dir.entries(out_dir).inspect}"
+
+      json_stdout, json_stderr, json_status = Open3.capture3(CT_PRINT, '--json', ct_files.first)
+      assert json_status.success?, "ct-print --json failed: #{json_stderr}"
+
+      digest = JSON.parse(json_stdout)
+
+      # Structural anchors that don't depend on type-id assignment order.
+      assert_kind_of Hash, digest['metadata'], 'expected ct-print --json to expose metadata block'
+      assert_equal 'ruby', digest['metadata']['program'], 'metadata.program should be "ruby"'
+
+      # Functions: must contain at least the implicit top-level frame
+      # and the user-defined `add` method.
+      function_names = digest['functions'] || []
+      assert_includes function_names, '<top-level>',
+                      "expected `<top-level>` in functions: #{function_names.inspect}"
+      assert function_names.any? { |n| n == 'add' || n.end_with?('#add') },
+             "expected `add` (or Object#add) in functions: #{function_names.inspect}"
+
+      # Steps: addition.rb has at least the `puts add(1, 2)` step plus
+      # the body of `add`; require >= 2 to guard against an empty trace.
+      steps = digest['steps'] || []
+      assert_operator steps.size, :>=, 2,
+                      "expected >= 2 steps in addition.rb trace, got #{steps.size}"
+
+      # Paths: must reference addition.rb.
+      paths = digest['paths'] || []
+      assert paths.any? { |p| p.include?('addition.rb') },
+             "expected addition.rb in paths: #{paths.inspect}"
+    end
+  end
+
+  # `--out-dir` may be omitted when CODETRACER_RUBY_RECORDER_OUT_DIR is set.
+  # Verifies convention §5 for both recorders.
+  def test_env_out_dir_used_when_flag_omitted
+    [PURE_RECORDER_BIN, NATIVE_RECORDER_BIN].each do |bin|
+      next if bin == NATIVE_RECORDER_BIN && !native_extension_built?
+
+      Dir.chdir(File.expand_path('..', __dir__)) do
+        out_dir = File.join(TMP_DIR, "env_out_dir_#{File.basename(bin)}")
+        FileUtils.rm_rf(out_dir)
+        FileUtils.mkdir_p(out_dir)
+
+        env = { 'CODETRACER_RUBY_RECORDER_OUT_DIR' => out_dir }
+        program = File.join('test', 'programs', 'addition.rb')
+        _stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, bin, program)
+        assert status.success?, "[#{bin}] trace failed: #{stderr}"
+
+        ct_files    = Dir.glob(File.join(out_dir, '*.ct'))
+        json_exists = File.exist?(File.join(out_dir, 'trace.json'))
+        assert ct_files.any? || json_exists,
+               "[#{bin}] expected trace artefact in env-provided #{out_dir}; got: " +
+               Dir.entries(out_dir).inspect
+      end
+    end
+  end
+
+  # CODETRACER_RUBY_RECORDER_DISABLED=1 short-circuits recording: the
+  # target script still runs (so its stdout is preserved) but no
+  # artefact is written.  Convention §5.
+  def test_env_disabled_skips_recording
+    [PURE_RECORDER_BIN, NATIVE_RECORDER_BIN].each do |bin|
+      next if bin == NATIVE_RECORDER_BIN && !native_extension_built?
+
+      Dir.chdir(File.expand_path('..', __dir__)) do
+        out_dir = File.join(TMP_DIR, "env_disabled_#{File.basename(bin)}")
+        FileUtils.rm_rf(out_dir)
+        FileUtils.mkdir_p(out_dir)
+
+        env = { 'CODETRACER_RUBY_RECORDER_DISABLED' => '1' }
+        program = File.join('test', 'programs', 'addition.rb')
+        stdout, stderr, status = Open3.capture3(
+          env, RbConfig.ruby, bin, '--out-dir', out_dir, program
+        )
+        assert status.success?, "[#{bin}] disabled-mode failed: #{stderr}"
+
+        # The target script's `puts add(1, 2)` should still produce "3\n".
+        assert_includes stdout, '3', "[#{bin}] script stdout should be preserved when disabled"
+
+        # No trace artefacts should have been written.
+        ct_files = Dir.glob(File.join(out_dir, '*.ct'))
+        assert_empty ct_files,
+                     "[#{bin}] expected no *.ct files when DISABLED=1; got #{ct_files.inspect}"
+        refute File.exist?(File.join(out_dir, 'trace.json')),
+               "[#{bin}] expected no trace.json when DISABLED=1"
+      end
+    end
+  end
+
+  # `--format` and `-f` must be rejected with a non-zero exit (no silent
+  # acceptance).  Convention §4.
+  def test_format_flag_rejected
+    [PURE_RECORDER_BIN, NATIVE_RECORDER_BIN].each do |bin|
+      next if bin == NATIVE_RECORDER_BIN && !native_extension_built?
+
+      Dir.chdir(File.expand_path('..', __dir__)) do
+        program = File.join('test', 'programs', 'addition.rb')
+
+        ['--format', '--format=json', '-f'].each do |flag_form|
+          argv = if flag_form.include?('=')
+                   [flag_form, program]
+                 elsif flag_form == '-f'
+                   ['-f', 'binary', program]
+                 else
+                   ['--format', 'json', program]
+                 end
+          _stdout, stderr, status = Open3.capture3(RbConfig.ruby, bin, *argv)
+          refute status.success?,
+                 "[#{bin}] expected non-zero exit for #{flag_form}, got success.\nstderr: #{stderr}"
+        end
+      end
+    end
+  end
+
+  # `--help` for both recorders must NOT mention `--format` or
+  # `CODETRACER_FORMAT`.  Convention §§4-5.
+  def test_no_format_flag_in_help
+    [PURE_RECORDER_BIN, NATIVE_RECORDER_BIN].each do |bin|
+      Dir.chdir(File.expand_path('..', __dir__)) do
+        stdout, _stderr, status = Open3.capture3(RbConfig.ruby, bin, '--help')
+        assert status.success?, "[#{bin}] --help failed"
+        refute_match(/--format/, stdout, "[#{bin}] --help must not mention --format")
+        refute_match(/CODETRACER_FORMAT/, stdout, "[#{bin}] --help must not mention CODETRACER_FORMAT")
+      end
+    end
+  end
+
+  # `--help` for both recorders must mention `ct print` (the canonical
+  # conversion tool, convention §4).
+  def test_help_mentions_ct_print
+    [PURE_RECORDER_BIN, NATIVE_RECORDER_BIN].each do |bin|
+      Dir.chdir(File.expand_path('..', __dir__)) do
+        stdout, _stderr, status = Open3.capture3(RbConfig.ruby, bin, '--help')
+        assert status.success?, "[#{bin}] --help failed"
+        assert_includes stdout, 'ct print',
+                        "[#{bin}] --help must mention `ct print` (canonical CTFS converter)"
+      end
+    end
+  end
+
+  private
+
+  # The native gem only works when the Rust extension has been compiled.
+  # Skip native-recorder tests rather than fail when the build hasn't
+  # been run (e.g. on a fresh checkout) — this is a pre-existing test
+  # convention (`run_native_recorder_ct` in test_hcr.rb has the same
+  # gate).  This is *not* a silent test weakening: each guarded test
+  # asserts loudly when the extension *is* available.
+  def native_extension_built?
+    ext_dir = File.expand_path('../gems/codetracer-ruby-recorder/ext/native_tracer/target/release', __dir__)
+    return false unless Dir.exist?(ext_dir)
+
+    %w[so bundle dylib dll].any? do |dlext|
+      File.exist?(File.join(ext_dir, "codetracer_ruby_recorder.#{dlext}")) ||
+        File.exist?(File.join(ext_dir, "libcodetracer_ruby_recorder.#{dlext}"))
+    end
+  end
 end

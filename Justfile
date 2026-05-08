@@ -5,6 +5,12 @@ cargo_build_target_opt := if os_family() == "windows" { "--target x86_64-pc-wind
 test:
     ruby -Itest test/gem_installation.rb
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
+    just verify-cli-convention
+
+# Verify the recorder CLI complies with `Recorder-CLI-Conventions.md`.
+# See tests/verify-cli-convention-no-silent-skip.sh for the assertion list.
+verify-cli-convention:
+    bash tests/verify-cli-convention-no-silent-skip.sh
 
 bench pattern="*" write_report="console":
     ruby test/benchmarks/run_benchmarks.rb '{{pattern}}' --write-report={{write_report}}
@@ -57,6 +63,7 @@ lint:
     just lint-rust
     just lint-ruby
     just lint-nix
+    just verify-cli-convention
 
 alias fmt := format
 
