@@ -552,17 +552,9 @@ class TraceTest < Minitest::Test
     # Compare with simplification to handle this.
     expected_returns = extract_returns(expected)
     actual_returns = extract_returns(actual)
-    # ct-print's --json-events emits a value event for `<return_value>`
-    # at the call's exit step, which the normaliser turns into a Return
-    # event.  Some traces emit the value once per inner-frame (so the
-    # native trace ends up with more Return events than the pure trace).
-    # Require that every expected return is matched, but allow extras.
-    assert expected_returns.size <= actual_returns.size,
-           "#{msg_prefix}return value count: expected at least " \
-           "#{expected_returns.size}, got #{actual_returns.size}"
-    expected_returns.each_with_index do |er, i|
-      ar = actual_returns[i]
-      next if ar.nil? # tolerate sparse alignment
+    assert_equal expected_returns.size, actual_returns.size,
+                 "#{msg_prefix}return value count differs"
+    expected_returns.zip(actual_returns).each_with_index do |(er, ar), i|
       next if er == ar
       # Check if it's a String-to-Raw conversion: the text content should match.
       if er['kind'] == 'String' && ar['kind'] == 'Raw' &&
