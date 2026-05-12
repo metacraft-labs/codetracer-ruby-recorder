@@ -1,0 +1,6 @@
+ok|ensure
+found:alice
+rescued:no entry for missing|ensure
+fallback
+ok after 3
+outer caught: inner

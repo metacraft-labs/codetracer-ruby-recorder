@@ -1,0 +1,1662 @@
+[
+  {
+    "Type": {
+      "kind": 7,
+      "lang_type": "Integer",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 9,
+      "lang_type": "String",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 12,
+      "lang_type": "Bool",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 9,
+      "lang_type": "Symbol",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 24,
+      "lang_type": "No type",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Path": ""
+  },
+  {
+    "Function": {
+      "path_id": 0,
+      "line": 1,
+      "name": "<top-level>"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 0,
+      "args": []
+    }
+  },
+  {
+    "Path": "test/programs/exceptions.rb"
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 9
+    }
+  },
+  {
+    "VariableName": "e"
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 10
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 12
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 18
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 33
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 46
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 53
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 16,
+      "lang_type": "Object",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "VariableName": "self"
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "VariableName": "name"
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 18
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 18,
+      "name": "with_ensure"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 1,
+      "args": [
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 2,
+          "value": {
+            "kind": "String",
+            "type_id": 1,
+            "text": "alice"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "VariableName": "ensure_log"
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "result"
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 21
+    }
+  },
+  {
+    "Type": {
+      "kind": 0,
+      "lang_type": "Array",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 12
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 12,
+      "name": "lookup"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 2,
+      "args": [
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 2,
+          "value": {
+            "kind": "String",
+            "type_id": 1,
+            "text": "alice"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 13
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 15
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 16
+    }
+  },
+  {
+    "VariableName": "<return_value>"
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "found:alice"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "found:alice"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 22
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "found:alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 23
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "ok"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "found:alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "ok"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "found:alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "ensure"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "found:alice"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "ok|ensure\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "found:alice"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "found:alice"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 53
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "found:alice\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 54
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 18
+    }
+  },
+  {
+    "Call": {
+      "function_id": 1,
+      "args": [
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 2,
+          "value": {
+            "kind": "String",
+            "type_id": 1,
+            "text": "missing"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 21
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 12
+    }
+  },
+  {
+    "Call": {
+      "function_id": 2,
+      "args": [
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 2,
+          "value": {
+            "kind": "String",
+            "type_id": 1,
+            "text": "missing"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 13
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Event": {
+      "kind": 11,
+      "content": "no entry for missing",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 13
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "NotFoundError (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": []
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 7,
+        "field_values": []
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "NotFoundError (#1)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": []
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "rescued:no entry for missing"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 8,
+        "field_values": []
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "NotFoundError (#2)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": []
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "rescued:no entry for missing"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 9,
+        "field_values": []
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "NotFoundError (#3)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": []
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "missing"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "rescued:no entry for missing"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "ensure"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 10,
+        "field_values": []
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "rescued:no entry for missing|ensure\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "fallback"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "fallback"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 54
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "fallback\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 55
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 33
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 33,
+      "name": "retrying"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 3,
+      "args": [
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 34
+    }
+  },
+  {
+    "VariableName": "attempts"
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 36
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 37
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Event": {
+      "kind": 11,
+      "content": "transient",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 41
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 36
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 37
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Event": {
+      "kind": 11,
+      "content": "transient",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 41
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 36
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 37
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 39
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 44
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "ok after 3"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "ok after 3"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 55
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "ok after 3\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 59
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 46
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 46,
+      "name": "propagate"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 47
+    }
+  },
+  {
+    "Event": {
+      "kind": 11,
+      "content": "inner",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 46
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 61
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "AppError (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": []
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 11,
+        "field_values": []
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 61
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "outer caught: inner\n",
+      "metadata": ""
+    }
+  }
+]

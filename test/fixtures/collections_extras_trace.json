@@ -1,0 +1,4408 @@
+[
+  {
+    "Type": {
+      "kind": 7,
+      "lang_type": "Integer",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 9,
+      "lang_type": "String",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 12,
+      "lang_type": "Bool",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 9,
+      "lang_type": "Symbol",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 24,
+      "lang_type": "No type",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Path": ""
+  },
+  {
+    "Function": {
+      "path_id": 0,
+      "line": 1,
+      "name": "<top-level>"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 0,
+      "args": []
+    }
+  },
+  {
+    "Path": "test/programs/collections_extras.rb"
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 6
+    }
+  },
+  {
+    "VariableName": "range"
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "range_sum"
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "pattern"
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "matched"
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "sym"
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "sym_str"
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "hash"
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "hash_keys"
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "frozen"
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "frozen_dup"
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 7
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 5,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 7
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#1)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "VariableName": "acc"
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "VariableName": "n"
+  },
+  {
+    "Value": {
+      "variable_id": 11,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 6,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 7
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#2)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 11,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 7,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 7
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#3)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 11,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 8,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 7
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#4)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 6
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 11,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 9,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 7
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#5)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 10
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 11,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 5
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 10,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 9
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#6)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 11,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 10
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#7)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 12,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 13,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 12
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#8)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#1)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 14,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 15,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 13
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#9)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#2)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 16,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 17,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 15
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#10)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#3)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 18,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 19,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 16
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#11)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#4)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#0)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#1)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 0,
+      "lang_type": "Hash",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 20,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 21,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 22,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 23,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 18
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#12)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#5)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#2)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#3)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 0,
+      "lang_type": "Array",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 25,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 26,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 27,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 28,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#13)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#6)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#4)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#5)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 30,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 31,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 32,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 33,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 20
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#14)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#7)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#6)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#7)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 34,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 35,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 36,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 37,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable!"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 22
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#15)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#8)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#8)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#9)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 38,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 39,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 40,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 41,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable!"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 22
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "15\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 23
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#16)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#9)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#10)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#11)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 42,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 43,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 44,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 45,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable!"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 23
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "true\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 24
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#17)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#10)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#12)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#13)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 46,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 47,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 48,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 49,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable!"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 24
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "status\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#18)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#11)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#14)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#15)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 50,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 51,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 52,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 53,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable!"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "[\"name\", \"age\"]\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#19)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#12)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#16)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#17)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 54,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 55,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 56,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 57,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable!"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "true\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 27
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Range (#20)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "begin",
+            "type_id": 0
+          },
+          {
+            "name": "end",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Regexp (#13)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "source",
+            "type_id": 1
+          },
+          {
+            "name": "options",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#18)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 6,
+      "lang_type": "Pair (#19)",
+      "specific_info": {
+        "kind": "Struct",
+        "fields": [
+          {
+            "name": "k",
+            "type_id": 3
+          },
+          {
+            "name": "v",
+            "type_id": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Struct",
+        "type_id": 58,
+        "field_values": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 15
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Struct",
+        "type_id": 59,
+        "field_values": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "\\Ahello"
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "status"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 24,
+        "elements": [
+          {
+            "kind": "Struct",
+            "type_id": 60,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "name"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "ada"
+              }
+            ]
+          },
+          {
+            "kind": "Struct",
+            "type_id": 61,
+            "field_values": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "age"
+              },
+              {
+                "kind": "Int",
+                "type_id": 0,
+                "i": 36
+              }
+            ]
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 29,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "name"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "age"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "immutable!"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 27
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "immutable!\n",
+      "metadata": ""
+    }
+  }
+]

@@ -1,0 +1,2053 @@
+[
+  {
+    "Type": {
+      "kind": 7,
+      "lang_type": "Integer",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 9,
+      "lang_type": "String",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 12,
+      "lang_type": "Bool",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 9,
+      "lang_type": "Symbol",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 24,
+      "lang_type": "No type",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Path": ""
+  },
+  {
+    "Function": {
+      "path_id": 0,
+      "line": 1,
+      "name": "<top-level>"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 0,
+      "args": []
+    }
+  },
+  {
+    "Path": "test/programs/nested_calls.rb"
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 7
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 11
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 15
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 37
+    }
+  },
+  {
+    "Type": {
+      "kind": 16,
+      "lang_type": "Object",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "VariableName": "self"
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "VariableName": "value"
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 15
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 15,
+      "name": "outer"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 1,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 16
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 11
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 11,
+      "name": "middle"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 2,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 12
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 7
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 7,
+      "name": "inner"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 3,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 8
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 9
+    }
+  },
+  {
+    "VariableName": "<return_value>"
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 6
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 6
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 13
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 17
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 107
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 107
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 37
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "107\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 38
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "VariableName": "n"
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 5
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 19,
+      "name": "factorial"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 20
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 5
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 22
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 5
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 4
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 20
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 22
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 20
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 22
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 20
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 22
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 20
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 20
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 23
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 23
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 6
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 6
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 23
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 24
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 24
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 23
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 120
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 120
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 38
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "120\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 39
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 25,
+      "name": "is_even"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 5,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 4
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 31,
+      "name": "is_odd"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 6,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 32
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 34
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Call": {
+      "function_id": 5,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Call": {
+      "function_id": 6,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 32
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 34
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Call": {
+      "function_id": 5,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 35
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 35
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": true
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 39
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "true\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 40
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Call": {
+      "function_id": 6,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 4
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 32
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 34
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Call": {
+      "function_id": 5,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Call": {
+      "function_id": 6,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 32
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 34
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Call": {
+      "function_id": 5,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Call": {
+      "function_id": 6,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 3,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 32
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 32
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 35
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 29
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 35
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Bool",
+        "type_id": 2,
+        "b": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 40
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "false\n",
+      "metadata": ""
+    }
+  }
+]

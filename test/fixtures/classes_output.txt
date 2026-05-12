@@ -1,0 +1,5 @@
+cat has 4 legs
+rex has 4 legs and barks
+hello, cat
+hello, rex
+2

@@ -1,0 +1,3634 @@
+[
+  {
+    "Type": {
+      "kind": 7,
+      "lang_type": "Integer",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 9,
+      "lang_type": "String",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 12,
+      "lang_type": "Bool",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 9,
+      "lang_type": "Symbol",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Type": {
+      "kind": 24,
+      "lang_type": "No type",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Path": ""
+  },
+  {
+    "Function": {
+      "path_id": 0,
+      "line": 1,
+      "name": "<top-level>"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 0,
+      "args": []
+    }
+  },
+  {
+    "Path": "test/programs/control_flow.rb"
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 9
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 21
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 33
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 42
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 54
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 68
+    }
+  },
+  {
+    "Type": {
+      "kind": 16,
+      "lang_type": "Object",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "VariableName": "self"
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "VariableName": "n"
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": -3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 9
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 9,
+      "name": "classify"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 1,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": -3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 10
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": -3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 11
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": -3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "VariableName": "<return_value>"
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "negative"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "negative"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 68
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "negative\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 69
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 9
+    }
+  },
+  {
+    "Call": {
+      "function_id": 1,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 0
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 10
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 12
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 13
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "zero"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "zero"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 69
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "zero\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 70
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 9
+    }
+  },
+  {
+    "Call": {
+      "function_id": 1,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 10
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 12
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 14
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 15
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "odd"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "odd"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 70
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "odd\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 71
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 8
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 9
+    }
+  },
+  {
+    "Call": {
+      "function_id": 1,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 8
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 10
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 8
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 12
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 8
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 14
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 8
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 17
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 8
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 19
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "even"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "even"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 71
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "even\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 72
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 21
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 21,
+      "name": "collect_until_five"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 2,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 22
+    }
+  },
+  {
+    "VariableName": "i"
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "collected"
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 23
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 24
+    }
+  },
+  {
+    "Type": {
+      "kind": 0,
+      "lang_type": "Array",
+      "specific_info": {
+        "kind": "None"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 27
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 27
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 4
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 5
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 27
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 5
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 28
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 5
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 5
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 6
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 25
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 6
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 26
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 27
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 30
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 3,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 7
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 4,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 31
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 5
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 72
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "[1, 3, 5]\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 73
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 33
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 33,
+      "name": "countdown"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 3,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 1,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 34
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "VariableName": "result"
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 35
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 36
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 37
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 3
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 36
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 37
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 36
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 37
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 39
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 1,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 5,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 40
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 3
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          },
+          {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 1
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 73
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "[3, 2, 1]\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 74
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "VariableName": "cmd"
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "start"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 42
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 42,
+      "name": "dispatch"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 6,
+          "value": {
+            "kind": "String",
+            "type_id": 3,
+            "text": "start"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 43
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "start"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 44
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "start"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 49
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "starting"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "starting"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 74
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "starting\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 75
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "other"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 42
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 6,
+          "value": {
+            "kind": "String",
+            "type_id": 3,
+            "text": "other"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 43
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "other"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 47
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "other"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 49
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "unknown"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "unknown"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 75
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "unknown\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 76
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 42
+    }
+  },
+  {
+    "Call": {
+      "function_id": 4,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 6,
+          "value": {
+            "kind": "Int",
+            "type_id": 0,
+            "i": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 43
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 46
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 6,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 2
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 49
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "small-int"
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "String",
+        "type_id": 1,
+        "text": "small-int"
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 76
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "small-int\n",
+      "metadata": ""
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 77
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 0,
+      "value": {
+        "kind": "Raw",
+        "type_id": 5,
+        "r": "main"
+      }
+    }
+  },
+  {
+    "VariableName": "values"
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 54
+    }
+  },
+  {
+    "Function": {
+      "path_id": 1,
+      "line": 54,
+      "name": "retry_each"
+    }
+  },
+  {
+    "Call": {
+      "function_id": 5,
+      "args": [
+        {
+          "variable_id": 0,
+          "value": {
+            "kind": "Raw",
+            "type_id": 5,
+            "r": "main"
+          }
+        },
+        {
+          "variable_id": 7,
+          "value": {
+            "kind": "Sequence",
+            "type_id": 6,
+            "elements": [
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "ok"
+              },
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "flaky"
+              },
+              {
+                "kind": "String",
+                "type_id": 3,
+                "text": "done"
+              }
+            ],
+            "is_slice": false
+          }
+        }
+      ]
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 55
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "VariableName": "retries"
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "VariableName": "out"
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 56
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "None",
+        "type_id": 4
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 57
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 58
+    }
+  },
+  {
+    "VariableName": "v"
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "ok"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 63
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "ok"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 58
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "flaky"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 59
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "flaky"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 0
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 60
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "flaky"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 61
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "recovered"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 58
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "recovered"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 63
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "recovered"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 58
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "done"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "recovered"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 63
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 10,
+      "value": {
+        "kind": "String",
+        "type_id": 3,
+        "text": "done"
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "recovered"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 65
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 7,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "flaky"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 8,
+      "value": {
+        "kind": "Int",
+        "type_id": 0,
+        "i": 1
+      }
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 9,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "recovered"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 66
+    }
+  },
+  {
+    "Value": {
+      "variable_id": 2,
+      "value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "recovered"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Return": {
+      "return_value": {
+        "kind": "Sequence",
+        "type_id": 6,
+        "elements": [
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "ok"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "recovered"
+          },
+          {
+            "kind": "String",
+            "type_id": 3,
+            "text": "done"
+          }
+        ],
+        "is_slice": false
+      }
+    }
+  },
+  {
+    "Step": {
+      "path_id": 1,
+      "line": 77
+    }
+  },
+  {
+    "Event": {
+      "kind": 0,
+      "content": "[:ok, :recovered, :done]\n",
+      "metadata": ""
+    }
+  }
+]

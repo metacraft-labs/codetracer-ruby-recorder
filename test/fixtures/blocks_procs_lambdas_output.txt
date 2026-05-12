@@ -1,0 +1,5 @@
+[1, 4, 9]
+32
+42
+11
+[[1, 2], "wrong number of arguments (given 3, expected 2)"]
