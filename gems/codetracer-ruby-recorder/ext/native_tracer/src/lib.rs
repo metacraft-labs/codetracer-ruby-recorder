@@ -346,20 +346,15 @@ fn begin_trace(dir: &Path) -> Result<Box<dyn TraceWriter>, Box<dyn std::error::E
     let mut tracer = create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Ctfs);
     std::fs::create_dir_all(dir)?;
     let events = dir.join("trace.ct");
-    let metadata = dir.join("trace_metadata.json");
-    let paths = dir.join("trace_paths.json");
 
     TraceWriter::begin_writing_trace_events(&mut *tracer, &events)?;
-    TraceWriter::begin_writing_trace_metadata(&mut *tracer, &metadata)?;
-    TraceWriter::begin_writing_trace_paths(&mut *tracer, &paths)?;
 
     Ok(tracer)
 }
 
 fn flush_to_dir(tracer: &mut dyn TraceWriter) -> Result<(), Box<dyn std::error::Error>> {
     TraceWriter::finish_writing_trace_events(tracer)?;
-    TraceWriter::finish_writing_trace_metadata(tracer)?;
-    TraceWriter::finish_writing_trace_paths(tracer)?;
+    tracer.write_meta_dat("codetracer-ruby-recorder")?;
     // For the CTFS multi-stream backend, `close()` is the step that
     // actually writes the `.ct` container file to disk. Without this
     // call, CTFS traces produce no output files.
