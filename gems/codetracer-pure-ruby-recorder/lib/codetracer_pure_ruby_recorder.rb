@@ -2,6 +2,22 @@
 # Copyright (c) 2025 Metacraft Labs Ltd
 # See LICENSE file in the project root for full license information.
 
+# ---------------------------------------------------------------------------
+# Gem entry point for the pure-Ruby **reference** recorder.
+#
+# This gem deliberately emits the legacy 3-file JSON shape
+# (`trace.json`, `trace_metadata.json`, `trace_paths.json`). The
+# production recorder is the sibling gem `codetracer-ruby-recorder`
+# (Rust native extension, CTFS v3 output). Both are run against the
+# same test programs and fixtures so each acts as an independent
+# oracle for the other — see the gem README for the rationale and
+# `gems/codetracer-pure-ruby-recorder/README.md` /
+# `test/test_tracer.rb` for the full cross-validation flow.
+#
+# Do not migrate this gem to CTFS without updating the test
+# framework's ct-print normaliser in lockstep.
+# ---------------------------------------------------------------------------
+
 require 'json'
 require 'optparse'
 require_relative 'recorder'

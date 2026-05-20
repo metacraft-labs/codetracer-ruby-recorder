@@ -5,6 +5,27 @@ A recorder of Ruby programs that produces [CodeTracer](https://github.com/metacr
 > [!WARNING]
 > Currently it is in a very early phase: we're welcoming contribution and discussion!
 
+### Two recorders, by design
+
+This repository ships **two** gems with different roles:
+
+* [`gems/codetracer-ruby-recorder/`](gems/codetracer-ruby-recorder/) —
+  the production recorder. Rust native extension; emits CTFS v3
+  binary trace bundles (`<prog>.ct`). Use this one in real
+  deployments.
+* [`gems/codetracer-pure-ruby-recorder/`](gems/codetracer-pure-ruby-recorder/) —
+  a pure-Ruby **reference implementation** that emits the legacy
+  3-file JSON shape (`trace.json`, `trace_metadata.json`,
+  `trace_paths.json`). Kept JSON-only on purpose: the test suite
+  runs every test program through both recorders, normalises the
+  native recorder's CTFS output via `ct print --json-events`, and
+  compares both against the same fixtures. The pure recorder is the
+  independent oracle that keeps the native recorder honest. **Do
+  not migrate it to CTFS** without coordinating with the test
+  framework. See
+  [`gems/codetracer-pure-ruby-recorder/README.md`](gems/codetracer-pure-ruby-recorder/README.md)
+  for the full rationale.
+
 
 ### Installing as a gem
 

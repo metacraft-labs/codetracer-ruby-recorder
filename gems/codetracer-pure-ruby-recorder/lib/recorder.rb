@@ -2,6 +2,35 @@
 # Copyright (c) 2025 Metacraft Labs Ltd
 # See LICENSE file in the project root for full license information.
 
+# ---------------------------------------------------------------------------
+# Pure-Ruby reference recorder.
+#
+# This file (together with `codetracer_pure_ruby_recorder.rb`) is the
+# pure-Ruby implementation of the CodeTracer Ruby recorder. It writes
+# the legacy 3-file JSON shape (`trace.json`, `trace_metadata.json`,
+# `trace_paths.json`) — **by design**.
+#
+# The production recorder lives in the sibling gem
+# `codetracer-ruby-recorder` (Rust native extension) and emits a single
+# CTFS v3 binary bundle (`<prog>.ct`). The repository test suite runs
+# every test program through both recorders and compares them against
+# the same fixtures in `test/fixtures/`. For the native recorder the
+# test framework shells out to `ct print --json-events` and normalises
+# the result back into the JSON shape produced by this file (see
+# `test/test_tracer.rb::normalise_ct_events`).
+#
+# That symmetry is the cross-validation oracle that keeps the two
+# implementations honest. **Do not migrate this recorder to CTFS v3**
+# without coordinating with the test framework: it would silently
+# weaken the test suite by removing the independent reference.
+#
+# Audience: a developer touching this file should treat the JSON shape
+# emitted here as the canonical specification of recorded behaviour;
+# any change must be mirrored in fixtures and in the ct-print
+# normaliser. See `gems/codetracer-pure-ruby-recorder/README.md` for
+# the full rationale.
+# ---------------------------------------------------------------------------
+
 require 'fileutils'
 require 'set'
 require 'ostruct'
