@@ -81,8 +81,49 @@ if (Test-Path $capnpExe) {
 # Rust GNU target for Ruby extension
 $env:CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu"
 
+# --- Ensure Nim ---
+# The native extension's Rust crate depends on codetracer_trace_writer_nim,
+# whose build script compiles a Nim static library. For the windows-gnu
+# target that build runs `nim --cc:gcc`, so a MinGW gcc must be on PATH.
+$nimVersion = $toolchain["NIM_VERSION"]
+$nimDir = Join-Path $installRoot "nim/$nimVersion/nim-$nimVersion"
+$nimExe = Join-Path $nimDir "bin/nim.exe"
+
+if (Test-Path $nimExe) {
+    Write-Host "Nim $nimVersion already installed"
+} else {
+    if ($arch -ne "x64") { throw "Nim provisioning in this script only supports x64." }
+    Write-Host "Installing Nim $nimVersion..."
+    $nimUrl = "https://nim-lang.org/download/nim-${nimVersion}_x64.zip"
+    $nimZip = Join-Path $env:TEMP "nim-$nimVersion.zip"
+    Invoke-WebRequest -Uri $nimUrl -OutFile $nimZip
+    $nimParent = Split-Path -Parent $nimDir
+    New-Item -ItemType Directory -Force -Path $nimParent | Out-Null
+    Expand-Archive -Path $nimZip -DestinationPath $nimParent -Force
+    Remove-Item $nimZip
+    Write-Host "Installed Nim to $nimDir"
+}
+
+# --- Ensure just ---
+$justVersion = $toolchain["JUST_VERSION"]
+$justDir = Join-Path $installRoot "just/$justVersion"
+$justExe = Join-Path $justDir "just.exe"
+
+if (Test-Path $justExe) {
+    Write-Host "just $justVersion already installed"
+} else {
+    Write-Host "Installing just $justVersion..."
+    $justUrl = "https://github.com/casey/just/releases/download/$justVersion/just-$justVersion-x86_64-pc-windows-msvc.zip"
+    $justZip = Join-Path $env:TEMP "just-$justVersion.zip"
+    Invoke-WebRequest -Uri $justUrl -OutFile $justZip
+    New-Item -ItemType Directory -Force -Path $justDir | Out-Null
+    Expand-Archive -Path $justZip -DestinationPath $justDir -Force
+    Remove-Item $justZip
+    Write-Host "Installed just to $justDir"
+}
+
 # Set PATH
-$pathEntries = @("$cargoHome\bin", $capnpDir)
+$pathEntries = @("$cargoHome\bin", $capnpDir, (Join-Path $nimDir "bin"), $justDir)
 foreach ($entry in $pathEntries) {
     if ($env:Path -notlike "*$entry*") {
         $env:Path = "$entry;$($env:Path)"
@@ -91,9 +132,15 @@ foreach ($entry in $pathEntries) {
 
 Write-Host "rustc: $((& rustc --version) 2>&1)"
 Write-Host "capnp: $((& capnp --version) 2>&1)"
-$rubyCheck = & ruby --version 2>&1
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "ruby: $rubyCheck"
+Write-Host "nim: $(((& nim --version 2>&1) | Select-Object -First 1))"
+Write-Host "just: $((& just --version) 2>&1)"
+# Probe for Ruby with Get-Command, not `& ruby`: under
+# $ErrorActionPreference = "Stop", invoking a missing command throws a
+# terminating CommandNotFoundException before $LASTEXITCODE is ever set,
+# which aborted env.ps1 instead of warning.
+$rubyCmd = Get-Command ruby -ErrorAction SilentlyContinue
+if ($rubyCmd) {
+    Write-Host "ruby: $((& $rubyCmd.Source --version) 2>&1)"
 } else {
     Write-Host "WARNING: Ruby not found. Install via MSYS2: pacman -S mingw-w64-x86_64-ruby"
 }
