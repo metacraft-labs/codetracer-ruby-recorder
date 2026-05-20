@@ -51,9 +51,28 @@ if ($needRust) {
     if ($LASTEXITCODE -ne 0) { throw "rustup-init failed" }
     Remove-Item $rustupInit -Force -ErrorAction SilentlyContinue
 }
-# GNU target for MSYS2 Ruby extension compilation
+# GNU target for MSYS2 Ruby extension compilation.
+#
+# The native extension links MSYS2 MinGW Ruby and therefore builds for the
+# `x86_64-pc-windows-gnu` Rust target.  The repo pins a Rust channel in
+# `rust-toolchain.toml`; rustup auto-installs and uses *that* channel when
+# cargo runs in the repo, so the windows-gnu std component must be added to
+# the pinned channel -- not just to the env-provisioned default toolchain.
+# Otherwise `cargo build --target x86_64-pc-windows-gnu` fails with
+# "can't find crate for `core`".
 & $rustupExe target add x86_64-pc-windows-gnu 2>&1 | Out-Null
 & $rustupExe component add clippy 2>&1 | Out-Null
+
+$rustToolchainToml = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "rust-toolchain.toml"
+if (Test-Path $rustToolchainToml) {
+    $channelLine = Get-Content $rustToolchainToml | Where-Object { $_ -match '^\s*channel\s*=' } | Select-Object -First 1
+    if ($channelLine -and ($channelLine -match '"([^"]+)"')) {
+        $pinnedChannel = $matches[1]
+        Write-Host "Ensuring rustup channel $pinnedChannel + x86_64-pc-windows-gnu target (rust-toolchain.toml)"
+        & $rustupExe toolchain install $pinnedChannel --profile minimal --no-self-update 2>&1 | Out-Null
+        & $rustupExe target add --toolchain $pinnedChannel x86_64-pc-windows-gnu 2>&1 | Out-Null
+    }
+}
 
 # --- Ensure Cap'n Proto ---
 $capnpVersion = $toolchain["CAPNP_VERSION"]
@@ -122,8 +141,80 @@ if (Test-Path $justExe) {
     Write-Host "Installed just to $justDir"
 }
 
-# Set PATH
-$pathEntries = @("$cargoHome\bin", $capnpDir, (Join-Path $nimDir "bin"), $justDir)
+# --- Ensure MSYS2 (MinGW64 Ruby + gcc + clang) ---
+#
+# The native extension links MSYS2 MinGW Ruby and builds for the
+# x86_64-pc-windows-gnu Rust target.  Ruby therefore CANNOT come from
+# RubyInstaller (that is MSVC ABI).  A MinGW gcc must also be on PATH:
+# (a) the Rust windows-gnu target needs a MinGW linker and (b)
+# codetracer_trace_writer_nim's build runs `nim --cc:gcc`.  The MinGW clang
+# package supplies libclang.dll + clang resource headers, which rb-sys's
+# bindgen build step needs to generate the Ruby C API bindings.
+#
+# MSYS2 is provisioned under the shared Windows dev-deps root
+# (D:\metacraft-dev-deps by default) rather than $installRoot so it can be
+# reused across sibling repos; override the location with
+# $env:CODETRACER_DEV_DEPS_ROOT.
+$devDepsRoot = if ($env:CODETRACER_DEV_DEPS_ROOT) { $env:CODETRACER_DEV_DEPS_ROOT }
+               else { "D:\metacraft-dev-deps" }
+$msysBaseDate = $toolchain["MSYS2_BASE_DATE"]
+$msysRoot = Join-Path $devDepsRoot "msys2\msys64"
+$msysBash = Join-Path $msysRoot "usr\bin\bash.exe"
+$mingwBin = Join-Path $msysRoot "mingw64\bin"
+$mingwRuby = Join-Path $mingwBin "ruby.exe"
+$mingwGcc = Join-Path $mingwBin "gcc.exe"
+
+if ((Test-Path $mingwRuby) -and (Test-Path $mingwGcc)) {
+    Write-Host "MSYS2 MinGW Ruby + gcc already installed at $msysRoot"
+} else {
+    if ($arch -ne "x64") { throw "MSYS2 provisioning in this script only supports x64." }
+    # 1. Extract the dated msys2-base self-extracting archive if absent.
+    if (-not (Test-Path $msysBash)) {
+        Write-Host "Installing MSYS2 base ($msysBaseDate)..."
+        $msysParent = Join-Path $devDepsRoot "msys2"
+        New-Item -ItemType Directory -Force -Path $msysParent | Out-Null
+        $msysSfx = Join-Path $env:TEMP "msys2-base-$msysBaseDate.sfx.exe"
+        $msysUrl = "https://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-$msysBaseDate.sfx.exe"
+        Invoke-WebRequest -Uri $msysUrl -OutFile $msysSfx
+        $expectedMsys = $toolchain["MSYS2_BASE_SHA256"]
+        if ($expectedMsys) {
+            $hash = (Get-FileHash -Path $msysSfx -Algorithm SHA256).Hash
+            if ($hash -ne $expectedMsys) {
+                throw "MSYS2 base SHA256 mismatch: got $hash, expected $expectedMsys"
+            }
+        }
+        # The sfx is a 7-zip self-extracting archive; it extracts a `msys64`
+        # folder into the given output directory.
+        & $msysSfx -y "-o$msysParent"
+        if ($LASTEXITCODE -ne 0) { throw "MSYS2 base extraction failed" }
+        Remove-Item $msysSfx -Force -ErrorAction SilentlyContinue
+        if (-not (Test-Path $msysBash)) { throw "MSYS2 bash not found after extraction" }
+        # First bash run initialises the pacman keyring.
+        & $msysBash -lc "true" 2>&1 | Out-Null
+    }
+    # 2. Update the package database / core, then install the MinGW64
+    #    toolchain.  `pacman -Syu` may need two passes (the first upgrades
+    #    pacman/msys2-runtime itself); both are idempotent.
+    Write-Host "Updating MSYS2 packages..."
+    & $msysBash -lc "pacman -Syu --noconfirm --noprogressbar" 2>&1 | Out-Null
+    & $msysBash -lc "pacman -Syu --noconfirm --noprogressbar" 2>&1 | Out-Null
+    $mingwPackages = $toolchain["MSYS2_MINGW_PACKAGES"]
+    Write-Host "Installing MSYS2 MinGW64 toolchain: $mingwPackages"
+    & $msysBash -lc "pacman -S --noconfirm --noprogressbar --needed $mingwPackages" 2>&1 | Out-Null
+    if (-not ((Test-Path $mingwRuby) -and (Test-Path $mingwGcc))) {
+        throw "MSYS2 MinGW Ruby/gcc still missing after pacman install"
+    }
+    Write-Host "Installed MSYS2 MinGW64 toolchain to $msysRoot"
+}
+
+# libclang.dll lives in mingw64\bin; rb-sys's bindgen build step honours
+# LIBCLANG_PATH to locate it.
+$env:LIBCLANG_PATH = $mingwBin
+
+# Set PATH.  MSYS2 mingw64\bin first (Ruby, gcc, clang), then MSYS2 usr\bin
+# (a POSIX bash/sh + coreutils that `just` recipes need), then the rest.
+$pathEntries = @($mingwBin, (Join-Path $msysRoot "usr\bin"),
+                 "$cargoHome\bin", $capnpDir, (Join-Path $nimDir "bin"), $justDir)
 foreach ($entry in $pathEntries) {
     if ($env:Path -notlike "*$entry*") {
         $env:Path = "$entry;$($env:Path)"
@@ -134,13 +225,5 @@ Write-Host "rustc: $((& rustc --version) 2>&1)"
 Write-Host "capnp: $((& capnp --version) 2>&1)"
 Write-Host "nim: $(((& nim --version 2>&1) | Select-Object -First 1))"
 Write-Host "just: $((& just --version) 2>&1)"
-# Probe for Ruby with Get-Command, not `& ruby`: under
-# $ErrorActionPreference = "Stop", invoking a missing command throws a
-# terminating CommandNotFoundException before $LASTEXITCODE is ever set,
-# which aborted env.ps1 instead of warning.
-$rubyCmd = Get-Command ruby -ErrorAction SilentlyContinue
-if ($rubyCmd) {
-    Write-Host "ruby: $((& $rubyCmd.Source --version) 2>&1)"
-} else {
-    Write-Host "WARNING: Ruby not found. Install via MSYS2: pacman -S mingw-w64-x86_64-ruby"
-}
+Write-Host "gcc: $(((& $mingwGcc --version 2>&1) | Select-Object -First 1))"
+Write-Host "ruby: $((& $mingwRuby --version) 2>&1)"

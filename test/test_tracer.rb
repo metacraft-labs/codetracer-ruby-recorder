@@ -17,7 +17,11 @@ class TraceTest < Minitest::Test
 
   # Path to the ct-print binary from codetracer-trace-format-nim, used to
   # convert binary .ct (CTFS) trace files into JSON for test verification.
-  CT_PRINT = File.expand_path('../../codetracer-trace-format-nim/ct-print', __dir__)
+  # RbConfig's EXEEXT is "" on Unix and ".exe" on Windows so the path
+  # resolves to the real binary on every platform.
+  CT_PRINT = File.expand_path(
+    "../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__
+  )
 
   def setup
     FileUtils.mkdir_p(TMP_DIR)

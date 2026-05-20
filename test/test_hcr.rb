@@ -11,8 +11,11 @@ class HCRTest < Minitest::Test
   FIXTURE_DIR = File.expand_path('fixtures/hcr', __dir__)
 
   # Path to the ct-print binary from codetracer-trace-format-nim, used to
-  # inspect binary .ct (CTFS) trace files.
-  CT_PRINT = File.expand_path('../../codetracer-trace-format-nim/ct-print', __dir__)
+  # inspect binary .ct (CTFS) trace files.  RbConfig's EXEEXT is "" on Unix
+  # and ".exe" on Windows so the path resolves on every platform.
+  CT_PRINT = File.expand_path(
+    "../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__
+  )
 
   PURE_RECORDER = 'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder'
   NATIVE_RECORDER = 'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder'
@@ -74,8 +77,9 @@ class HCRTest < Minitest::Test
   end
 
   # Returns true if the native recorder is available (native extension built).
+  # __dir__ is the test/ directory, so the gems tree is one level up.
   def native_recorder_available?
-    ext_dir = File.expand_path('../../gems/codetracer-ruby-recorder/ext', __dir__)
+    ext_dir = File.expand_path('../gems/codetracer-ruby-recorder/ext', __dir__)
     %w[so bundle dylib dll].any? do |ext|
       Dir.glob(File.join(ext_dir, '**', "*.#{ext}")).any?
     end
@@ -145,11 +149,13 @@ class HCRTest < Minitest::Test
       assert File.size(ct_file) > 0, "#{ct_file} should not be empty"
 
       # If ct-print is available, verify the trace has non-zero step count.
+      # ct-print's --json-events schema uses lowercase `type` tokens
+      # (`step`, `call`, `function`, `path`, ...).
       if File.exist?(CT_PRINT)
         stdout, stderr, st = Open3.capture3(CT_PRINT, '--json-events', ct_file)
         assert st.success?, "ct-print failed: #{stderr}"
         events = JSON.parse(stdout)
-        step_events = events.select { |ev| ev['type'] == 'Step' }
+        step_events = events.select { |ev| ev['type'] == 'step' }
         assert step_events.size > 0, 'CTFS trace should contain Step events'
       end
     end
@@ -204,7 +210,10 @@ end
 # ---------------------------------------------------------------------------
 class TestHCRTraceContent < Minitest::Test
   FIXTURE_DIR = File.expand_path('fixtures/hcr', __dir__)
-  CT_PRINT    = File.expand_path('../../codetracer-trace-format-nim/ct-print', __dir__)
+  # EXEEXT is "" on Unix and ".exe" on Windows.
+  CT_PRINT    = File.expand_path(
+    "../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__
+  )
 
   PURE_RECORDER   = 'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder'
   NATIVE_RECORDER = 'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder'
@@ -254,8 +263,9 @@ class TestHCRTraceContent < Minitest::Test
   end
 
   # Run the native recorder and return ct-print --json-events output (or nil).
+  # __dir__ is the test/ directory, so the gems tree is one level up.
   def run_native_recorder_ct
-    ext_dir = File.expand_path('../../gems/codetracer-ruby-recorder/ext', __dir__)
+    ext_dir = File.expand_path('../gems/codetracer-ruby-recorder/ext', __dir__)
     native_available = %w[so bundle dylib dll].any? do |ext|
       Dir.glob(File.join(ext_dir, '**', "*.#{ext}")).any?
     end
@@ -452,15 +462,16 @@ class TestHCRTraceContent < Minitest::Test
     ct_events = run_native_recorder_ct
     skip 'Native recorder did not produce a .ct file' if ct_events.nil?
 
-    # Count event types
+    # Count event types.  ct-print's --json-events schema uses lowercase
+    # `type` tokens (`step`, `call`, `function`, `path`, `value`, ...).
     type_counts = Hash.new(0)
     ct_events.each { |ev| type_counts[ev['type']] += 1 }
 
     # Must have steps
-    assert type_counts['Step'] > 0, 'CTFS trace should contain Step events'
+    assert type_counts['step'] > 0, 'CTFS trace should contain Step events'
 
     # Must have Function events for compute/transform/aggregate
-    func_events = ct_events.select { |ev| ev['type'] == 'Function' }
+    func_events = ct_events.select { |ev| ev['type'] == 'function' }
     func_names  = func_events.map { |ev| ev['name'] }
     %w[compute transform aggregate].each do |expected|
       assert func_names.include?(expected),
@@ -468,7 +479,7 @@ class TestHCRTraceContent < Minitest::Test
     end
 
     # Must have Path events referencing both source files
-    path_events = ct_events.select { |ev| ev['type'] == 'Path' }
+    path_events = ct_events.select { |ev| ev['type'] == 'path' }
     path_names  = path_events.map { |ev| ev['name'] }
     assert path_names.any? { |p| p.include?('hcr_test_program.rb') },
            "CTFS trace missing hcr_test_program.rb path"
