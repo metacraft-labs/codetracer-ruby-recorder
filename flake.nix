@@ -2,7 +2,7 @@
   description = "Development environment for codetracer-ruby-recorder";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -184,6 +184,7 @@
 
                   # For build automation
                   just
+                  prek
                   git-lfs
 
                   capnproto # Required for the native tracer's Cap'n Proto serialization
