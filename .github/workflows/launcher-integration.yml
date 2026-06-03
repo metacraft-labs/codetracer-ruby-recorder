@@ -1,0 +1,71 @@
+name: launcher-integration
+
+# Single-edge cross-repo CI: when codetracer-ruby-recorder changes,
+# verify the launcher's bundled-gem build still works against this
+# recorder's source. Mirrors the pattern in
+# codetracer-specs/Testing/Cross-Repo-CI-Integration.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  rubygems-bundling:
+    runs-on: ubuntu-latest
+    name: rubygems bundling smoke-test
+    steps:
+      - name: Generate CI token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.CI_TOKEN_PROVIDER_APP_ID }}
+          private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
+          owner: metacraft-labs
+
+      - uses: actions/checkout@v4
+        with:
+          path: codetracer-ruby-recorder
+
+      - uses: metacraft-labs/metacraft-github-actions/clone-repo@main
+        with:
+          repo: metacraft-labs/codetracer-launcher
+          ref: main
+          path: codetracer-launcher
+          gh-token: ${{ steps.app-token.outputs.token }}
+
+      - name: Install Nim
+        uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: "2.2.4"
+
+      - name: Install musl-tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build launcher
+        working-directory: codetracer-launcher
+        run: bash ./build.sh --target linux-musl-x86_64 --out launcher
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Build bundled gem
+        working-directory: codetracer-launcher/packaging/rubygems
+        env:
+          CT_LAUNCHER_VERSION: 0.1.0
+          CT_LAUNCHER_BIN: ${{ github.workspace }}/codetracer-launcher/out/launcher
+          CT_LAUNCHER_PLATFORM: x86_64-linux
+          CT_RECORDER_SRC: ${{ github.workspace }}/codetracer-ruby-recorder/gems/codetracer-ruby-recorder
+        run: ruby build_gem.rb --out dist
+
+      - name: Smoke-test the gem
+        working-directory: codetracer-launcher/packaging/rubygems
+        run: |
+          export GEM_HOME=/tmp/m9-gem
+          export GEM_PATH=/tmp/m9-gem
+          gem install --no-document dist/*.gem
+          out=$(PATH=/tmp/m9-gem/bin:$PATH ct --version)
+          echo "$out"
+          echo "$out" | grep -qE "^ct [0-9]+\.[0-9]+"
