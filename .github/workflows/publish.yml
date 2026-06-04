@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semver to publish (overrides tag for manual runs)'
+        required: true
+        default: '0.1.0'
+      dry_run:
+        description: 'Build the gem but skip the upload'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   publish:
