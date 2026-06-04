@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = 'CodeTracer Ruby recorder with native extension'
   spec.description   = 'Ruby tracer that records execution steps via a Rust native extension.'
-  spec.license       = 'MIT'
+  spec.license       = 'Apache-2.0'
   spec.homepage      = 'https://github.com/metacraft-labs/codetracer-ruby-recorder'
 
   spec.files         = Dir[
