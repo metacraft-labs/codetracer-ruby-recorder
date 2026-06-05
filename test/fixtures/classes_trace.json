@@ -57,7 +57,9 @@
   {
     "Call": {
       "function_id": 0,
-      "args": []
+      "args": [
+
+      ]
     }
   },
   {
@@ -324,6 +326,42 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 4,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 4,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 27
@@ -436,6 +474,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 0,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 0,
+      "pass_by": "Value",
+      "from": {
+        "kind": "FunctionReturn",
+        "data": {
+          "call_key": 1
+        }
+      }
+    }
+  },
+  {
     "Value": {
       "variable_id": 0,
       "value": {
@@ -531,6 +587,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 47
@@ -611,6 +685,42 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 4,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 4,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -745,6 +855,24 @@
     "Step": {
       "path_id": 1,
       "line": 62
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "FunctionReturn",
+        "data": {
+          "call_key": 2
+        }
+      }
     }
   },
   {

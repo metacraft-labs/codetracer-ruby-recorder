@@ -192,6 +192,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 2
@@ -243,6 +261,21 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 2,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 2,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Literal"
+      }
+    }
+  },
+  {
     "Value": {
       "variable_id": 1,
       "value": {
@@ -280,13 +313,31 @@
     }
   },
   {
+    "VariableName": "n"
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 4
     }
-  },
-  {
-    "VariableName": "n"
   },
   {
     "Value": {
@@ -332,6 +383,24 @@
         "kind": "Int",
         "type_id": 0,
         "i": 0
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -385,6 +454,24 @@
         "kind": "Int",
         "type_id": 0,
         "i": 1
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -445,6 +532,18 @@
     "Step": {
       "path_id": 1,
       "line": 6
+    }
+  },
+  {
+    "Assignment": {
+      "to": 2,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {

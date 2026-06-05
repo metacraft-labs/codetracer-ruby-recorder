@@ -121,17 +121,7 @@
           {
             "kind": "String",
             "type_id": 1,
-            "text": "1"
-          },
-          {
-            "kind": "String",
-            "type_id": 1,
-            "text": "2"
-          },
-          {
-            "kind": "String",
-            "type_id": 1,
-            "text": "3"
+            "text": "1 2 3"
           }
         ],
         "is_slice": false
@@ -172,23 +162,31 @@
               {
                 "kind": "String",
                 "type_id": 1,
-                "text": "1"
-              },
-              {
-                "kind": "String",
-                "type_id": 1,
-                "text": "2"
-              },
-              {
-                "kind": "String",
-                "type_id": 1,
-                "text": "3"
+                "text": "1 2 3"
               }
             ],
             "is_slice": false
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -207,17 +205,7 @@
           {
             "kind": "String",
             "type_id": 1,
-            "text": "1"
-          },
-          {
-            "kind": "String",
-            "type_id": 1,
-            "text": "2"
-          },
-          {
-            "kind": "String",
-            "type_id": 1,
-            "text": "3"
+            "text": "1 2 3"
           }
         ],
         "is_slice": false
@@ -239,7 +227,7 @@
       "value": {
         "kind": "Int",
         "type_id": 0,
-        "i": 6
+        "i": 1
       }
     }
   },
@@ -248,7 +236,7 @@
       "return_value": {
         "kind": "Int",
         "type_id": 0,
-        "i": 6
+        "i": 1
       }
     }
   },
@@ -261,7 +249,7 @@
   {
     "Event": {
       "kind": 0,
-      "content": "6\n",
+      "content": "1\n",
       "metadata": ""
     }
   }

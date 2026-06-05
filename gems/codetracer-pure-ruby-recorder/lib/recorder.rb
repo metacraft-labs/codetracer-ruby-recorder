@@ -57,9 +57,91 @@ ReturnRecord = Struct.new(:return_value) do
   end
 end
 
-StepRecord = Struct.new(:path_id, :line) do
+StepRecord = Struct.new(:path_id, :line, :column) do
+  # `column` mirrors M14's `StepRecord.column: Option<Line>`. When `nil`
+  # we omit it from the serialised JSON to preserve byte-for-byte
+  # backwards compatibility with the pre-M14 fixtures.
   def to_data_for_json
-    to_h
+    res = { path_id: self.path_id, line: line }
+    res[:column] = column unless column.nil?
+    res
+  end
+end
+
+# ---------------------------------------------------------------------------
+# M16a: BindVariable + Assignment records
+#
+# These mirror the M14 wire-shape used by every recorder (see
+# codetracer_trace_types::TraceLowLevelEvent::{BindVariable, Assignment}).
+# The pure-Ruby recorder emits the JSON form so the existing
+# cross-validation oracle (`test/test_tracer.rb`) can compare against
+# whatever the native recorder produces.
+# ---------------------------------------------------------------------------
+
+# A `BindVariable` event marks the first observation of a name in a frame.
+# `place` is the synthetic location used by the db-backend to detect
+# aliasing; for the pure recorder we keep it at the conventional NO_KEY
+# value because Ruby does not expose a stable storage address per local.
+BindVariableRecord = Struct.new(:variable_id, :place) do
+  def to_data_for_json
+    { variable_id: variable_id, place: place }
+  end
+end
+
+# An `Assignment` event records the RHS of an assignment.  The
+# `pass_by` field is always `:Value` for Ruby locals (Ruby semantics
+# are reference-to-immutable for most types).  `from` is an `RValue`
+# instance describing the shape of the RHS — see the `RValue` helpers
+# on `TraceRecord` for the full set of shapes the pure recorder emits.
+AssignmentRecord = Struct.new(:to, :pass_by, :from) do
+  def to_data_for_json
+    { to: self.to, pass_by: pass_by, from: from.to_data_for_json }
+  end
+end
+
+# `RValueShape` is the pure-Ruby mirror of `codetracer_trace_types::RValue`.
+# Adjacently-tagged serde shape: `{ "kind": "...", "data": ... }`.
+RValueShape = Struct.new(:kind, :data) do
+  def to_data_for_json
+    res = { kind: kind }
+    unless data.nil?
+      res[:data] = data
+    end
+    res
+  end
+
+  # `RValue::Literal` — RHS was a constant expression (`a = 10`).
+  def self.literal
+    new('Literal', nil)
+  end
+
+  # `RValue::Simple(VariableId)` — RHS was exactly one local load
+  # (`b = a`).
+  def self.simple(variable_id)
+    new('Simple', variable_id)
+  end
+
+  # `RValue::Compound([VariableId, ...])` — RHS combined multiple
+  # local loads (`total = a + b`).
+  def self.compound(variable_ids)
+    new('Compound', variable_ids)
+  end
+
+  # `RValue::FieldAccess { receiver, field }` — `obj.field` RHS.
+  def self.field_access(receiver_id, field)
+    new('FieldAccess', { receiver: receiver_id, field: field })
+  end
+
+  # `RValue::IndexAccess { receiver, index }` — `arr[i]` RHS with a
+  # static integer index.
+  def self.index_access(receiver_id, index)
+    new('IndexAccess', { receiver: receiver_id, index: index })
+  end
+
+  # `RValue::FunctionReturn { call_key }` — RHS was the return value
+  # of a recorded call.
+  def self.function_return(call_key)
+    new('FunctionReturn', { call_key: call_key })
   end
 end
 
@@ -209,14 +291,36 @@ class TraceRecord
     end
   end
 
-  def register_step(path, line)
-    step_record = StepRecord.new(self.path_id(path), line)
+  def register_step(path, line, column = nil)
+    step_record = StepRecord.new(self.path_id(path), line, column)
     @events << [:Step, step_record] # because we convert later to {Step: step-record}: default enum json format in serde/rust
     # $stderr.write path, "\n"
     if @debug
       @step_count += 1
       $stdout.write "steps ", @step_count, "\n" if @step_count % 1_000 == 0
     end
+  end
+
+  # ----------------------------------------------------------------------
+  # M16a: Assignment / BindVariable emission
+  # ----------------------------------------------------------------------
+
+  # Emit a `BindVariable` event for `name`.  Per spec, this is the
+  # one-shot binding-introduction event; callers gate it via the
+  # `@frame_bound_names` set so the same name is not re-bound twice in
+  # the same frame.  `place` is left at NO_KEY because the pure-Ruby
+  # recorder has no portable way to expose a per-local storage address.
+  def register_bind_variable(name, place = NO_KEY)
+    variable_id = load_variable_id(name)
+    @events << [:BindVariable, BindVariableRecord.new(variable_id, place)]
+  end
+
+  # Emit an `Assignment` event with the given (resolved) RValue.  The
+  # `pass_by` field is the abstract assignment kind from the M14
+  # vocabulary (`:Value` or `:Reference`).
+  def register_assignment(name, rvalue, pass_by: :Value)
+    variable_id = load_variable_id(name)
+    @events << [:Assignment, AssignmentRecord.new(variable_id, pass_by, rvalue)]
   end
 
   def register_call(path, line, name, args)

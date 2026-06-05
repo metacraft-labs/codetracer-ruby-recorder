@@ -57,7 +57,9 @@
   {
     "Call": {
       "function_id": 0,
-      "args": []
+      "args": [
+
+      ]
     }
   },
   {
@@ -168,6 +170,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -296,6 +316,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -437,6 +475,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -594,6 +650,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -779,6 +853,21 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Literal"
+      }
+    }
+  },
+  {
     "Value": {
       "variable_id": 3,
       "value": {
@@ -801,6 +890,24 @@
     "Step": {
       "path_id": 1,
       "line": 24
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 4,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 4,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -828,7 +935,9 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
       }
     }
@@ -855,7 +964,9 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
       }
     }
@@ -864,6 +975,18 @@
     "Step": {
       "path_id": 1,
       "line": 26
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -882,7 +1005,9 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
       }
     }
@@ -909,7 +1034,9 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
       }
     }
@@ -936,7 +1063,9 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
       }
     }
@@ -981,6 +1110,18 @@
     }
   },
   {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Value": {
       "variable_id": 3,
       "value": {
@@ -1044,6 +1185,18 @@
     "Step": {
       "path_id": 1,
       "line": 26
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1181,6 +1334,18 @@
     "Step": {
       "path_id": 1,
       "line": 26
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1257,6 +1422,18 @@
     "Step": {
       "path_id": 1,
       "line": 26
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1414,6 +1591,18 @@
     "Step": {
       "path_id": 1,
       "line": 26
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1500,6 +1689,18 @@
     "Step": {
       "path_id": 1,
       "line": 26
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1760,6 +1961,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 34
@@ -1794,6 +2013,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 5,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 5,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Value": {
       "variable_id": 1,
       "value": {
@@ -1809,7 +2046,9 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
       }
     }
@@ -1836,7 +2075,9 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
       }
     }
@@ -1878,6 +2119,24 @@
     "Step": {
       "path_id": 1,
       "line": 36
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1949,6 +2208,18 @@
     "Step": {
       "path_id": 1,
       "line": 36
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -2030,6 +2301,18 @@
     "Step": {
       "path_id": 1,
       "line": 39
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -2207,6 +2490,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 6,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 6,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 43
@@ -2332,6 +2633,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 6,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 6,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 43
@@ -2454,6 +2773,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 6,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 6,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -2626,6 +2963,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 7,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 7,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 55
@@ -2689,6 +3044,21 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 8,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 8,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Literal"
+      }
+    }
+  },
+  {
     "Value": {
       "variable_id": 7,
       "value": {
@@ -2741,6 +3111,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 9,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 9,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Value": {
       "variable_id": 7,
       "value": {
@@ -2783,8 +3171,31 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
+      }
+    }
+  },
+  {
+    "VariableName": "v"
+  },
+  {
+    "BindVariable": {
+      "variable_id": 10,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 10,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -2793,9 +3204,6 @@
       "path_id": 1,
       "line": 58
     }
-  },
-  {
-    "VariableName": "v"
   },
   {
     "Value": {
@@ -2850,7 +3258,9 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
       }
     }
@@ -2914,8 +3324,28 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 10,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 10,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -3066,6 +3496,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 8,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 8,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Value": {
       "variable_id": 10,
       "value": {
@@ -3133,6 +3581,21 @@
     "Step": {
       "path_id": 1,
       "line": 61
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 10,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 10,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Literal"
+      }
     }
   },
   {
@@ -3336,6 +3799,24 @@
           }
         ],
         "is_slice": false
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 10,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 10,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -3493,6 +3974,18 @@
     "Step": {
       "path_id": 1,
       "line": 65
+    }
+  },
+  {
+    "Assignment": {
+      "to": 8,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {

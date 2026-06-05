@@ -57,7 +57,9 @@
   {
     "Call": {
       "function_id": 0,
-      "args": []
+      "args": [
+
+      ]
     }
   },
   {
@@ -174,6 +176,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 0,
       "lang_type": "Array",
@@ -188,8 +208,31 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
+      }
+    }
+  },
+  {
+    "VariableName": "x"
+  },
+  {
+    "BindVariable": {
+      "variable_id": 2,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 2,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -198,9 +241,6 @@
       "path_id": 1,
       "line": 20
     }
-  },
-  {
-    "VariableName": "x"
   },
   {
     "Value": {
@@ -218,8 +258,31 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [],
+        "elements": [
+
+        ],
         "is_slice": false
+      }
+    }
+  },
+  {
+    "VariableName": "n"
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -230,15 +293,30 @@
     }
   },
   {
-    "VariableName": "n"
-  },
-  {
     "Value": {
       "variable_id": 3,
       "value": {
         "kind": "Int",
         "type_id": 0,
         "i": 1
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 2,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 2,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -276,6 +354,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 55
@@ -288,6 +384,24 @@
         "kind": "Int",
         "type_id": 0,
         "i": 2
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 2,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 2,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -326,6 +440,24 @@
           }
         ],
         "is_slice": false
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -465,7 +597,9 @@
       "lang_type": "Proc (#0)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -488,7 +622,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 7,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -522,10 +658,30 @@
           "value": {
             "kind": "Struct",
             "type_id": 7,
-            "field_values": []
+            "field_values": [
+
+            ]
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 5,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 5,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -540,7 +696,9 @@
       "lang_type": "Proc (#1)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -550,7 +708,27 @@
       "value": {
         "kind": "Struct",
         "type_id": 8,
-        "field_values": []
+        "field_values": [
+
+        ]
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -567,6 +745,24 @@
         "kind": "Int",
         "type_id": 0,
         "i": 10
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -693,12 +889,32 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 6,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 6,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "Proc (#2)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -708,7 +924,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 9,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -724,7 +942,9 @@
       "lang_type": "Proc (#3)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -734,7 +954,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 10,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -857,12 +1079,32 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 7,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 7,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "Proc (#4)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -872,7 +1114,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 11,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -882,6 +1126,24 @@
       "value": {
         "kind": "None",
         "type_id": 4
+      }
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 2,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 2,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
       }
     }
   },
@@ -897,7 +1159,9 @@
       "lang_type": "Proc (#5)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -917,7 +1181,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 12,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -937,12 +1203,32 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 8,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 8,
+      "pass_by": "Value",
+      "from": {
+        "kind": "FunctionReturn",
+        "data": {
+          "call_key": 1
+        }
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "Proc (#6)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -952,7 +1238,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 13,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1115,12 +1403,32 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 6,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 6,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "Proc (#7)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1130,7 +1438,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 14,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1177,12 +1487,32 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 7,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 7,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "Proc (#8)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1192,7 +1522,9 @@
       "lang_type": "Proc (#9)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1202,7 +1534,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 15,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1212,7 +1546,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 16,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1244,6 +1580,48 @@
     }
   },
   {
+    "VariableName": "a"
+  },
+  {
+    "BindVariable": {
+      "variable_id": 12,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 12,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
+    "VariableName": "b"
+  },
+  {
+    "BindVariable": {
+      "variable_id": 13,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 13,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 43
@@ -1255,7 +1633,9 @@
       "lang_type": "Proc (#10)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1265,12 +1645,11 @@
       "lang_type": "Proc (#11)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
-  },
-  {
-    "VariableName": "a"
   },
   {
     "Value": {
@@ -1281,9 +1660,6 @@
         "i": 1
       }
     }
-  },
-  {
-    "VariableName": "b"
   },
   {
     "Value": {
@@ -1301,7 +1677,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 17,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1311,7 +1689,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 18,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1349,12 +1729,32 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 9,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 9,
+      "pass_by": "Value",
+      "from": {
+        "kind": "FunctionReturn",
+        "data": {
+          "call_key": 1
+        }
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "Proc (#12)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1364,7 +1764,9 @@
       "lang_type": "Proc (#13)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1374,7 +1776,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 19,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1384,7 +1788,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 20,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1447,7 +1853,9 @@
       "lang_type": "Proc (#14)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1457,7 +1865,9 @@
       "lang_type": "Proc (#15)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1467,7 +1877,9 @@
       "lang_type": "ArgumentError (#0)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1477,7 +1889,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 21,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1487,7 +1901,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 22,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1528,7 +1944,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 23,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1539,12 +1957,50 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 10,
+      "place": -1
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 11,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 10,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
+    "Assignment": {
+      "to": 11,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "Proc (#16)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1554,7 +2010,9 @@
       "lang_type": "Proc (#17)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1564,7 +2022,9 @@
       "lang_type": "ArgumentError (#1)",
       "specific_info": {
         "kind": "Struct",
-        "fields": []
+        "fields": [
+
+        ]
       }
     }
   },
@@ -1574,7 +2034,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 24,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1584,7 +2046,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 25,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },
@@ -1626,7 +2090,9 @@
       "value": {
         "kind": "Struct",
         "type_id": 26,
-        "field_values": []
+        "field_values": [
+
+        ]
       }
     }
   },

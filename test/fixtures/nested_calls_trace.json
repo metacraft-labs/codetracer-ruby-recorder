@@ -57,7 +57,9 @@
   {
     "Call": {
       "function_id": 0,
-      "args": []
+      "args": [
+
+      ]
     }
   },
   {
@@ -177,6 +179,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 16
@@ -249,6 +269,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 12
@@ -318,6 +356,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 1,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 1,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -493,6 +549,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 20
@@ -571,6 +645,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -655,6 +747,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 20
@@ -736,6 +846,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 20
@@ -814,6 +942,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1033,6 +1179,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 26
@@ -1121,6 +1285,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 32
@@ -1199,6 +1381,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1283,6 +1483,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 32
@@ -1361,6 +1579,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1573,6 +1809,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 32
@@ -1651,6 +1905,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {
@@ -1735,6 +2007,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 32
@@ -1816,6 +2106,24 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
+    }
+  },
+  {
     "Step": {
       "path_id": 1,
       "line": 26
@@ -1894,6 +2202,24 @@
           }
         }
       ]
+    }
+  },
+  {
+    "BindVariable": {
+      "variable_id": 3,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 3,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": [
+
+        ]
+      }
     }
   },
   {

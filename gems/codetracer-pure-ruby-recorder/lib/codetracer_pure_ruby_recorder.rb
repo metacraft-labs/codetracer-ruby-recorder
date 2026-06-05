@@ -21,6 +21,7 @@
 require 'json'
 require 'optparse'
 require_relative 'recorder'
+require_relative 'codetracer/assignment_reconstructor'
 require_relative 'codetracer/kernel_patches'
 
 module CodeTracer
@@ -136,6 +137,7 @@ module CodeTracer
       tracer.ignore('codetracer_pure_ruby_recorder.rb')
       tracer.ignore(File.expand_path(__FILE__))
       tracer.ignore('recorder.rb')
+      tracer.ignore('assignment_reconstructor.rb')
       tracer.ignore('<internal:')
       tracer.ignore('gems/')
 
@@ -176,6 +178,13 @@ module CodeTracer
       @debug = debug
       @call_depth = 0
       @record.debug = debug if @record.respond_to?(:debug=)
+      # M16a: Assignment-event reconstructor.  We attach a variable
+      # resolver that delegates id minting to TraceRecord so the
+      # reconstructor stays decoupled from the recorder's id tables.
+      @assignment_reconstructor = AssignmentReconstructor.new
+      @assignment_reconstructor.attach_variable_resolver(
+        ->(name) { @record.load_variable_id(name) }
+      )
       setup_tracepoints
     end
 
@@ -211,6 +220,44 @@ module CodeTracer
         record_exception(tp)
         enable_tracepoints
       end
+
+      # M16a: emit BindVariable + Assignment events for block
+      # parameters when a block is entered (`xs.each do |x| ... end`).
+      # The MRI `:call` tracepoint does *not* fire on blocks; only
+      # `:b_call` does, so without this we'd miss block-arg binding
+      # entirely.  We classify block parameter binding as
+      # `RValue::Compound([])` for now — the actual value flows in
+      # via the enclosing iterator's call args, and the db-backend
+      # correlates them via the call site manifest.
+      @block_call_tracepoint = TracePoint.new(:b_call) do |tp|
+        disable_tracepoints
+        record_block_call(tp)
+        enable_tracepoints
+      end
+
+      @block_return_tracepoint = TracePoint.new(:b_return) do |tp|
+        disable_tracepoints
+        record_block_return(tp)
+        enable_tracepoints
+      end
+    end
+
+    def record_block_call(tp)
+      return unless self.tracks_call?(tp)
+      param_names = tp.parameters.map { |(_kind, name)| name&.to_s }.compact
+      return if param_names.empty?
+      events = @assignment_reconstructor.on_call(
+        tp.binding,
+        param_names,
+        tp.path,
+        tp.lineno
+      )
+      drain_assignment_events(events)
+    end
+
+    def record_block_return(tp)
+      return unless self.tracks_call?(tp)
+      @assignment_reconstructor.on_return(tp.binding, tp.path)
     end
 
     def prepare_args(tp)
@@ -259,6 +306,28 @@ module CodeTracer
         arg_records = prepare_args(tp)
         @record.register_step(tp.path, tp.lineno)
         @record.register_call(tp.path, tp.lineno, method_name, arg_records)
+        # M16a: emit BindVariable + Assignment events for each
+        # parameter so the db-backend can resolve parameter-binding
+        # hops as Path A (confidence 1.0) without re-deriving them
+        # from the call site.  The block-arg variant of TracePoint
+        # (event :b_call) reaches this same method via the shared
+        # tracepoint setup; both real methods and blocks have
+        # `tp.parameters` populated.
+        param_names = tp.parameters.map { |(_kind, name)| name&.to_s }.compact
+        # Notify the reconstructor before draining events so the
+        # `last_call_key` it stamps onto FunctionReturn shapes
+        # references this call.  CallKey here is the count of
+        # CallRecords emitted so far (1-indexed to match the M14
+        # `CallKey(1)` convention; the recorder mints them
+        # sequentially as Call events are appended to `@events`).
+        @assignment_reconstructor.note_call(@call_depth)
+        events = @assignment_reconstructor.on_call(
+          tp.binding,
+          param_names,
+          tp.path,
+          tp.lineno
+        )
+        drain_assignment_events(events)
       end
     end
 
@@ -275,15 +344,58 @@ module CodeTracer
         # (Nikola Gamzakov showed me some examples)
         @record.register_variable("<return_value>", return_value)
         @record.events << [:Return, ReturnRecord.new(return_value)]
+        # M16a: drop the frame's reconstructor state so the
+        # `@frames` hash doesn't grow unbounded.
+        @assignment_reconstructor.on_return(tp.binding, tp.path)
       end
     end
 
     def record_step(tp)
       if self.tracks_call?(tp)
         @record.register_step(tp.path, tp.lineno)
+        # M16a: run the assignment reconstructor BEFORE recording
+        # the per-line variable snapshot.  The reconstructor diffs
+        # the previous frame state against the current binding's
+        # locals, then emits BindVariable + Assignment events for
+        # every changed name.  Per spec §6.1, these must precede
+        # the Value events for the same variables so the
+        # db-backend Path A pass sees the explicit hop before
+        # observing the new value.
+        events = @assignment_reconstructor.on_line(
+          tp.binding,
+          tp.path,
+          tp.lineno
+        )
+        drain_assignment_events(events)
         variables = load_variables(tp.binding)
         variables.each do |(name, value)|
           @record.register_variable(name, value)
+        end
+      end
+    end
+
+    # Translate the [:BindVariable, :Assignment] event tuples coming
+    # out of the reconstructor into actual register_* calls on the
+    # underlying TraceRecord.
+    #
+    # The reconstructor uses symbol-keyed names internally because
+    # `binding.local_variables` returns symbols.  The TraceRecord
+    # stores its variable map keyed by whatever the caller passes;
+    # the existing line/call code paths pass symbols (via
+    # `prepare_args`).  We pass symbols here for the same reason so
+    # the lookup hits the same map slot the existing per-line value
+    # event uses — otherwise we'd mint a fresh `VariableId` for the
+    # same logical name and break the db-backend's name-to-id
+    # correlation.
+    def drain_assignment_events(events)
+      events.each do |tuple|
+        case tuple[0]
+        when :BindVariable
+          name = tuple[1]
+          @record.register_bind_variable(name.to_sym)
+        when :Assignment
+          _kind, name, rvalue = tuple
+          @record.register_assignment(name.to_sym, rvalue)
         end
       end
     end
@@ -366,6 +478,8 @@ module CodeTracer
       @calls_tracepoint.enable
       @return_tracepoint.enable
       @raise_tracepoint.enable
+      @block_call_tracepoint&.enable
+      @block_return_tracepoint&.enable
       @tracing = true
       # We intentionally enable the line tracepoint after the other tracepoints
       # to avoid recording the initial activation call as a line event.
@@ -379,6 +493,8 @@ module CodeTracer
       @calls_tracepoint.disable
       @return_tracepoint.disable
       @raise_tracepoint.disable
+      @block_call_tracepoint&.disable
+      @block_return_tracepoint&.disable
       @tracing = false
     end
 
