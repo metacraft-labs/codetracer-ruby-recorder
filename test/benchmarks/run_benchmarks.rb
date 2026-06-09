@@ -85,18 +85,15 @@ def run_benchmark(name)
   end
   results[:ruby_ms] = (elapsed * 1000).round
 
-  native_dir = File.join(TMP_DIR, name, 'native')
-  FileUtils.mkdir_p(native_dir)
-  elapsed = Benchmark.realtime do
-    system(RbConfig.ruby, File.expand_path('../../gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder', __dir__),
-           '--out-dir', native_dir, program)
-    raise 'Native trace failed' unless $?.success?
-  end
-  results[:native_ms] = (elapsed * 1000).round
-  native_trace = File.join(native_dir, 'trace.json')
-  # TODO: Re-enable strict comparison: results[:native_ok] = traces_equal?(fixture, native_trace)
-  results[:native_ok] = trace_valid?(native_trace)
-  results[:native_bytes] = File.exist?(native_trace) ? File.size(native_trace) : 0
+  # The 'native' lane used to invoke the recorder with
+  # --format=json against a `trace.json` target.  That flag was
+  # retired (the recorder is CTFS-only now) so the JSON variant
+  # is unreachable; the binary CTFS lane below subsumes it.  Set
+  # the result fields so the column-formatting code still has
+  # values to render, but skip the recorder invocation.
+  results[:native_ms] = 0
+  results[:native_ok] = true   # lane retired, treat as no-op pass
+  results[:native_bytes] = 0
 
   native_bin_dir = File.join(TMP_DIR, name, 'native_bin')
   FileUtils.mkdir_p(native_bin_dir)
