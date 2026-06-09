@@ -101,14 +101,20 @@ def run_benchmark(name)
   native_bin_dir = File.join(TMP_DIR, name, 'native_bin')
   FileUtils.mkdir_p(native_bin_dir)
   elapsed = Benchmark.realtime do
+    # NOTE: the recorder removed the --format flag (CTFS-only); the
+    # binary trace is always emitted now.
     system(RbConfig.ruby, File.expand_path('../../gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder', __dir__),
-           '--out-dir', native_bin_dir, '--format=binary', program)
+           '--out-dir', native_bin_dir, program)
     raise 'Native binary trace failed' unless $?.success?
   end
   results[:native_bin_ms] = (elapsed * 1000).round
-  native_bin_trace = File.join(native_bin_dir, 'trace.bin')
-  results[:native_bin_ok] = File.exist?(native_bin_trace)
-  results[:native_bin_bytes] = File.exist?(native_bin_trace) ? File.size(native_bin_trace) : 0
+  # CTFS is a directory of binary streams (sub-files); the recorder
+  # writes into ``native_bin_dir/*.ct/`` or sibling files.  Treat the
+  # whole output dir as the trace artefact for size accounting.
+  native_bin_files = Dir.glob(File.join(native_bin_dir, '**', '*'))
+                       .select { |p| File.file?(p) }
+  results[:native_bin_ok] = !native_bin_files.empty?
+  results[:native_bin_bytes] = native_bin_files.sum { |p| File.size(p) }
 
   pure_dir = File.join(TMP_DIR, name, 'pure')
   FileUtils.mkdir_p(pure_dir)
