@@ -194,6 +194,20 @@ jobs:
             experimental-features = nix-command flakes
       - name: Install Ruby dependencies via Nix
         run: nix develop -c bundle install
+      - name: Build ct-print binary via Nix
+        # `test/test_tracer.rb` shells out to
+        # `../codetracer-trace-format-nim/ct-print` to decode the
+        # CTFS bundle the native recorder writes back into the
+        # legacy JSON shape used by the pure-ruby reference oracle.
+        # Build it via the dev shell so the nim+nimble+zstd
+        # toolchain comes from flake.nix.
+        run: |
+          nix develop -c bash -c '
+            set -euo pipefail
+            cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
+            nimble install -y stew results
+            nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
+          '
       - name: Build extension via Nix
         run: nix develop -c just build-extension
       - name: Run tests via Nix
