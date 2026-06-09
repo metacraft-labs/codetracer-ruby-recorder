@@ -61,6 +61,12 @@
             pkgs.pkg-config
             pkgs.capnproto # codetracer_trace_format_capnp build.rs needs capnp
             pkgs.llvmPackages.libclang # bindgen (used by rb-sys) needs libclang
+            # codetracer_trace_writer_nim/build.rs compiles the Nim FFI
+            # static lib at cargo build time -- without Nim on PATH the
+            # build fails with "could not find native static library
+            # codetracer_trace_writer".
+            pkgs.nim
+            pkgs.nimble
           ]
           ++ lib.optionals stdenv.isDarwin [
             pkgs.libiconv
