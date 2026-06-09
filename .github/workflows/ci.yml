@@ -74,6 +74,28 @@ jobs:
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             ZSTD_PREFIX=$(brew --prefix zstd)
             NIM_EXTRA_FLAGS="--passC:-I$ZSTD_PREFIX/include --passL:-L$ZSTD_PREFIX/lib --passL:-lzstd"
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            # msys2/setup-msys2 puts zstd headers/libs under the
+            # action's MSYS2 install at ucrt64/{include,lib}, but
+            # this 'shell: bash' is Git Bash so MSYSTEM_PREFIX is
+            # not set.  The action installs by default at
+            # ${{runner.temp}}\msys64 on hosted runners.  Locate
+            # ucrt64 by probing a few standard layouts.
+            for candidate in \
+              "${RUNNER_TEMP:-}/msys64/ucrt64" \
+              "D:/a/_temp/msys64/ucrt64" \
+              "C:/msys64/ucrt64"; do
+              if [ -f "$candidate/include/zstd.h" ]; then
+                UCRT64_PREFIX="$candidate"
+                break
+              fi
+            done
+            if [ -z "${UCRT64_PREFIX:-}" ]; then
+              echo "ERROR: could not locate MSYS2 ucrt64 prefix with zstd.h" >&2
+              exit 1
+            fi
+            echo "Using MSYS2 ucrt64 prefix: $UCRT64_PREFIX"
+            NIM_EXTRA_FLAGS="--passC:-I${UCRT64_PREFIX}/include --passL:-L${UCRT64_PREFIX}/lib --passL:-lzstd"
           fi
           nim c --app:staticlib --mm:arc --noMain -d:release --passC:'-fPIC' -p:src \
             $NIM_EXTRA_FLAGS \
