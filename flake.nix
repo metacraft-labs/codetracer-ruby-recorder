@@ -226,6 +226,11 @@
 
                   capnproto # Required for the native tracer's Cap'n Proto serialization
                   zstd # Required for linking the Nim trace writer (libzstd)
+
+                  # codetracer_trace_writer_nim/build.rs invokes nim+nimble
+                  # to compile the FFI sources into a static library.
+                  nim
+                  nimble
                 ]
                 ++ pkgs.lib.optionals isLinux [
                   # C standard library headers required for Ruby C extension compilation on Linux
