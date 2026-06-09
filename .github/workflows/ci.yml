@@ -23,10 +23,17 @@ jobs:
         run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format-nim.git "${{ github.workspace }}/../codetracer-trace-format-nim"
 
       - name: Install Nim
-        shell: bash
-        run: |
-          curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
-          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
+        # ``choosenim`` shells out to a Nim binary that imports
+        # libssl's ``SSL_library_init``, which was removed in
+        # OpenSSL 1.1.  The Windows runner's OpenSSL is 3.x so
+        # choosenim aborts with ``could not find symbol:
+        # SSL_library_init [LibraryError]``.  Use the
+        # cross-platform GitHub Action that downloads prebuilt
+        # binaries instead.
+        uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: "2.2.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install system dependencies
         shell: bash
@@ -94,9 +101,12 @@ jobs:
         run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format-nim.git "${{ github.workspace }}/../codetracer-trace-format-nim"
 
       - name: Install Nim
-        run: |
-          curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
-          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
+        # Match the test job: prefer the cross-platform Action over
+        # choosenim's interactive installer.
+        uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: "2.2.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install system dependencies
         shell: bash
