@@ -45,6 +45,14 @@ jobs:
             LLVM_VERSION=$(ls /usr/lib/ | grep llvm | sort -V | tail -1)
             echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
             echo "CLANG_PATH=/usr/bin/clang" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            # MSYS2 ucrt64 pacman -- ships zstd headers/libs that
+            # nim's `nim c codetracer_trace_writer_ffi.nim`
+            # #include's via codetracer_trace_writer.  capnproto
+            # likewise needed for the Cargo capnpc build step.
+            pacman -S --noconfirm \
+              mingw-w64-ucrt-x86_64-capnproto \
+              mingw-w64-ucrt-x86_64-zstd
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             brew install capnp pkg-config zstd
           fi
@@ -80,11 +88,10 @@ jobs:
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            pacman -S --noconfirm \
-              mingw-w64-ucrt-x86_64-capnproto \
-              mingw-w64-ucrt-x86_64-zstd
+            # capnproto + zstd are already installed by the earlier
+            # 'Install system dependencies' step; just add the
+            # Windows-GNU Rust target.
             rustup target add x86_64-pc-windows-gnu
-          #  ridk enable
           fi
           just build-extension
       - name: Run tests
