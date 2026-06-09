@@ -35,7 +35,8 @@ jobs:
           nim-version: "2.2.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Linux/macOS)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
@@ -45,17 +46,25 @@ jobs:
             LLVM_VERSION=$(ls /usr/lib/ | grep llvm | sort -V | tail -1)
             echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
             echo "CLANG_PATH=/usr/bin/clang" >> $GITHUB_ENV
-          elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            # MSYS2 ucrt64 pacman -- ships zstd headers/libs that
-            # nim's `nim c codetracer_trace_writer_ffi.nim`
-            # #include's via codetracer_trace_writer.  capnproto
-            # likewise needed for the Cargo capnpc build step.
-            pacman -S --noconfirm \
-              mingw-w64-ucrt-x86_64-capnproto \
-              mingw-w64-ucrt-x86_64-zstd
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             brew install capnp pkg-config zstd
           fi
+
+      - name: Install system dependencies (Windows / MSYS2)
+        if: runner.os == 'Windows'
+        # The default 'shell: bash' on Windows runners is Git for
+        # Windows bash -- pacman is not on its PATH.  Use the
+        # msys2/setup-msys2 action's shell so pacman lives inside
+        # MSYS2's ucrt64 environment and the installed packages
+        # land in /ucrt64/ where Nim's gcc.exe can find them.
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false
+          install: >-
+            mingw-w64-ucrt-x86_64-capnproto
+            mingw-w64-ucrt-x86_64-zstd
+
       - name: Build Nim trace writer library
         shell: bash
         run: |
