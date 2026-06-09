@@ -12,6 +12,26 @@
       url = "github:metacraft-labs/codetracer-trace-format";
       flake = false;
     };
+    # codetracer_trace_writer_nim's build.rs reads the FFI entry
+    # point from this sibling repo and compiles it to a static lib
+    # at cargo build time.  Without the source the build aborts with
+    # "Nim FFI entry point not found".
+    codetracer-trace-format-nim = {
+      url = "github:metacraft-labs/codetracer-trace-format-nim/main";
+      flake = false;
+    };
+    # Nim packages the Nim FFI library declares as ``requires`` in its
+    # .nimble.  Resolve them via flake inputs (no network access
+    # inside the Nix sandbox) and pass their paths through
+    # CODETRACER_TRACE_FORMAT_NIM_EXTRA_PATHS.
+    nim-stew = {
+      url = "github:status-im/nim-stew/master";
+      flake = false;
+    };
+    nim-results = {
+      url = "github:arnetheduck/nim-results/master";
+      flake = false;
+    };
   };
 
   outputs =
@@ -21,6 +41,9 @@
       fenix,
       pre-commit-hooks,
       codetracer-trace-format,
+      codetracer-trace-format-nim,
+      nim-stew,
+      nim-results,
     }:
     let
       systems = [
@@ -75,6 +98,14 @@
           ];
 
           buildInputs = [ ruby ];
+
+          # codetracer_trace_writer_nim/build.rs needs the Nim FFI
+          # source on disk + ``stew`` / ``results`` Nim packages on the
+          # Nim path.  ``nimble install`` would need network access,
+          # so skip it and feed the sources directly.
+          CODETRACER_TRACE_FORMAT_NIM_DIR = "${codetracer-trace-format-nim}";
+          CODETRACER_TRACE_FORMAT_NIM_SKIP_NIMBLE_INSTALL = "1";
+          CODETRACER_TRACE_FORMAT_NIM_EXTRA_PATHS = "${nim-stew}:${nim-results}";
 
           # bindgen needs LIBCLANG_PATH to find libclang.so
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";

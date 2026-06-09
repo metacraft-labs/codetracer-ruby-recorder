@@ -16,6 +16,23 @@
         "type": "github"
       }
     },
+    "codetracer-trace-format-nim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780235114,
+        "narHash": "sha256-rpzAZQ8Q0uHc8AePJvUeHjKF274LpCRV98T94bXwktQ=",
+        "owner": "metacraft-labs",
+        "repo": "codetracer-trace-format-nim",
+        "rev": "00c59fded25f90652bf95cb59707ee5df9e87bcd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "metacraft-labs",
+        "ref": "main",
+        "repo": "codetracer-trace-format-nim",
+        "type": "github"
+      }
+    },
     "fenix": {
       "inputs": {
         "nixpkgs": [
@@ -74,6 +91,40 @@
         "type": "github"
       }
     },
+    "nim-results": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779884938,
+        "narHash": "sha256-ikh1hDGRYayp5NPf6+eIb+g8YOO5YE/d7/Ro8PvVI1g=",
+        "owner": "arnetheduck",
+        "repo": "nim-results",
+        "rev": "06deae1c81fd27b6c94bbc7cd0e619b6905d49da",
+        "type": "github"
+      },
+      "original": {
+        "owner": "arnetheduck",
+        "ref": "master",
+        "repo": "nim-results",
+        "type": "github"
+      }
+    },
+    "nim-stew": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779875064,
+        "narHash": "sha256-zqdUMcXLT97UU2MU6KQF6nChzDERtlRSh04DWFDAfQ0=",
+        "owner": "status-im",
+        "repo": "nim-stew",
+        "rev": "784aba67a3217ff1fe810b8070857d21189945bf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "status-im",
+        "ref": "master",
+        "repo": "nim-stew",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1779102034,
@@ -129,7 +180,10 @@
     "root": {
       "inputs": {
         "codetracer-trace-format": "codetracer-trace-format",
+        "codetracer-trace-format-nim": "codetracer-trace-format-nim",
         "fenix": "fenix",
+        "nim-results": "nim-results",
+        "nim-stew": "nim-stew",
         "nixpkgs": "nixpkgs",
         "pre-commit-hooks": "pre-commit-hooks"
       }
