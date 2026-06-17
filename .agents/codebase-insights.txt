@@ -4,3 +4,18 @@ The native tracer (Rust extension) caches frequently used Ruby method IDs and
 class constants in the `Recorder` struct. When adding new Ruby method calls,
 ensure the IDs are interned once during allocation and stored in the struct for
 reuse.
+
+When defining a Ruby helper from Rust that you then plan to call via
+`rb_funcall(rb_cObject, mid, ...)`, define it as a SINGLETON method on
+`Object` (`class << Object; def foo; ...; end; end`), NOT as a top-level
+`def foo`.  A top-level `def` registers `foo` as a *private instance*
+method of Object, which `rb_funcall` on `rb_cObject` cannot reach because
+class-level dispatch on Object does not consult instance methods.  The
+column-aware navigation pre-walk (`__codetracer_collect_columns` in
+`ext/native_tracer/src/lib.rs`) is the canonical example.
+
+Ruby's AST constant is `RubyVM::AbstractSyntaxTree`, NOT
+`RubyVM::AbstractSyntaxNode`.  Older documentation and several rollout
+specs still cite the old name — always guard with `defined?(...)` so the
+recorder gracefully degrades on JRuby / TruffleRuby (where the constant
+is absent).

@@ -1,11 +1,12 @@
 #![allow(clippy::missing_safety_doc)]
 
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use std::{
     ffi::CStr,
     mem::transmute,
     os::raw::{c_char, c_int, c_void},
-    path::Path,
+    path::{Path, PathBuf},
     ptr,
     string::FromUtf8Error,
 };
@@ -193,6 +194,28 @@ struct RecorderData {
     string_type_id: TypeId,
     symbol_type_id: TypeId,
     error_type_id: TypeId,
+    /// Column-aware navigation state (P6 milestone).
+    ///
+    /// `column_table[path][line]` holds the 1-based source column of the
+    /// first statement node on `line`, harvested by a single
+    /// `RubyVM::AbstractSyntaxNode.parse_file` walk the first time we
+    /// observe a `path` from a TracePoint event.  The walk runs OUTSIDE
+    /// the perf-sensitive hot path (script-load time per path), so the
+    /// per-step cost of column-aware navigation is a `HashMap` lookup.
+    ///
+    /// `paths_registered` tracks paths that have already been registered
+    /// on the trace writer via `register_path_with_line_lengths`
+    /// (Layout A `paths.dat`), which is the prerequisite for the reader
+    /// to surface columns on the wire.  See
+    /// `codetracer-trace-format-spec/trace-events.md` §"paths.dat per-line
+    /// offset table — Layout A".
+    column_table: HashMap<PathBuf, HashMap<u32, u32>>,
+    paths_registered: HashSet<PathBuf>,
+    /// Cached `Symbol` for the Ruby helper method
+    /// `__codetracer_collect_columns` we install on `Object` at recorder
+    /// allocation time.  Looking it up via `rb_intern` once means the
+    /// per-path AST walk only pays for an `rb_funcall` dispatch.
+    collect_columns_mid: ID,
 }
 
 struct Recorder {
@@ -217,6 +240,278 @@ fn should_ignore_path(path: &str) -> bool {
         return true;
     }
     PATTERNS.iter().any(|p| path.contains(p))
+}
+
+// =========================================================================
+//                  Column-aware navigation infrastructure
+//                  (P6 / Column-Aware-Navigation plan)
+// =========================================================================
+//
+// Ruby's `TracePoint` API exposes `lineno` only.  To surface columns on
+// the CTFS wire we run a one-shot AST walk per source file at the moment
+// we first observe the file in a TracePoint event, harvesting the
+// (lineno -> first_column_of_first_statement_on_that_line) table from
+// `RubyVM::AbstractSyntaxNode.parse_file`.
+//
+// The walk runs in pure Ruby (not the C TracePoint hook) so it cannot
+// re-enter the hot path; we gate `recorder.data.in_event_hook` for the
+// duration to be extra defensive.  The cost is amortised across every
+// step on the same file (the table is keyed by (path, line) and lookups
+// from the hook are O(1) `HashMap` gets).
+//
+// See `codetracer-specs/Planned-Features/
+// Column-Aware-Navigation-Other-Languages.plan.md` for the acceptance
+// criteria.
+
+/// Ruby source for the AST-walking helper installed on `Object` at
+/// recorder allocation time.  The helper opens `path`, parses it with
+/// `RubyVM::AbstractSyntaxNode`, and returns a flat `[line, col, line,
+/// col, ...]` `Integer` array — the flat layout is cheaper to consume
+/// from Rust than nested arrays because we can pair-walk it linearly.
+///
+/// The walk records each AST node's `(first_lineno, first_column)`.
+/// Because Ruby's `TracePoint :line` events fire at most once per source
+/// line, and the AST walker visits nodes in DFS order, we keep the
+/// FIRST column we see for each line — that is the leftmost statement,
+/// which matches where the bytecode landing for `RUBY_EVENT_LINE` would
+/// conceptually sit.  The reverse iteration order (`stack.pop`) does NOT
+/// matter for correctness because the caller (`populate_column_table`)
+/// dedupes by line on insertion.
+///
+/// `first_column` is 0-based on the Ruby side and we convert to 1-based
+/// on the wire (matches the CTFS spec — see §"Column Encoding").
+///
+/// Returns an empty array on parse failure so the caller falls back to
+/// column-less steps cleanly (no traces are aborted just because a
+/// non-standard file fails to parse).
+const COLLECT_COLUMNS_RUBY_HELPER: &CStr = c"
+class << Object
+  # Define as a *singleton* method on `Object` so the recorder can
+  # invoke it via `rb_funcall(rb_cObject, mid, 1, path)` — the natural
+  # dispatch site from C.  Defining it at top-level (`def ...`) instead
+  # would make it a private instance method of Object, which
+  # `rb_funcall(rb_cObject, ...)` cannot reach because class-level
+  # dispatch on Object does not consult instance methods.
+  def __codetracer_collect_columns(path)
+    result = []
+    begin
+      # MRI exposes the AST under `RubyVM::AbstractSyntaxTree` (it was
+      # renamed from `RubyVM::AbstractSyntaxNode` long ago; the rollout
+      # plan still cites the old name).  Use `defined?` so the recorder
+      # cleanly degrades to line-only navigation on JRuby/TruffleRuby
+      # where the constant is absent.
+      return result unless defined?(RubyVM::AbstractSyntaxTree)
+      node = RubyVM::AbstractSyntaxTree.parse_file(path)
+    rescue StandardError, SyntaxError, LoadError
+      return result
+    end
+    return result if node.nil?
+    stack = [node]
+    ast_node = RubyVM::AbstractSyntaxTree::Node
+    while (n = stack.pop)
+      n.children.each do |c|
+        stack.push(c) if c.is_a?(ast_node)
+      end
+      result << n.first_lineno
+      result << (n.first_column + 1)
+    end
+    result
+  end
+end
+nil
+";
+
+/// Idempotently install the AST-walker helper on `Object`.  The eval is
+/// guarded by `rb_protect` because `RubyVM::AbstractSyntaxNode` may be
+/// unavailable on alternative Ruby runtimes (TruffleRuby, JRuby) — when
+/// it is, the recorder still works in line-only mode (the eval succeeds,
+/// the per-file parse fails inside the rescue, the column table stays
+/// empty, and `register_step_with_column` falls back to the no-column
+/// path).
+unsafe fn install_collect_columns_helper() {
+    let mut state: c_int = 0;
+    let _ = rb_protect(Some(eval_collect_columns_helper), Qnil.into(), &mut state);
+    if state != 0 {
+        // Swallow the error — the column table will stay empty and the
+        // recorder gracefully degrades to line-only navigation.
+        rb_set_errinfo(Qnil.into());
+    }
+}
+
+unsafe extern "C" fn eval_collect_columns_helper(_arg: VALUE) -> VALUE {
+    rb_eval_string(COLLECT_COLUMNS_RUBY_HELPER.as_ptr())
+}
+
+/// Argument bundle for `call_collect_columns` — `rb_protect` passes a
+/// single `VALUE`, so we pack the receiver, method ID, and path string
+/// into a small struct and cast its address.
+struct CollectColumnsCall {
+    recv: VALUE,
+    mid: ID,
+    path_str: VALUE,
+}
+
+unsafe extern "C" fn call_collect_columns(arg: VALUE) -> VALUE {
+    let data = &*(arg as *const CollectColumnsCall);
+    rb_funcall(data.recv, data.mid, 1, data.path_str)
+}
+
+/// Build a `(line -> column)` lookup table for `path` by invoking the
+/// installed AST-walker helper.  Errors (file not found, parse failure,
+/// helper not installed, AST unavailable) are silently absorbed — the
+/// returned table is empty and the recorder falls back to line-only
+/// navigation for that file.
+unsafe fn populate_column_table(data: &RecorderData, path: &str) -> HashMap<u32, u32> {
+    let mut table: HashMap<u32, u32> = HashMap::new();
+    // Construct a Ruby string carrying the path bytes; the helper takes
+    // a single positional `path` argument.
+    let path_str: VALUE = rb_str_new_owned(path.as_bytes());
+    if NIL_P(path_str) {
+        return table;
+    }
+    let call = CollectColumnsCall {
+        recv: rb_cObject,
+        mid: data.collect_columns_mid,
+        path_str,
+    };
+    let mut state: c_int = 0;
+    let result = rb_protect(
+        Some(call_collect_columns),
+        &call as *const _ as VALUE,
+        &mut state,
+    );
+    if state != 0 {
+        // Helper raised — most commonly because the file vanished
+        // between the FS read and the AST parse, or because the file
+        // contains syntax the AST refuses to expose (very rare on MRI).
+        // Swallow the error: column-less navigation is the back-compat
+        // fallback.
+        rb_set_errinfo(Qnil.into());
+        return table;
+    }
+    if NIL_P(result) || !RB_TYPE_P(result, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+        return table;
+    }
+    let len = RARRAY_LEN(result) as usize;
+    let ptr = RARRAY_CONST_PTR(result);
+    // Flat `[line, col, line, col, ...]` layout — see
+    // COLLECT_COLUMNS_RUBY_HELPER for the producer side.
+    let mut i = 0;
+    while i + 1 < len {
+        let line_v = *ptr.add(i);
+        let col_v = *ptr.add(i + 1);
+        i += 2;
+        if !RB_INTEGER_TYPE_P(line_v) || !RB_INTEGER_TYPE_P(col_v) {
+            continue;
+        }
+        let line = rb_num2long(line_v) as i64;
+        let col = rb_num2long(col_v) as i64;
+        if line <= 0 || col <= 0 {
+            continue;
+        }
+        // Keep the FIRST column we observe per line — that is the
+        // leftmost statement on that line, which is what TracePoint's
+        // single per-line event conceptually lands on.  Subsequent
+        // statements on the same line are unreachable through
+        // TracePoint anyway (see `event_hook_raw`'s `RUBY_EVENT_LINE`
+        // arm — it fires once per source line, not per statement).
+        let line_u = line as u32;
+        let col_u = col as u32;
+        table.entry(line_u).or_insert(col_u);
+    }
+    table
+}
+
+/// Build a new Ruby UTF-8 string from owned bytes.  Wraps
+/// `rb_utf8_str_new` so paths flow through without re-encoding.
+/// Returns `Qnil` on empty input (rare — file paths are non-empty).
+unsafe fn rb_str_new_owned(bytes: &[u8]) -> VALUE {
+    if bytes.is_empty() {
+        return Qnil.into();
+    }
+    rb_sys::rb_utf8_str_new(bytes.as_ptr() as *const c_char, bytes.len() as _)
+}
+
+/// Compute the per-line byte-length table required by the `paths.dat`
+/// Layout A record.  `line_lengths[i]` is the byte count of source line
+/// `i+1` (1-based, matching the CTFS spec), excluding the trailing
+/// `\n`.  An `\r\n` terminator contributes its `\r` to the line's byte
+/// count.  A file that doesn't end with `\n` still has its final line
+/// counted.  Mirrors `codetracer-evm-recorder::compute_line_lengths`.
+fn compute_line_lengths(source: &str) -> Vec<u32> {
+    let mut lengths: Vec<u32> = Vec::new();
+    let mut line_start: usize = 0;
+    for (i, b) in source.bytes().enumerate() {
+        if b == b'\n' {
+            lengths.push((i - line_start) as u32);
+            line_start = i + 1;
+        }
+    }
+    if line_start < source.len() {
+        lengths.push((source.len() - line_start) as u32);
+    }
+    lengths
+}
+
+/// Lazily harvest the per-line column table for `path` and register
+/// `path` with the trace writer's Layout A `paths.dat` record.  Both
+/// operations are idempotent per `(recorder, path)`.
+///
+/// Returns the column-table reference borrowed from
+/// `recorder.column_table` so the caller can do a single O(1) lookup
+/// without re-borrowing the map.
+unsafe fn ensure_path_with_columns(
+    recorder: &mut RecorderData,
+    tracer: &mut dyn TraceWriter,
+    path: &str,
+) {
+    let path_buf = PathBuf::from(path);
+    if recorder.paths_registered.contains(&path_buf) {
+        return;
+    }
+    // Read source bytes once — used for both the line-length table
+    // (writer side) and as a hint that the file is parseable (the AST
+    // helper opens its own handle via `parse_file` so the read here is
+    // just for line lengths).
+    let source = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(_) => {
+            // Without the source we cannot register the line-length
+            // table; we still mark the path so we don't retry on every
+            // event.  The reader will simply not surface columns for
+            // this path — line-only navigation, the back-compat-safe
+            // fallback codified in P6.5.
+            recorder.paths_registered.insert(path_buf.clone());
+            recorder.column_table.entry(path_buf).or_default();
+            return;
+        }
+    };
+    let line_lengths = compute_line_lengths(&source);
+    let _ = TraceWriter::register_path_with_line_lengths(tracer, &path_buf, &line_lengths);
+
+    // Now harvest the column table via the AST walker.  We must guard
+    // re-entry: the helper executes Ruby code, which could trigger
+    // TracePoint events from `require`s or autoloads inside parse_file.
+    // The hook short-circuits when `in_event_hook` is set, so flipping
+    // it here is the same defence used elsewhere in this file.
+    recorder.in_event_hook = true;
+    let table = populate_column_table(recorder, path);
+    recorder.in_event_hook = false;
+
+    recorder.column_table.insert(path_buf.clone(), table);
+    recorder.paths_registered.insert(path_buf);
+}
+
+/// Look up the 1-based column of the first statement on `(path, line)`
+/// from the harvested AST table.  Returns `None` when the path was
+/// never seen, the line is not in the table, or the column harvesting
+/// failed (e.g. parse error, AST unavailable on this Ruby runtime).
+fn column_for(recorder: &RecorderData, path: &str, line: i64) -> Option<Line> {
+    if line <= 0 {
+        return None;
+    }
+    let table = recorder.column_table.get(Path::new(path))?;
+    table.get(&(line as u32)).map(|c| Line(*c as i64))
 }
 
 // Legacy tree-based helpers (value_type_id, struct_value, to_value) have been
@@ -256,6 +551,12 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 }
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
+    // Install the AST-walking Ruby helper once per recorder allocation.
+    // We use a private singleton method on `Object` so it does not show
+    // up in normal method lookups (`Object.private_methods`) but can be
+    // called via `rb_funcall(rb_cObject, mid, 1, path)`.
+    install_collect_columns_helper();
+
     let recorder = Box::new(Recorder {
         tracer: Mutex::new(create_trace_writer(
             "ruby",
@@ -276,6 +577,9 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
             string_type_id: TypeId::default(),
             symbol_type_id: TypeId::default(),
             error_type_id: TypeId::default(),
+            column_table: HashMap::new(),
+            paths_registered: HashSet::new(),
+            collect_columns_mid: rb_intern!("__codetracer_collect_columns"),
         },
         out_dir: String::new(),
         streaming_encoder: StreamingValueEncoder::new(),
@@ -728,8 +1032,19 @@ unsafe fn collect_and_register_params_streaming(
 // Legacy collect_parameter_values / register_parameter_values have been
 // removed — replaced by collect_and_register_params_streaming (M59).
 
-unsafe fn record_event(tracer: &mut dyn TraceWriter, path: &str, line: i64, content: String) {
-    TraceWriter::register_step(tracer, Path::new(path), Line(line));
+unsafe fn record_event(
+    recorder: &mut RecorderData,
+    tracer: &mut dyn TraceWriter,
+    path: &str,
+    line: i64,
+    content: String,
+) {
+    // Funnel through the column-aware step emitter so kernel-patches
+    // record_event sites carry the same `(line, column)` payload as
+    // TracePoint-driven sites.  See `event_hook_raw` for the rationale.
+    ensure_path_with_columns(recorder, tracer, path);
+    let col = column_for(recorder, path, line);
+    TraceWriter::register_step_with_column(tracer, Path::new(path), Line(line), col);
     TraceWriter::register_special_event(tracer, EventLogKind::Write, "", &content)
 }
 
@@ -764,6 +1079,19 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
                     recorder.tracer = Mutex::new(t);
                     recorder.out_dir = path_str;
                     let mut locked_tracer = recorder.tracer.lock().unwrap();
+
+                    // P6 / Column-Aware-Navigation: opt the writer into
+                    // column-aware step encoding *before* any step is
+                    // registered.  The flag is trace-global and sticky:
+                    // it gates `DeltaColumn` (tag 0x07) emissions in
+                    // `register_step_with_column` and surfaces as
+                    // `meta.dat` bit 4 (`FLAG_HAS_COLUMN_AWARE_STEPS`)
+                    // at close time, which is how ct-print/the reader
+                    // know to expose `column` fields on step events.
+                    // See `codetracer-trace-format-spec/trace-events.md`
+                    // §"Column Encoding — Reader Behaviour and Back-Compat".
+                    TraceWriter::enable_column_aware_steps(&mut **locked_tracer);
+
                     // pre-register common types to match the pure Ruby tracer
                     recorder.data.int_type_id =
                         TraceWriter::ensure_type_id(&mut **locked_tracer, TypeKind::Int, "Integer");
@@ -874,7 +1202,13 @@ unsafe extern "C" fn record_event_api(
     let path_string = rstring_checked_or_empty(path);
     let line_num = rb_num2long(line) as i64;
     let content_str = value_to_string_exception_safe(&recorder.data, content);
-    record_event(&mut **locked_tracer, &path_string, line_num, content_str);
+    record_event(
+        &mut recorder.data,
+        &mut **locked_tracer,
+        &path_string,
+        line_num,
+        content_str,
+    );
     Qnil.into()
 }
 
@@ -933,13 +1267,36 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         recorder.data.last_thread_id = Some(thread_id);
     }
 
+    // P6 / Column-Aware-Navigation: lazily harvest the AST column table
+    // and register the path's Layout A `paths.dat` record the first
+    // time we see each `path`.  This MUST come before the first
+    // `register_step_with_column` for the file because:
+    //
+    //   * `register_path_with_line_lengths` opens the path's Layout A
+    //     record on the wire — Layout B (the legacy bare-path-bytes
+    //     record) is incompatible with column resolution.
+    //   * The AST walker installs the (line -> column) table consulted
+    //     by `column_for` below.
+    //
+    // The function is idempotent per (recorder, path) so the cost is
+    // O(1) on the steady-state hot path.  Inside the walker we flip
+    // `in_event_hook` to short-circuit any TracePoint events the parse
+    // triggers (e.g. autoloaded files for `parse_file`).
+    ensure_path_with_columns(&mut recorder.data, &mut **locked_tracer, &path);
+    let column = column_for(&recorder.data, &path, line);
+
     // Borrow the streaming encoder alongside the tracer. The encoder lives
     // on `Recorder` (outside the Mutex), so there is no aliasing conflict.
     let encoder = &mut recorder.streaming_encoder;
 
     if (ev & RUBY_EVENT_LINE) != 0 {
         let binding = rb_tracearg_binding(arg);
-        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
+        TraceWriter::register_step_with_column(
+            &mut **locked_tracer,
+            Path::new(&path),
+            Line(line),
+            column,
+        );
         if !NIL_P(binding) {
             record_variables_streaming(&mut recorder.data, &mut **locked_tracer, encoder, binding);
         }
@@ -991,7 +1348,12 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         if !param_args.is_empty() {
             args.extend(param_args);
         }
-        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
+        TraceWriter::register_step_with_column(
+            &mut **locked_tracer,
+            Path::new(&path),
+            Line(line),
+            column,
+        );
         let mut name = cstr_to_string(rb_id2name(mid)).unwrap_or_default();
         if class_name != "Object" {
             name = format!("{}#{}", class_name, name);
@@ -1008,7 +1370,12 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
         // for the CTFS multi-stream backend.
         TraceWriter::register_call(&mut **locked_tracer, fid, args);
     } else if (ev & RUBY_EVENT_RETURN) != 0 {
-        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
+        TraceWriter::register_step_with_column(
+            &mut **locked_tracer,
+            Path::new(&path),
+            Line(line),
+            column,
+        );
         let ret = rb_tracearg_return_value(arg);
         let cbor =
             encode_ruby_value_to_cbor(&mut recorder.data, &mut **locked_tracer, encoder, ret);
