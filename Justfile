@@ -2,6 +2,11 @@ alias t := test
 
 cargo_build_target_opt := if os_family() == "windows" { "--target x86_64-pc-windows-gnu" } else { "" }
 
+# Primary build target — required by Repo-Requirements.md §1.3 and
+# §2.4. Builds the native extension via `build-extension`; the
+# packaged gem is produced separately by `build-gem`.
+build: build-extension
+
 test:
     ruby -Itest test/gem_installation.rb
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'

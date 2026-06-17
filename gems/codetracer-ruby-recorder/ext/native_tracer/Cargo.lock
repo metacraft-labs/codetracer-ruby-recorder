@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "codetracer_trace_types"
-version = "0.16.3"
+version = "0.19.0"
 dependencies = [
  "base64",
  "num-derive",
