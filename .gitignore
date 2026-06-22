@@ -1,6 +1,5 @@
 *.json
 !.devcontainer/devcontainer.json
-!.github/sibling-pins.json
 !test/fixtures/*.json
 !test/benchmarks/fixtures/*.json
 test/tmp/
