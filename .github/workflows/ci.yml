@@ -227,11 +227,12 @@ jobs:
       - name: Clone codetracer-trace-format-nim
         run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format-nim.git "${{ github.workspace }}/../codetracer-trace-format-nim"
 
-      - uses: cachix/install-nix-action@v27
+      - name: Setup Nix
+        uses: metacraft-labs/nixos-modules/.github/setup-nix@main
         with:
-          nix_path: nixpkgs=channel:nixos-25.05
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
+          substituters: ${{ vars.SUBSTITUTERS }}
+          nix-github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Ruby dependencies via Nix
         run: nix develop -c bundle install
       - name: Build ct-print binary via Nix
@@ -260,11 +261,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - uses: cachix/install-nix-action@v27
+      - name: Setup Nix
+        uses: metacraft-labs/nixos-modules/.github/setup-nix@main
         with:
-          nix_path: nixpkgs=channel:nixos-25.05
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
+          substituters: ${{ vars.SUBSTITUTERS }}
+          nix-github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build native recorder package
         run: nix build .#codetracer-ruby-recorder
       - name: Build pure Ruby recorder package
