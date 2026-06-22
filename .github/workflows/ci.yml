@@ -6,179 +6,110 @@ on:
   pull_request:
 
 jobs:
+  # Build + test through the repo's declared dev env on every supported OS:
+  # the nix dev shell on Linux/macOS and the env.ps1 DIY env on Windows.
+  # setup-dev-env materialises the chosen flavor and clones the siblings
+  # listed in .github/sibling-repos at the workspace-lock-pinned revisions;
+  # every build/test command runs through dev-exec so no toolchain is
+  # installed open-coded.
   test:
-    runs-on: ${{ matrix.os }}
+    name: Build and test (${{ matrix.label }})
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - label: linux
+            runs-on: [self-hosted, nixos]
+            flavor: nix
+          - label: macos
+            runs-on: macos-latest
+            flavor: nix
+          - label: windows
+            runs-on: windows-latest
+            flavor: windows-diy
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - name: Clone codetracer-trace-format
-        run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format.git "${{ github.workspace }}/../codetracer-trace-format"
 
-      - name: Clone codetracer-trace-format-nim
-        run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format-nim.git "${{ github.workspace }}/../codetracer-trace-format-nim"
-
-      - name: Install Nim
-        # ``choosenim`` shells out to a Nim binary that imports
-        # libssl's ``SSL_library_init``, which was removed in
-        # OpenSSL 1.1.  The Windows runner's OpenSSL is 3.x so
-        # choosenim aborts with ``could not find symbol:
-        # SSL_library_init [LibraryError]``.  Use the
-        # cross-platform GitHub Action that downloads prebuilt
-        # binaries instead.
-        uses: jiro4989/setup-nim-action@v2
+      - name: Generate CI token
+        id: app-token
+        uses: actions/create-github-app-token@v1
         with:
-          nim-version: "2.2.x"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
+          private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
+          owner: metacraft-labs
 
-      - name: Install system dependencies (Linux/macOS)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends libclang-dev capnproto libcapnp-dev pkg-config libzstd-dev
-            # Set environment variables for Rust/bindgen
-            LLVM_VERSION=$(ls /usr/lib/ | grep llvm | sort -V | tail -1)
-            echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
-            echo "CLANG_PATH=/usr/bin/clang" >> $GITHUB_ENV
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install capnp pkg-config zstd
-          fi
+      - name: Setup dev env
+        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@main
+        with:
+          env-flavor: ${{ matrix.flavor }}
+          gh-token: ${{ steps.app-token.outputs.token }}
 
-      - name: Install system dependencies (Windows / MSYS2)
-        if: runner.os == 'Windows'
-        # The default 'shell: bash' on Windows runners is Git for
-        # Windows bash -- pacman is not on its PATH.  Use the
-        # msys2/setup-msys2 action's shell so pacman lives inside
-        # MSYS2's ucrt64 environment and the installed packages
-        # land in /ucrt64/ where Nim's gcc.exe can find them.
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          update: false
-          install: >-
-            mingw-w64-ucrt-x86_64-capnproto
-            mingw-w64-ucrt-x86_64-zstd
-
-      - name: Build Nim trace writer library
-        shell: bash
-        run: |
-          cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
-          nimble install -y stew results
-          NIM_EXTRA_FLAGS=""
-          if [[ "$RUNNER_OS" == "macOS" ]]; then
-            ZSTD_PREFIX=$(brew --prefix zstd)
-            NIM_EXTRA_FLAGS="--passC:-I$ZSTD_PREFIX/include --passL:-L$ZSTD_PREFIX/lib --passL:-lzstd"
-          elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            # msys2/setup-msys2 puts zstd headers/libs under the
-            # action's MSYS2 install at ucrt64/{include,lib}, but
-            # this 'shell: bash' is Git Bash so MSYSTEM_PREFIX is
-            # not set.  The action installs by default at
-            # ${{runner.temp}}\msys64 on hosted runners.  Locate
-            # ucrt64 by probing a few standard layouts.
-            for candidate in \
-              "${RUNNER_TEMP:-}/msys64/ucrt64" \
-              "D:/a/_temp/msys64/ucrt64" \
-              "C:/msys64/ucrt64"; do
-              if [ -f "$candidate/include/zstd.h" ]; then
-                UCRT64_PREFIX="$candidate"
-                break
-              fi
-            done
-            if [ -z "${UCRT64_PREFIX:-}" ]; then
-              echo "ERROR: could not locate MSYS2 ucrt64 prefix with zstd.h" >&2
-              exit 1
-            fi
-            echo "Using MSYS2 ucrt64 prefix: $UCRT64_PREFIX"
-            NIM_EXTRA_FLAGS="--passC:-I${UCRT64_PREFIX}/include --passL:-L${UCRT64_PREFIX}/lib --passL:-lzstd"
-          fi
-          nim c --app:staticlib --mm:arc --noMain -d:release --passC:'-fPIC' -p:src \
-            $NIM_EXTRA_FLAGS \
-            -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
-          nim c -d:release -p:src $NIM_EXTRA_FLAGS -o:ct-print src/codetracer_ct_print.nim
-          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.4'
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          targets: x86_64-pc-windows-gnu
       - name: Install Ruby dependencies
-        run: bundle install
-      - name: Setup just
-        uses: extractions/setup-just@v1
-      - name: Build extension
-        shell: bash
+        run: dev-exec bundle install
+
+      - name: Build ct-print binary
+        # `test/test_tracer.rb` shells out to
+        # `../codetracer-trace-format-nim/ct-print` to decode the
+        # CTFS bundle the native recorder writes back into the
+        # legacy JSON shape used by the pure-ruby reference oracle.
+        # Build it via the dev shell so the nim+nimble+zstd
+        # toolchain comes from flake.nix.
         run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            # capnproto + zstd are already installed by the earlier
-            # 'Install system dependencies' step; just add the
-            # Windows-GNU Rust target.
-            rustup target add x86_64-pc-windows-gnu
-          fi
-          just build-extension
+          dev-exec bash -c '
+            set -euo pipefail
+            cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
+            nimble install -y stew results
+            nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
+          '
+
+      - name: Build extension
+        run: dev-exec just build-extension
+
       - name: Run tests
-        run: just test
+        run: dev-exec just test
 
   benchmark:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, nixos]
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - name: Clone codetracer-trace-format
-        run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format.git "${{ github.workspace }}/../codetracer-trace-format"
 
-      - name: Clone codetracer-trace-format-nim
-        run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format-nim.git "${{ github.workspace }}/../codetracer-trace-format-nim"
-
-      - name: Install Nim
-        # Match the test job: prefer the cross-platform Action over
-        # choosenim's interactive installer.
-        uses: jiro4989/setup-nim-action@v2
+      - name: Generate CI token
+        id: app-token
+        uses: actions/create-github-app-token@v1
         with:
-          nim-version: "2.2.x"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
+          private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
+          owner: metacraft-labs
 
-      - name: Install system dependencies
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libclang-dev capnproto libcapnp-dev pkg-config libzstd-dev
-          # Set environment variables for Rust/bindgen
-          LLVM_VERSION=$(ls /usr/lib/ | grep llvm | sort -V | tail -1)
-          echo "LIBCLANG_PATH=/usr/lib/$LLVM_VERSION/lib" >> $GITHUB_ENV
-          echo "CLANG_PATH=/usr/bin/clang" >> $GITHUB_ENV
-      - name: Build Nim trace writer library
-        run: |
-          cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
-          nimble install -y stew results
-          nim c --app:staticlib --mm:arc --noMain -d:release --passC:'-fPIC' -p:src \
-            -o:libcodetracer_trace_writer.a src/codetracer_trace_writer_ffi.nim
-          nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
-          echo "CODETRACER_NIM_LIB_DIR=${GITHUB_WORKSPACE}/../codetracer-trace-format-nim" >> "$GITHUB_ENV"
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+      - name: Setup dev env
+        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@main
         with:
-          ruby-version: '3.4'
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+          env-flavor: nix
+          gh-token: ${{ steps.app-token.outputs.token }}
+
+      - name: Build ct-print binary
+        run: |
+          dev-exec bash -c '
+            set -euo pipefail
+            cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
+            nimble install -y stew results
+            nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
+          '
+
       - name: Install Ruby dependencies
-        run: bundle install
-      - name: Setup just
-        uses: extractions/setup-just@v1
+        run: dev-exec bundle install
+
       - name: Build extension
-        run: just build-extension
+        run: dev-exec just build-extension
+
       - name: Run benchmarks and generate report
-        run: just bench heavy_work reports/benchmark_report.svg
+        run: dev-exec just bench heavy_work reports/benchmark_report.svg
+
       - name: Post or update PR comment
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
@@ -215,59 +146,30 @@ jobs:
               });
             }
 
-  nix:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Clone codetracer-trace-format
-        run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format.git "${{ github.workspace }}/../codetracer-trace-format"
-
-      - name: Clone codetracer-trace-format-nim
-        run: git clone --depth 1 https://github.com/metacraft-labs/codetracer-trace-format-nim.git "${{ github.workspace }}/../codetracer-trace-format-nim"
-
-      - name: Setup Nix
-        uses: metacraft-labs/nixos-modules/.github/setup-nix@main
-        with:
-          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
-          substituters: ${{ vars.SUBSTITUTERS }}
-          nix-github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install Ruby dependencies via Nix
-        run: nix develop -c bundle install
-      - name: Build ct-print binary via Nix
-        # `test/test_tracer.rb` shells out to
-        # `../codetracer-trace-format-nim/ct-print` to decode the
-        # CTFS bundle the native recorder writes back into the
-        # legacy JSON shape used by the pure-ruby reference oracle.
-        # Build it via the dev shell so the nim+nimble+zstd
-        # toolchain comes from flake.nix.
-        run: |
-          nix develop -c bash -c '
-            set -euo pipefail
-            cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
-            nimble install -y stew results
-            nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
-          '
-      - name: Build extension via Nix
-        run: nix develop -c just build-extension
-      - name: Run tests via Nix
-        run: nix develop -c just test
-
   nix-build:
     name: Verify nix flake packages build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, nixos]
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - name: Setup Nix
-        uses: metacraft-labs/nixos-modules/.github/setup-nix@main
+
+      - name: Generate CI token
+        id: app-token
+        uses: actions/create-github-app-token@v1
         with:
-          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
-          substituters: ${{ vars.SUBSTITUTERS }}
-          nix-github-token: ${{ secrets.GITHUB_TOKEN }}
+          app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
+          private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
+          owner: metacraft-labs
+
+      - name: Setup dev env
+        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@main
+        with:
+          env-flavor: nix
+          gh-token: ${{ steps.app-token.outputs.token }}
+
       - name: Build native recorder package
         run: nix build .#codetracer-ruby-recorder
+
       - name: Build pure Ruby recorder package
         run: nix build .#codetracer-pure-ruby-recorder
