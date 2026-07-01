@@ -12,7 +12,7 @@ on:
 
 jobs:
   rubygems-bundling:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, nixos]
     name: rubygems bundling smoke-test
     steps:
       - name: Generate CI token
