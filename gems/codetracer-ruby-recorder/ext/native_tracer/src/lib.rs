@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use std::{
     ffi::CStr,
     mem::transmute,
-    os::raw::{c_char, c_int, c_void},
+    os::raw::{c_char, c_int, c_long, c_void},
     path::Path,
     ptr,
     string::FromUtf8Error,
@@ -17,22 +17,30 @@ use codetracer_trace_writer_nim::{
     create_trace_writer, trace_writer::TraceWriter, StreamingValueEncoder, TraceEventsFileFormat,
 };
 use rb_sys::{
-    rb_add_event_hook2, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct, rb_cThread, rb_cTime,
-    rb_check_typeddata, rb_const_defined, rb_const_get, rb_data_type_struct__bindgen_ty_1,
-    rb_data_type_t, rb_data_typed_object_wrap, rb_define_alloc_func, rb_define_class,
-    rb_define_method, rb_eIOError, rb_eval_string, rb_event_flag_t, rb_event_hook_flag_t,
-    rb_event_hook_func_t, rb_funcall, rb_id2name, rb_id2sym, rb_intern,
-    rb_internal_thread_add_event_hook, rb_internal_thread_event_data_t, rb_method_boundp,
-    rb_num2dbl, rb_num2long, rb_obj_classname, rb_obj_is_kind_of, rb_protect, rb_raise,
-    rb_remove_event_hook_with_data, rb_set_errinfo, rb_sym2id, rb_trace_arg_t, rb_tracearg_binding,
-    rb_tracearg_callee_id, rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path,
-    rb_tracearg_raised_exception, rb_tracearg_return_value, rb_tracearg_self, Qfalse, Qnil, Qtrue,
-    ID, NIL_P, RARRAY_CONST_PTR, RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P,
-    RB_TYPE_P, RSTRING_LEN, RSTRING_PTR, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE,
-    RUBY_EVENT_RETURN, RUBY_INTERNAL_THREAD_EVENT_EXITED, RUBY_INTERNAL_THREAD_EVENT_READY,
-    RUBY_INTERNAL_THREAD_EVENT_RESUMED, RUBY_INTERNAL_THREAD_EVENT_STARTED,
-    RUBY_INTERNAL_THREAD_EVENT_SUSPENDED, VALUE,
+    rb_add_event_hook2, rb_ary_entry, rb_cArray, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct,
+    rb_cThread, rb_cTime, rb_check_typeddata, rb_const_defined, rb_const_get,
+    rb_data_type_struct__bindgen_ty_1, rb_data_type_t, rb_data_typed_object_wrap,
+    rb_define_alloc_func, rb_define_class, rb_define_method, rb_eIOError, rb_eval_string,
+    rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t, rb_funcall, rb_id2name, rb_id2sym,
+    rb_intern, rb_method_boundp, rb_num2dbl, rb_num2long, rb_obj_classname, rb_obj_is_kind_of,
+    rb_protect, rb_raise, rb_remove_event_hook_with_data, rb_set_errinfo, rb_string_value_cstr,
+    rb_sym2id, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id, rb_tracearg_event_flag,
+    rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception, rb_tracearg_return_value,
+    rb_tracearg_self, Qfalse, Qnil, Qtrue, ID, NIL_P, RARRAY_LEN, RB_FLOAT_TYPE_P,
+    RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE,
+    RUBY_EVENT_RETURN, VALUE,
 };
+
+type RubyEventHook = unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE);
+type RubyMethod = unsafe extern "C" fn() -> VALUE;
+
+unsafe fn ruby_array_entry(array: VALUE, index: usize) -> VALUE {
+    rb_ary_entry(array, index as c_long)
+}
+
+fn ruby_nil(value: VALUE) -> bool {
+    value == 0x08
+}
 
 #[cfg(test)]
 mod shared_trace_storage_adapter_tests {
@@ -182,7 +190,6 @@ impl InternedSymbols {
 struct RecorderData {
     active: bool,
     in_event_hook: bool,
-    thread_event_hook_installed: bool,
     last_thread_id: Option<u64>,
     id: InternedSymbols,
     set_class: VALUE,
@@ -217,6 +224,26 @@ fn should_ignore_path(path: &str) -> bool {
         return true;
     }
     PATTERNS.iter().any(|p| path.contains(p))
+}
+
+unsafe fn should_ignore_receiver(arg: *mut rb_trace_arg_t) -> bool {
+    let self_val = rb_tracearg_self(arg);
+    if NIL_P(self_val) {
+        return false;
+    }
+    let class_name = cstr_to_string(rb_obj_classname(self_val)).unwrap_or_default();
+    class_name == "CodeTracer::RubyRecorder" || class_name == "CodeTracerNativeRecorder"
+}
+
+unsafe fn should_ignore_method(arg: *mut rb_trace_arg_t) -> bool {
+    let mid = rb_tracearg_callee_id(arg);
+    let Some(name) = cstr_to_string(rb_id2name(rb_sym2id(mid))) else {
+        return false;
+    };
+    matches!(
+        name.as_str(),
+        "start" | "stop" | "flush_trace" | "record_event" | "enable_tracing" | "disable_tracing"
+    )
 }
 
 // Legacy tree-based helpers (value_type_id, struct_value, to_value) have been
@@ -259,13 +286,12 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     let recorder = Box::new(Recorder {
         tracer: Mutex::new(create_trace_writer(
             "ruby",
-            &vec![],
+            &[],
             TraceEventsFileFormat::Ctfs,
         )),
         data: RecorderData {
             active: false,
             in_event_hook: false,
-            thread_event_hook_installed: false,
             last_thread_id: None,
             id: InternedSymbols::new(),
             set_class: Qnil.into(),
@@ -287,13 +313,16 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
 unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
     if !recorder.data.active {
-        if !recorder.data.thread_event_hook_installed {
-            thread_register_callback(recorder);
-            recorder.data.thread_event_hook_installed = true;
-        }
+        // Ruby documents internal thread-event callbacks as running without
+        // the GVL for most events. The recorder writes through the Nim trace
+        // writer, so thread lifecycle events are recorded from the regular
+        // Ruby event hook below, where the GVL and recorder invariants hold.
 
         let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
-        let func: rb_event_hook_func_t = Some(transmute(raw_cb));
+        let func: rb_event_hook_func_t = Some(transmute::<
+            unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t),
+            RubyEventHook,
+        >(raw_cb));
         rb_add_event_hook2(
             func,
             RUBY_EVENT_LINE | RUBY_EVENT_CALL | RUBY_EVENT_RETURN | RUBY_EVENT_RAISE,
@@ -308,10 +337,13 @@ unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
 unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
     let recorder = &mut *get_recorder(self_val);
     if recorder.data.active {
-        let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
-        let func: rb_event_hook_func_t = Some(transmute(raw_cb));
-        rb_remove_event_hook_with_data(func, self_val);
         recorder.data.active = false;
+        let raw_cb: unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t) = event_hook_raw;
+        let func: rb_event_hook_func_t = Some(transmute::<
+            unsafe extern "C" fn(VALUE, *mut rb_trace_arg_t),
+            RubyEventHook,
+        >(raw_cb));
+        rb_remove_event_hook_with_data(func, self_val);
 
         // Close the implicit top-level call opened in `initialize`.
         //
@@ -325,13 +357,12 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
         // enclosing call entry.  The downstream db-backend's
         // `call_key_for_step` then returns CallKey(-1) for those steps
         // and the calltrace pane renders nothing.
+        let encoder = &mut recorder.streaming_encoder;
+        encoder.reset();
+        encoder.write_none(recorder.data.error_type_id);
+        let cbor = encoder.get_bytes_copy();
         let mut locked_tracer = recorder.tracer.lock().unwrap();
-        TraceWriter::register_return(
-            &mut **locked_tracer,
-            ValueRecord::None {
-                type_id: recorder.data.error_type_id,
-            },
-        );
+        TraceWriter::register_return_cbor(&mut **locked_tracer, &cbor);
     }
     Qnil.into()
 }
@@ -343,7 +374,7 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
 // codetracer-trace-format-nim) is the canonical way to convert a
 // recorded `*.ct` bundle into JSON or human-readable text.
 fn begin_trace(dir: &Path) -> Result<Box<dyn TraceWriter>, Box<dyn std::error::Error>> {
-    let mut tracer = create_trace_writer("ruby", &vec![], TraceEventsFileFormat::Ctfs);
+    let mut tracer = create_trace_writer("ruby", &[], TraceEventsFileFormat::Ctfs);
     std::fs::create_dir_all(dir)?;
     let events = dir.join("trace.ct");
 
@@ -370,24 +401,23 @@ unsafe fn cstr_to_string(ptr: *const c_char) -> Option<String> {
 }
 
 unsafe fn rstring_lossy(val: VALUE) -> String {
-    let ptr = RSTRING_PTR(val);
-    let len = RSTRING_LEN(val) as usize;
-    let slice = std::slice::from_raw_parts(ptr as *const u8, len);
-    String::from_utf8_lossy(slice).to_string()
+    rstring_checked(val).unwrap_or_default()
 }
 
 unsafe fn rstring_checked(val: VALUE) -> Result<String, FromUtf8Error> {
-    let ptr = RSTRING_PTR(val);
-    let len = RSTRING_LEN(val) as usize;
-    let slice = std::slice::from_raw_parts(ptr as *const u8, len);
-    String::from_utf8(slice.to_vec())
+    let mut value = val;
+    let ptr = rb_string_value_cstr(&mut value);
+    if ptr.is_null() {
+        return String::from_utf8(Vec::new());
+    }
+    String::from_utf8(CStr::from_ptr(ptr).to_bytes().to_vec())
 }
 
 unsafe fn rstring_checked_or_empty(val: VALUE) -> String {
     if NIL_P(val) {
         String::default()
     } else {
-        rstring_checked(val).unwrap_or(String::default())
+        rstring_checked(val).unwrap_or_default()
     }
 }
 
@@ -434,12 +464,23 @@ unsafe fn encode_ruby_value_streaming(
         encoder.write_none(recorder.error_type_id);
         return;
     }
-    if NIL_P(val) {
+    if ruby_nil(val) {
         encoder.write_none(recorder.error_type_id);
         return;
     }
     if val == (Qtrue as VALUE) || val == (Qfalse as VALUE) {
         encoder.write_bool(val == (Qtrue as VALUE), recorder.bool_type_id);
+        return;
+    }
+    if rb_obj_is_kind_of(val, rb_cArray) != 0 {
+        let len = RARRAY_LEN(val) as usize;
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Array");
+        encoder.begin_sequence(type_id, len);
+        for i in 0..len {
+            let elem = ruby_array_entry(val, i);
+            encode_ruby_value_streaming(recorder, tracer, encoder, elem, depth - 1);
+        }
+        encoder.end_compound();
         return;
     }
     if RB_INTEGER_TYPE_P(val) {
@@ -469,34 +510,20 @@ unsafe fn encode_ruby_value_streaming(
         encoder.write_string(&text, recorder.string_type_id);
         return;
     }
-    if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
-        let len = RARRAY_LEN(val) as usize;
-        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Array");
-        encoder.begin_sequence(type_id, len);
-        let ptr = RARRAY_CONST_PTR(val);
-        for i in 0..len {
-            let elem = *ptr.add(i);
-            encode_ruby_value_streaming(recorder, tracer, encoder, elem, depth - 1);
-        }
-        encoder.end_compound();
-        return;
-    }
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_HASH) {
         let pairs = rb_funcall(val, recorder.id.to_a, 0);
         let len = RARRAY_LEN(pairs) as usize;
-        let ptr = RARRAY_CONST_PTR(pairs);
         let seq_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Hash");
         encoder.begin_sequence(seq_type_id, len);
         for i in 0..len {
-            let pair = *ptr.add(i);
+            let pair = ruby_array_entry(pairs, i);
             if !RB_TYPE_P(pair, rb_sys::ruby_value_type::RUBY_T_ARRAY) || RARRAY_LEN(pair) < 2 {
                 // Emit none for malformed pairs to preserve element count.
                 encoder.write_none(recorder.error_type_id);
                 continue;
             }
-            let pair_ptr = RARRAY_CONST_PTR(pair);
-            let key = *pair_ptr.add(0);
-            let val_elem = *pair_ptr.add(1);
+            let key = ruby_array_entry(pair, 0);
+            let val_elem = ruby_array_entry(pair, 1);
             // Encode each pair as a 2-element tuple with fields "k" and "v",
             // matching the struct_value("Pair", ...) encoding in the legacy path.
             let pair_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, "Pair");
@@ -524,20 +551,17 @@ unsafe fn encode_ruby_value_streaming(
         encoder.end_compound();
         return;
     }
-    if NIL_P(recorder.set_class) {
-        if rb_const_defined(rb_cObject, recorder.id.set_const) != 0 {
-            recorder.set_class = rb_const_get(rb_cObject, recorder.id.set_const);
-        }
+    if NIL_P(recorder.set_class) && rb_const_defined(rb_cObject, recorder.id.set_const) != 0 {
+        recorder.set_class = rb_const_get(rb_cObject, recorder.id.set_const);
     }
     if !NIL_P(recorder.set_class) && rb_obj_is_kind_of(val, recorder.set_class) != 0 {
         let arr = rb_funcall(val, recorder.id.to_a, 0);
         if RB_TYPE_P(arr, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
             let len = RARRAY_LEN(arr) as usize;
-            let ptr = RARRAY_CONST_PTR(arr);
             let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Seq, "Set");
             encoder.begin_sequence(type_id, len);
             for i in 0..len {
-                let elem = *ptr.add(i);
+                let elem = ruby_array_entry(arr, i);
                 encode_ruby_value_streaming(recorder, tracer, encoder, elem, depth - 1);
             }
             encoder.end_compound();
@@ -578,19 +602,19 @@ unsafe fn encode_ruby_value_streaming(
             return;
         }
         let len = RARRAY_LEN(values) as usize;
-        let val_ptr = RARRAY_CONST_PTR(values);
         let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, &class_name);
         encoder.begin_tuple(type_id, len);
         for i in 0..len {
-            encode_ruby_value_streaming(recorder, tracer, encoder, *val_ptr.add(i), depth - 1);
+            let value = ruby_array_entry(values, i);
+            encode_ruby_value_streaming(recorder, tracer, encoder, value, depth - 1);
         }
         encoder.end_compound();
         return;
     }
-    if NIL_P(recorder.open_struct_class) {
-        if rb_const_defined(rb_cObject, recorder.id.open_struct_const) != 0 {
-            recorder.open_struct_class = rb_const_get(rb_cObject, recorder.id.open_struct_const);
-        }
+    if NIL_P(recorder.open_struct_class)
+        && rb_const_defined(rb_cObject, recorder.id.open_struct_const) != 0
+    {
+        recorder.open_struct_class = rb_const_get(rb_cObject, recorder.id.open_struct_const);
     }
     if !NIL_P(recorder.open_struct_class) && rb_obj_is_kind_of(val, recorder.open_struct_class) != 0
     {
@@ -608,12 +632,11 @@ unsafe fn encode_ruby_value_streaming(
         return;
     }
     let len = RARRAY_LEN(ivars) as usize;
-    let ptr = RARRAY_CONST_PTR(ivars);
     if len > 0 {
         let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Tuple, &class_name);
         encoder.begin_tuple(type_id, len);
         for i in 0..len {
-            let sym = *ptr.add(i);
+            let sym = ruby_array_entry(ivars, i);
             let value = rb_funcall(val, recorder.id.instance_variable_get, 1, sym);
             encode_ruby_value_streaming(recorder, tracer, encoder, value, depth - 1);
         }
@@ -650,15 +673,29 @@ unsafe fn record_variables_streaming(
 ) {
     let vars = rb_funcall(binding, recorder.id.local_variables, 0);
     if !RB_TYPE_P(vars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+        if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+            eprintln!("codetracer-ruby-recorder: local_variables returned a non-array");
+        }
         return;
     }
     let len = RARRAY_LEN(vars) as usize;
-    let ptr = RARRAY_CONST_PTR(vars);
+    if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+        eprintln!("codetracer-ruby-recorder: recording {len} local variables");
+    }
     for i in 0..len {
-        let sym = *ptr.add(i);
+        let sym = ruby_array_entry(vars, i);
         let name = cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or_default();
         let value = rb_funcall(binding, recorder.id.local_variable_get, 1, sym);
+        if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+            eprintln!("codetracer-ruby-recorder: local {name}");
+        }
         let cbor = encode_ruby_value_to_cbor(recorder, tracer, encoder, value);
+        if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+            eprintln!(
+                "codetracer-ruby-recorder: register local {name} cbor_len={}",
+                cbor.len()
+            );
+        }
         TraceWriter::register_variable_cbor(tracer, &name, &cbor);
     }
 }
@@ -688,15 +725,13 @@ unsafe fn collect_and_register_params_streaming(
         return Vec::new();
     }
     let params_len = RARRAY_LEN(params_ary) as usize;
-    let params_ptr = RARRAY_CONST_PTR(params_ary);
     let mut result = Vec::with_capacity(params_len);
     for i in 0..params_len {
-        let pair = *params_ptr.add(i);
+        let pair = ruby_array_entry(params_ary, i);
         if !RB_TYPE_P(pair, rb_sys::ruby_value_type::RUBY_T_ARRAY) || RARRAY_LEN(pair) < 2 {
             continue;
         }
-        let pair_ptr = RARRAY_CONST_PTR(pair);
-        let name_sym = *pair_ptr.add(1);
+        let name_sym = ruby_array_entry(pair, 1);
         if NIL_P(name_sym) {
             continue;
         }
@@ -903,18 +938,20 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     let mut locked_tracer = recorder.tracer.lock().unwrap();
 
     let ev: rb_event_flag_t = rb_tracearg_event_flag(arg);
+    if ((ev & RUBY_EVENT_CALL) != 0 || (ev & RUBY_EVENT_RETURN) != 0) && should_ignore_method(arg) {
+        recorder.data.in_event_hook = false;
+        return;
+    }
     let path_val = rb_tracearg_path(arg);
     let line_val = rb_tracearg_lineno(arg);
     let path = rstring_checked_or_empty(path_val);
     let line = rb_num2long(line_val) as i64;
-    if should_ignore_path(&path) {
+    if should_ignore_path(&path) || should_ignore_receiver(arg) {
         recorder.data.in_event_hook = false;
         return;
     }
 
-    let thread_id: u64 = rb_eval_string(c"Thread.current".as_ptr() as *const c_char)
-        .try_into()
-        .unwrap();
+    let thread_id: u64 = rb_eval_string(c"Thread.current".as_ptr() as *const c_char);
     let thread_changed = if let Some(last_thread_id) = recorder.data.last_thread_id {
         last_thread_id != thread_id
     } else {
@@ -939,6 +976,12 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
 
     if (ev & RUBY_EVENT_LINE) != 0 {
         let binding = rb_tracearg_binding(arg);
+        if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+            eprintln!(
+                "codetracer-ruby-recorder: LINE {path}:{line} binding={}",
+                if NIL_P(binding) { "nil" } else { "present" }
+            );
+        }
         TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
         if !NIL_P(binding) {
             record_variables_streaming(&mut recorder.data, &mut **locked_tracer, encoder, binding);
@@ -1022,48 +1065,8 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     recorder.data.in_event_hook = false;
 }
 
-unsafe extern "C" fn ex_callback(
-    event: rb_event_flag_t,
-    event_data: *const rb_internal_thread_event_data_t,
-    user_data: *mut c_void,
-) {
-    match event {
-        RUBY_INTERNAL_THREAD_EVENT_STARTED => {
-            // Same rationale as the ThreadSwitch site above: prior to the
-            // dedicated `register_thread_*` entry points in the Nim multi-
-            // stream backend, this event was silently dropped.
-            let recorder = user_data as *mut Recorder;
-            let mut locked_tracer = (*recorder).tracer.lock().unwrap();
-            TraceWriter::register_thread_start(&mut **locked_tracer, (*event_data).thread);
-        }
-        RUBY_INTERNAL_THREAD_EVENT_EXITED => {
-            let recorder = user_data as *mut Recorder;
-            let mut locked_tracer = (*recorder).tracer.lock().unwrap();
-            TraceWriter::register_thread_exit(&mut **locked_tracer, (*event_data).thread);
-        }
-        /*RUBY_INTERNAL_THREAD_EVENT_READY => {
-            println!("RUBY_INTERNAL_THREAD_EVENT_READY");
-        }
-        RUBY_INTERNAL_THREAD_EVENT_RESUMED => {
-            println!("RUBY_INTERNAL_THREAD_EVENT_RESUMED");
-        }
-        RUBY_INTERNAL_THREAD_EVENT_SUSPENDED => {
-            println!("RUBY_INTERNAL_THREAD_EVENT_SUSPENDED");
-        }*/
-        _ => {}
-    }
-}
-
-unsafe fn thread_register_callback(recorder: *mut Recorder) {
-    let q = rb_internal_thread_add_event_hook(
-        Some(ex_callback),
-        RUBY_INTERNAL_THREAD_EVENT_STARTED
-            | RUBY_INTERNAL_THREAD_EVENT_READY
-            | RUBY_INTERNAL_THREAD_EVENT_RESUMED
-            | RUBY_INTERNAL_THREAD_EVENT_SUSPENDED
-            | RUBY_INTERNAL_THREAD_EVENT_EXITED,
-        recorder as *mut c_void,
-    );
+unsafe fn ruby_method(func: *const ()) -> Option<RubyMethod> {
+    Some(transmute::<*const (), RubyMethod>(func))
 }
 
 #[no_mangle]
@@ -1078,31 +1081,31 @@ pub extern "C" fn Init_codetracer_ruby_recorder() {
         rb_define_method(
             class,
             c"initialize".as_ptr() as *const c_char,
-            Some(std::mem::transmute(initialize as *const ())),
+            ruby_method(initialize as *const ()),
             2,
         );
         rb_define_method(
             class,
             c"enable_tracing".as_ptr() as *const c_char,
-            Some(std::mem::transmute(enable_tracing as *const ())),
+            ruby_method(enable_tracing as *const ()),
             0,
         );
         rb_define_method(
             class,
             c"disable_tracing".as_ptr() as *const c_char,
-            Some(std::mem::transmute(disable_tracing as *const ())),
+            ruby_method(disable_tracing as *const ()),
             0,
         );
         rb_define_method(
             class,
             c"flush_trace".as_ptr() as *const c_char,
-            Some(std::mem::transmute(flush_trace as *const ())),
+            ruby_method(flush_trace as *const ()),
             0,
         );
         rb_define_method(
             class,
             c"record_event".as_ptr() as *const c_char,
-            Some(std::mem::transmute(record_event_api as *const ())),
+            ruby_method(record_event_api as *const ()),
             3,
         );
     }
