@@ -45,11 +45,6 @@ jobs:
           nix shell nixpkgs#bash nixpkgs#nim2 nixpkgs#zig nixpkgs#musl \
             --command bash ./build.sh --target linux-musl-x86_64 --out launcher
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-
       - name: Build bundled gem
         working-directory: codetracer-launcher/packaging/rubygems
         env:
@@ -57,14 +52,17 @@ jobs:
           CT_LAUNCHER_BIN: ${{ github.workspace }}/codetracer-launcher/out/launcher
           CT_LAUNCHER_PLATFORM: x86_64-linux
           CT_RECORDER_SRC: ${{ github.workspace }}/codetracer-ruby-recorder/gems/codetracer-ruby-recorder
-        run: ruby build_gem.rb --out dist
+        run: nix shell nixpkgs#ruby_3_3 --command ruby build_gem.rb --out dist
 
       - name: Smoke-test the gem
         working-directory: codetracer-launcher/packaging/rubygems
         run: |
           export GEM_HOME=/tmp/m9-gem
           export GEM_PATH=/tmp/m9-gem
-          gem install --no-document dist/*.gem
-          out=$(PATH=/tmp/m9-gem/bin:$PATH ct --version)
-          echo "$out"
-          echo "$out" | grep -qE "^ct [0-9]+\.[0-9]+"
+          nix shell nixpkgs#ruby_3_3 --command bash -c '
+            set -euo pipefail
+            gem install --no-document dist/*.gem
+            out=$(PATH=/tmp/m9-gem/bin:$PATH ct --version)
+            echo "$out"
+            echo "$out" | grep -qE "^ct [0-9]+\.[0-9]+"
+          '
