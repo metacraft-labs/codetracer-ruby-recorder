@@ -1207,6 +1207,45 @@ class TraceTest < Minitest::Test
     end
   end
 
+  def test_native_cli_fails_when_native_extension_unavailable
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      out_dir = File.join(TMP_DIR, 'native_extension_unavailable')
+      FileUtils.rm_rf(out_dir)
+      FileUtils.mkdir_p(out_dir)
+
+      release_dir = File.join(
+        'gems', 'codetracer-ruby-recorder', 'ext', 'native_tracer', 'target', 'release'
+      )
+      hidden_release_dir = nil
+      if Dir.exist?(release_dir)
+        hidden_release_dir = "#{release_dir}.hidden-#{$PROCESS_ID}"
+        FileUtils.rm_rf(hidden_release_dir)
+        FileUtils.mv(release_dir, hidden_release_dir)
+      end
+
+      begin
+        program = File.join('test', 'programs', 'addition.rb')
+        _stdout, stderr, status = Open3.capture3(
+          RbConfig.ruby,
+          NATIVE_RECORDER_BIN,
+          '--out-dir', out_dir,
+          program
+        )
+
+        refute status.success?,
+               "native CLI must exit non-zero when the extension is unavailable.\nstderr: #{stderr}"
+        assert_match(/native tracer unavailable/, stderr)
+        assert_empty Dir.glob(File.join(out_dir, '*.ct')),
+                     'unavailable native recorder must not produce a .ct trace'
+      ensure
+        if hidden_release_dir
+          FileUtils.rm_rf(release_dir)
+          FileUtils.mv(hidden_release_dir, release_dir)
+        end
+      end
+    end
+  end
+
   # `--format` and `-f` must be rejected with a non-zero exit (no silent
   # acceptance).  Convention §4.
   def test_format_flag_rejected
