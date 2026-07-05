@@ -34,17 +34,16 @@ jobs:
           path: codetracer-launcher
           gh-token: ${{ steps.app-token.outputs.token }}
 
-      - name: Install Nim
-        uses: jiro4989/setup-nim-action@v2
+      - name: Setup Nix
+        uses: metacraft-labs/metacraft-github-actions/setup-nix@main
         with:
-          nim-version: "2.2.4"
-
-      - name: Install musl-tools
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+          gh-token: ${{ steps.app-token.outputs.token }}
 
       - name: Build launcher
         working-directory: codetracer-launcher
-        run: bash ./build.sh --target linux-musl-x86_64 --out launcher
+        run: |
+          nix shell nixpkgs#bash nixpkgs#nim2 nixpkgs#zig nixpkgs#musl \
+            --command bash ./build.sh --target linux-musl-x86_64 --out launcher
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
