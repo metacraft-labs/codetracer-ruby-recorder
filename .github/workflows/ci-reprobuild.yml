@@ -169,13 +169,13 @@ jobs:
         # reprobuild engine identically to `just build`.
         env:
           REPROBUILD_NO_RUNQUOTA: "1"
-        run: dev-exec repro build
+        run: dev-exec repro build --tool-provisioning=${{ matrix.os == 'windows' && 'path' || 'nix' }}
 
       - name: repro test
         # Materialises the `test` collection.
         env:
           REPROBUILD_NO_RUNQUOTA: "1"
-        run: dev-exec repro test
+        run: dev-exec repro build --tool-provisioning=${{ matrix.os == 'windows' && 'path' || 'nix' }} cargo-test
 
       - name: Upload logs on failure
         if: failure()
