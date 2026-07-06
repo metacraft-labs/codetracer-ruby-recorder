@@ -19,9 +19,11 @@ class TraceTest < Minitest::Test
   # convert binary .ct (CTFS) trace files into JSON for test verification.
   # RbConfig's EXEEXT is "" on Unix and ".exe" on Windows so the path
   # resolves to the real binary on every platform.
-  CT_PRINT = File.expand_path(
-    "../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__
-  )
+  CT_PRINT = ENV['CT_PRINT'] ||
+             ENV['PATH'].to_s.split(File::PATH_SEPARATOR)
+                         .map { |dir| File.join(dir, "ct-print#{RbConfig::CONFIG['EXEEXT']}") }
+                         .find { |path| File.executable?(path) } ||
+             File.expand_path("../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__)
 
   def setup
     FileUtils.mkdir_p(TMP_DIR)
@@ -1211,6 +1213,45 @@ class TraceTest < Minitest::Test
                      "[#{bin}] expected no *.ct files when DISABLED=1; got #{ct_files.inspect}"
         refute File.exist?(File.join(out_dir, 'trace.json')),
                "[#{bin}] expected no trace.json when DISABLED=1"
+      end
+    end
+  end
+
+  def test_native_cli_fails_when_native_extension_unavailable
+    Dir.chdir(File.expand_path('..', __dir__)) do
+      out_dir = File.join(TMP_DIR, 'native_extension_unavailable')
+      FileUtils.rm_rf(out_dir)
+      FileUtils.mkdir_p(out_dir)
+
+      release_dir = File.join(
+        'gems', 'codetracer-ruby-recorder', 'ext', 'native_tracer', 'target', 'release'
+      )
+      hidden_release_dir = nil
+      if Dir.exist?(release_dir)
+        hidden_release_dir = "#{release_dir}.hidden-#{$PROCESS_ID}"
+        FileUtils.rm_rf(hidden_release_dir)
+        FileUtils.mv(release_dir, hidden_release_dir)
+      end
+
+      begin
+        program = File.join('test', 'programs', 'addition.rb')
+        _stdout, stderr, status = Open3.capture3(
+          RbConfig.ruby,
+          NATIVE_RECORDER_BIN,
+          '--out-dir', out_dir,
+          program
+        )
+
+        refute status.success?,
+               "native CLI must exit non-zero when the extension is unavailable.\nstderr: #{stderr}"
+        assert_match(/native tracer unavailable/, stderr)
+        assert_empty Dir.glob(File.join(out_dir, '*.ct')),
+                     'unavailable native recorder must not produce a .ct trace'
+      ensure
+        if hidden_release_dir
+          FileUtils.rm_rf(release_dir)
+          FileUtils.mv(hidden_release_dir, release_dir)
+        end
       end
     end
   end

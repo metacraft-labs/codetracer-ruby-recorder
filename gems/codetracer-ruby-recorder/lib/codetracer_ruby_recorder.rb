@@ -107,7 +107,19 @@ module CodeTracer
       end
 
       trace_ruby_file(program, out_dir, program_args)
-      0
+    end
+
+    def self.bundle_source_file(program, out_dir)
+      return unless program && File.file?(program)
+
+      root = File.join(out_dir, 'meta_dat', 'sources')
+      paths = [program, File.expand_path(program)].uniq
+      paths.each do |source_path|
+        relative = source_path.sub(%r{\A/+}, '')
+        dest = File.join(root, relative)
+        FileUtils.mkdir_p(File.dirname(dest))
+        FileUtils.cp(source_path, dest)
+      end
     end
 
     # Trace the given Ruby program and write a CTFS bundle to `out_dir`.
@@ -118,6 +130,7 @@ module CodeTracer
       return 1 unless recorder.available?
 
       ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] = out_dir
+      bundle_source_file(program, out_dir)
 
       recorder.start
       begin
@@ -132,8 +145,11 @@ module CodeTracer
         ARGV.clear
         ARGV.concat(original_argv)
 
-        recorder.stop
-        recorder.flush_trace
+        native_recorder = recorder.instance_variable_get(:@recorder)
+        native_recorder.disable_tracing if native_recorder
+        CodeTracer::KernelPatches.uninstall(recorder)
+        recorder.instance_variable_set(:@active, false)
+        native_recorder.flush_trace if native_recorder
       end
 
       # Verify trace files were actually produced — the native extension can
@@ -174,8 +190,8 @@ module CodeTracer
     def stop
       return unless @active
 
-      CodeTracer::KernelPatches.uninstall(self)
       @recorder.disable_tracing if @recorder
+      CodeTracer::KernelPatches.uninstall(self)
       @active = false
     end
 

@@ -23,10 +23,10 @@ jobs:
             runs-on: [self-hosted, nixos]
             flavor: nix
           - label: macos
-            runs-on: macos-latest
+            runs-on: [self-hosted, aarch64-darwin]
             flavor: nix
           - label: windows
-            runs-on: windows-latest
+            runs-on: [self-hosted, Windows, X64, nixos-equivalent]
             flavor: windows-diy
     steps:
       - uses: actions/checkout@v4
