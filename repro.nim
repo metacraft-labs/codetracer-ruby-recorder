@@ -52,9 +52,12 @@ package codetracer_ruby_recorder:
       when defined(windows): "dll"
       elif defined(macosx): "dylib"
       else: "so"
+    const dylibName =
+      when defined(windows): "codetracer_ruby_recorder"
+      else: "libcodetracer_ruby_recorder"
     const extensionBinary =
-      "gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder." &
-      dylibExt
+      "gems/codetracer-ruby-recorder/ext/native_tracer/target/release/" &
+      dylibName & "." & dylibExt
     const manifestPath =
       "gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml"
     let cargoCompilerEnv: seq[(string, string)] =
