@@ -65,7 +65,14 @@ jobs:
             set -euo pipefail
             cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
             nimble install -y stew results
-            nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
+            nim_args=()
+            if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists libzstd; then
+              zstd_cflags="$(pkg-config --cflags libzstd)"
+              zstd_libs="$(pkg-config --libs libzstd)"
+              [ -n "$zstd_cflags" ] && nim_args+=(--passC:"$zstd_cflags")
+              [ -n "$zstd_libs" ] && nim_args+=(--passL:"$zstd_libs")
+            fi
+            nim c -d:release -p:src "${nim_args[@]}" -o:ct-print src/codetracer_ct_print.nim
           '
 
       - name: Build extension
@@ -107,7 +114,14 @@ jobs:
             set -euo pipefail
             cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
             nimble install -y stew results
-            nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
+            nim_args=()
+            if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists libzstd; then
+              zstd_cflags="$(pkg-config --cflags libzstd)"
+              zstd_libs="$(pkg-config --libs libzstd)"
+              [ -n "$zstd_cflags" ] && nim_args+=(--passC:"$zstd_cflags")
+              [ -n "$zstd_libs" ] && nim_args+=(--passL:"$zstd_libs")
+            fi
+            nim c -d:release -p:src "${nim_args[@]}" -o:ct-print src/codetracer_ct_print.nim
           '
 
       - name: Install Ruby dependencies
