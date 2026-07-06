@@ -57,9 +57,7 @@
   {
     "Call": {
       "function_id": 0,
-      "args": [
-
-      ]
+      "args": []
     }
   },
   {
@@ -256,9 +254,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -329,9 +325,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -360,9 +354,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -453,9 +445,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -559,9 +549,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -873,9 +861,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -940,9 +926,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -962,9 +946,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -1048,9 +1030,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1107,14 +1087,28 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 0,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 0,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": []
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "NotFoundError (#0)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1134,9 +1128,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -1156,9 +1148,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 7,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1174,9 +1164,7 @@
       "lang_type": "NotFoundError (#1)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1222,9 +1210,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 8,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1235,32 +1221,12 @@
     }
   },
   {
-    "BindVariable": {
-      "variable_id": 0,
-      "place": -1
-    }
-  },
-  {
-    "Assignment": {
-      "to": 0,
-      "pass_by": "Value",
-      "from": {
-        "kind": "Compound",
-        "data": [
-
-        ]
-      }
-    }
-  },
-  {
     "Type": {
       "kind": 6,
       "lang_type": "NotFoundError (#2)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1306,9 +1272,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 9,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1324,9 +1288,7 @@
       "lang_type": "NotFoundError (#3)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1377,9 +1339,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 10,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1548,9 +1508,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1615,9 +1573,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1642,24 +1598,6 @@
     "Step": {
       "path_id": 1,
       "line": 41
-    }
-  },
-  {
-    "BindVariable": {
-      "variable_id": 6,
-      "place": -1
-    }
-  },
-  {
-    "Assignment": {
-      "to": 6,
-      "pass_by": "Value",
-      "from": {
-        "kind": "Compound",
-        "data": [
-
-        ]
-      }
     }
   },
   {
@@ -1700,9 +1638,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1866,14 +1802,28 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 0,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 0,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": []
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "AppError (#0)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1883,9 +1833,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 11,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },

@@ -109,6 +109,19 @@ module CodeTracer
       trace_ruby_file(program, out_dir, program_args)
     end
 
+    def self.bundle_source_file(program, out_dir)
+      return unless program && File.file?(program)
+
+      root = File.join(out_dir, 'meta_dat', 'sources')
+      paths = [program, File.expand_path(program)].uniq
+      paths.each do |source_path|
+        relative = source_path.sub(%r{\A/+}, '')
+        dest = File.join(root, relative)
+        FileUtils.mkdir_p(File.dirname(dest))
+        FileUtils.cp(source_path, dest)
+      end
+    end
+
     # Trace the given Ruby program and write a CTFS bundle to `out_dir`.
     # The output format is hard-pinned to CTFS — see `Recorder-CLI-Conventions.md`
     # §4 (CTFS-only).
@@ -117,6 +130,7 @@ module CodeTracer
       return 1 unless recorder.available?
 
       ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] = out_dir
+      bundle_source_file(program, out_dir)
 
       recorder.start
       begin

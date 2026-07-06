@@ -57,9 +57,7 @@
   {
     "Call": {
       "function_id": 0,
-      "args": [
-
-      ]
+      "args": []
     }
   },
   {
@@ -187,9 +185,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -208,9 +204,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -230,9 +224,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -258,9 +250,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -280,9 +270,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -314,9 +302,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -365,9 +351,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -399,9 +383,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -455,9 +437,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -597,9 +577,7 @@
       "lang_type": "Proc (#0)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -622,9 +600,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 7,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -658,9 +634,7 @@
           "value": {
             "kind": "Struct",
             "type_id": 7,
-            "field_values": [
-
-            ]
+            "field_values": []
           }
         }
       ]
@@ -678,9 +652,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -696,9 +668,7 @@
       "lang_type": "Proc (#1)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -708,9 +678,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 8,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -726,9 +694,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -760,9 +726,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -900,9 +864,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -912,9 +874,7 @@
       "lang_type": "Proc (#2)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -924,9 +884,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 9,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -942,9 +900,7 @@
       "lang_type": "Proc (#3)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -954,9 +910,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 10,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1090,9 +1044,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1102,9 +1054,7 @@
       "lang_type": "Proc (#4)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1114,9 +1064,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 11,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1141,9 +1089,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1159,9 +1105,7 @@
       "lang_type": "Proc (#5)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1181,9 +1125,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 12,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1226,9 +1168,7 @@
       "lang_type": "Proc (#6)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1238,9 +1178,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 13,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1414,9 +1352,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1426,9 +1362,7 @@
       "lang_type": "Proc (#7)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1438,9 +1372,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 14,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1498,9 +1430,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1510,9 +1440,7 @@
       "lang_type": "Proc (#8)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1522,9 +1450,7 @@
       "lang_type": "Proc (#9)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1534,9 +1460,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 15,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1546,9 +1470,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 16,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1594,9 +1516,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1615,9 +1535,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1633,9 +1551,7 @@
       "lang_type": "Proc (#10)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1645,9 +1561,7 @@
       "lang_type": "Proc (#11)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1677,9 +1591,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 17,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1689,9 +1601,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 18,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1752,9 +1662,7 @@
       "lang_type": "Proc (#12)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1764,9 +1672,7 @@
       "lang_type": "Proc (#13)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1776,9 +1682,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 19,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1788,9 +1692,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 20,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1848,14 +1750,28 @@
     }
   },
   {
+    "BindVariable": {
+      "variable_id": 11,
+      "place": -1
+    }
+  },
+  {
+    "Assignment": {
+      "to": 11,
+      "pass_by": "Value",
+      "from": {
+        "kind": "Compound",
+        "data": []
+      }
+    }
+  },
+  {
     "Type": {
       "kind": 6,
       "lang_type": "Proc (#14)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1865,9 +1781,7 @@
       "lang_type": "Proc (#15)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1877,9 +1791,7 @@
       "lang_type": "ArgumentError (#0)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -1889,9 +1801,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 21,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1901,9 +1811,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 22,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1944,9 +1852,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 23,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -1963,32 +1869,15 @@
     }
   },
   {
-    "BindVariable": {
-      "variable_id": 11,
-      "place": -1
-    }
-  },
-  {
     "Assignment": {
       "to": 10,
       "pass_by": "Value",
       "from": {
-        "kind": "Compound",
-        "data": [
-
-        ]
-      }
-    }
-  },
-  {
-    "Assignment": {
-      "to": 11,
-      "pass_by": "Value",
-      "from": {
-        "kind": "Compound",
-        "data": [
-
-        ]
+        "kind": "FieldAccess",
+        "data": {
+          "receiver": 11,
+          "field": "message"
+        }
       }
     }
   },
@@ -1998,9 +1887,7 @@
       "lang_type": "Proc (#16)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -2010,9 +1897,7 @@
       "lang_type": "Proc (#17)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -2022,9 +1907,7 @@
       "lang_type": "ArgumentError (#1)",
       "specific_info": {
         "kind": "Struct",
-        "fields": [
-
-        ]
+        "fields": []
       }
     }
   },
@@ -2034,9 +1917,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 24,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -2046,9 +1927,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 25,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },
@@ -2090,9 +1969,7 @@
       "value": {
         "kind": "Struct",
         "type_id": 26,
-        "field_values": [
-
-        ]
+        "field_values": []
       }
     }
   },

@@ -19,9 +19,11 @@ class TraceTest < Minitest::Test
   # convert binary .ct (CTFS) trace files into JSON for test verification.
   # RbConfig's EXEEXT is "" on Unix and ".exe" on Windows so the path
   # resolves to the real binary on every platform.
-  CT_PRINT = File.expand_path(
-    "../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__
-  )
+  CT_PRINT = ENV['CT_PRINT'] ||
+             ENV['PATH'].to_s.split(File::PATH_SEPARATOR)
+                         .map { |dir| File.join(dir, "ct-print#{RbConfig::CONFIG['EXEEXT']}") }
+                         .find { |path| File.executable?(path) } ||
+             File.expand_path("../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__)
 
   def setup
     FileUtils.mkdir_p(TMP_DIR)

@@ -38,10 +38,6 @@ unsafe fn ruby_array_entry(array: VALUE, index: usize) -> VALUE {
     rb_ary_entry(array, index as c_long)
 }
 
-fn ruby_nil(value: VALUE) -> bool {
-    value == 0x08
-}
-
 #[cfg(test)]
 mod shared_trace_storage_adapter_tests {
     use codetracer_ctfs::trace_storage::{
@@ -357,12 +353,8 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
         // enclosing call entry.  The downstream db-backend's
         // `call_key_for_step` then returns CallKey(-1) for those steps
         // and the calltrace pane renders nothing.
-        let encoder = &mut recorder.streaming_encoder;
-        encoder.reset();
-        encoder.write_none(recorder.data.error_type_id);
-        let cbor = encoder.get_bytes_copy();
         let mut locked_tracer = recorder.tracer.lock().unwrap();
-        TraceWriter::register_return_cbor(&mut **locked_tracer, &cbor);
+        TraceWriter::register_return_cbor(&mut **locked_tracer, &[]);
     }
     Qnil.into()
 }
@@ -376,6 +368,7 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
 fn begin_trace(dir: &Path) -> Result<Box<dyn TraceWriter>, Box<dyn std::error::Error>> {
     let mut tracer = create_trace_writer("ruby", &[], TraceEventsFileFormat::Ctfs);
     std::fs::create_dir_all(dir)?;
+    tracer.set_workdir(dir);
     let events = dir.join("trace.ct");
 
     TraceWriter::begin_writing_trace_events(&mut *tracer, &events)?;
@@ -464,7 +457,7 @@ unsafe fn encode_ruby_value_streaming(
         encoder.write_none(recorder.error_type_id);
         return;
     }
-    if ruby_nil(val) {
+    if NIL_P(val) {
         encoder.write_none(recorder.error_type_id);
         return;
     }

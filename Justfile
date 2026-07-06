@@ -7,10 +7,15 @@ cargo_build_target_opt := if os_family() == "windows" { "--target x86_64-pc-wind
 # packaged gem is produced separately by `build-gem`.
 build: build-extension
 
-test:
+test: ensure-ct-print
     ruby -Itest test/gem_installation.rb
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
     just verify-cli-convention
+
+ensure-ct-print:
+    @if ! command -v ct-print >/dev/null 2>&1 && [ ! -x ../codetracer-trace-format-nim/ct-print ]; then \
+        cd ../codetracer-trace-format-nim && nimble buildCtPrint -y; \
+    fi
 
 # Verify the recorder CLI complies with `Recorder-CLI-Conventions.md`.
 # See tests/verify-cli-convention-no-silent-skip.sh for the assertion list.

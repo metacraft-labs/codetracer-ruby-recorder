@@ -13,9 +13,11 @@ class HCRTest < Minitest::Test
   # Path to the ct-print binary from codetracer-trace-format-nim, used to
   # inspect binary .ct (CTFS) trace files.  RbConfig's EXEEXT is "" on Unix
   # and ".exe" on Windows so the path resolves on every platform.
-  CT_PRINT = File.expand_path(
-    "../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__
-  )
+  CT_PRINT = ENV['CT_PRINT'] ||
+             ENV['PATH'].to_s.split(File::PATH_SEPARATOR)
+                         .map { |dir| File.join(dir, "ct-print#{RbConfig::CONFIG['EXEEXT']}") }
+                         .find { |path| File.executable?(path) } ||
+             File.expand_path("../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__)
 
   PURE_RECORDER = 'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder'
   NATIVE_RECORDER = 'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder'
@@ -211,9 +213,11 @@ end
 class TestHCRTraceContent < Minitest::Test
   FIXTURE_DIR = File.expand_path('fixtures/hcr', __dir__)
   # EXEEXT is "" on Unix and ".exe" on Windows.
-  CT_PRINT    = File.expand_path(
-    "../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__
-  )
+  CT_PRINT    = ENV['CT_PRINT'] ||
+                ENV['PATH'].to_s.split(File::PATH_SEPARATOR)
+                            .map { |dir| File.join(dir, "ct-print#{RbConfig::CONFIG['EXEEXT']}") }
+                            .find { |path| File.executable?(path) } ||
+                File.expand_path("../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__)
 
   PURE_RECORDER   = 'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder'
   NATIVE_RECORDER = 'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder'

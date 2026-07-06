@@ -57,9 +57,7 @@
   {
     "Call": {
       "function_id": 0,
-      "args": [
-
-      ]
+      "args": []
     }
   },
   {
@@ -161,9 +159,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -545,7 +541,7 @@
   {
     "Event": {
       "kind": 0,
-      "content": "1.5\n{:a=>1, :b=>2}\n1..3\n#<Set: {1, 2, 3}>\n1970-01-01 00:00:00 UTC\n/ab/\n#<struct Point x=5, y=6>\n#<OpenStruct foo=7, bar=8>\n",
+      "content": "1.5\n{a: 1, b: 2}\n1..3\n#<Set: {1, 2, 3}>\n1970-01-01 00:00:00 UTC\n/ab/\n#<struct Point x=5, y=6>\n#<OpenStruct foo=7, bar=8>\n",
       "metadata": ""
     }
   }
