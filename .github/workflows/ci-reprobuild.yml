@@ -162,11 +162,27 @@ jobs:
           echo "$xz_bin" >> "$GITHUB_PATH"
           "$xz_bin/xz" --version
 
+      - name: Prepare macOS linker paths
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          iconv_out="$(nix build --no-link --print-out-paths nixpkgs#libiconv)"
+          echo "LIBRARY_PATH=${iconv_out}/lib${LIBRARY_PATH:+:${LIBRARY_PATH}}" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=${iconv_out}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}" >> "$GITHUB_ENV"
+          echo "NIX_LDFLAGS=-L${iconv_out}/lib${NIX_LDFLAGS:+ ${NIX_LDFLAGS}}" >> "$GITHUB_ENV"
+          if [ -z "${SDKROOT:-}" ] && [ -x /usr/bin/xcrun ]; then
+            sdkroot="$(/usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+            if [ -n "$sdkroot" ]; then
+              echo "SDKROOT=$sdkroot" >> "$GITHUB_ENV"
+            fi
+          fi
+
       - name: repro build
         # Builds the conventional `build` collection declared in
         # `repro.nim`. Verifies the primary shipping artefact (the
         # recorder binary or extension) materialises through the
-        # reprobuild engine identically to `just build`.
+        # reprobuild engine.
         env:
           REPROBUILD_NO_RUNQUOTA: "1"
         run: dev-exec repro build --tool-provisioning=${{ matrix.os == 'windows' && 'path' || 'nix' }}
