@@ -152,15 +152,29 @@ jobs:
           fi
           echo "CT_SANDBOX_TOOLS_DIR=${sandbox}" >> "${GITHUB_ENV}"
 
+      - name: Add xz for reprobuild tool archives
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          xz_out="$(nix build --no-link --print-out-paths nixpkgs#xz.bin)"
+          xz_bin="${xz_out}/bin"
+          echo "$xz_bin" >> "$GITHUB_PATH"
+          "$xz_bin/xz" --version
+
       - name: repro build
         # Builds the conventional `build` collection declared in
         # `repro.nim`. Verifies the primary shipping artefact (the
         # recorder binary or extension) materialises through the
         # reprobuild engine identically to `just build`.
+        env:
+          REPROBUILD_NO_RUNQUOTA: "1"
         run: dev-exec repro build
 
       - name: repro test
         # Materialises the `test` collection.
+        env:
+          REPROBUILD_NO_RUNQUOTA: "1"
         run: dev-exec repro test
 
       - name: Upload logs on failure
