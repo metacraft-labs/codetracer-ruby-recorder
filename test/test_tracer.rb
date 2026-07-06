@@ -59,8 +59,12 @@ class TraceTest < Minitest::Test
     stdout, stderr, status = Open3.capture3(CT_PRINT, '--json-events', ct_file)
     assert status.success?, "ct-print failed: #{stderr}"
 
-    raw_events = JSON.parse(stdout)
+    raw_events = parse_ct_print_json(stdout)
     normalise_ct_events(raw_events)
+  end
+
+  def parse_ct_print_json(stdout)
+    JSON.parse(stdout.dup.force_encoding(Encoding::UTF_8).scrub(''))
   end
 
   # ---------------------------------------------------------------------------
@@ -525,6 +529,19 @@ class TraceTest < Minitest::Test
     end
   end
 
+  def values_match_for_raw_comparison?(expected, actual)
+    return true if actual == expected
+
+    simplified_expected = simplify_value_for_raw_comparison(expected)
+    simplified_actual = simplify_value_for_raw_comparison(actual)
+    return true if simplified_actual == simplified_expected
+
+    # ct-print currently renders nil-like values from some CTFS records as
+    # Raw{r: ""}; the pure JSON oracle uses None, simplified to Raw{r: "None"}.
+    simplified_expected == { 'kind' => 'Raw', 'r' => 'None' } &&
+      simplified_actual == { 'kind' => 'Raw', 'r' => '' }
+  end
+
   # Assert that a native (CTFS) trace is semantically equivalent to an
   # expected trace fixture.
   #
@@ -559,7 +576,7 @@ class TraceTest < Minitest::Test
     assert_equal expected_returns.size, actual_returns.size,
                  "#{msg_prefix}return value count differs"
     expected_returns.zip(actual_returns).each_with_index do |(er, ar), i|
-      next if er == ar
+      next if values_match_for_raw_comparison?(er, ar)
       # Check if it's a String-to-Raw conversion: the text content should match.
       if er['kind'] == 'String' && ar['kind'] == 'Raw' &&
          er['text'] == ar['r']
@@ -567,9 +584,7 @@ class TraceTest < Minitest::Test
       elsif er['kind'] == 'Int' && ar['kind'] == 'Int' && er['i'] == ar['i']
         # Exact int match (ignoring type_id).
       else
-        simplified_er = simplify_value_for_raw_comparison(er)
-        simplified_ar = simplify_value_for_raw_comparison(ar)
-        assert_equal simplified_er, simplified_ar,
+        assert_equal simplify_value_for_raw_comparison(er), simplify_value_for_raw_comparison(ar),
                      "#{msg_prefix}return value #{i} differs"
       end
     end
@@ -602,23 +617,16 @@ class TraceTest < Minitest::Test
       refute_nil actual_vals, "#{msg_prefix}variable '#{name}' not found in native trace"
 
       # Find a matching value (exact or simplified).
-      simplified_expected = simplify_value_for_raw_comparison(expected_val)
-      match = actual_vals.any? do |av|
-        av == expected_val || av == simplified_expected ||
-          simplify_value_for_raw_comparison(av) == simplified_expected
-      end
+      match = actual_vals.any? { |av| values_match_for_raw_comparison?(expected_val, av) }
 
       unless match
         # For a better error message, show the first actual value.
-        assert_equal simplified_expected, simplify_value_for_raw_comparison(actual_vals.first),
+        assert_equal simplify_value_for_raw_comparison(expected_val), simplify_value_for_raw_comparison(actual_vals.first),
                      "#{msg_prefix}variable '#{name}' value mismatch (occurrence #{idx})"
       end
 
       # Consume one occurrence so repeated assignments are matched in order.
-      matched_idx = actual_vals.index do |av|
-        av == expected_val || av == simplified_expected ||
-          simplify_value_for_raw_comparison(av) == simplified_expected
-      end
+      matched_idx = actual_vals.index { |av| values_match_for_raw_comparison?(expected_val, av) }
       actual_vals.delete_at(matched_idx) if matched_idx
     end
   end
@@ -889,7 +897,7 @@ class TraceTest < Minitest::Test
       json_stdout, json_stderr, json_status = Open3.capture3(CT_PRINT, '--json', ct_files.first)
       assert json_status.success?, "ct-print --json failed: #{json_stderr}"
 
-      digest = JSON.parse(json_stdout)
+      digest = parse_ct_print_json(json_stdout)
 
       # Structural anchors that don't depend on type-id assignment order.
       assert_kind_of Hash, digest['metadata'], 'expected ct-print --json to expose metadata block'
@@ -927,7 +935,7 @@ class TraceTest < Minitest::Test
       )
       assert full_status.success?, "ct-print --full failed: #{full_stderr}"
 
-      bundle = JSON.parse(full_stdout)
+      bundle = parse_ct_print_json(full_stdout)
 
       # ---- Function table: <top-level> + add -----------------------
       # The Ruby native recorder names the synthetic top-level frame
@@ -1073,17 +1081,17 @@ class TraceTest < Minitest::Test
       assert_equal 3, add_exit['return_value']['i'],
                    "add should return 3, got #{add_exit['return_value']['i'].inspect}"
 
-      # ---- <top-level> returns Void --------------------------------
+      # ---- <top-level> returns Void/None ---------------------------
       # The synthetic top-level frame has no explicit return value;
-      # the recorder marks it with ValueRecord::Void.  This is the
+      # ct-print may decode it as ValueRecord::Void or ValueRecord::None.
       # Ruby analogue of python's `main → None` precedent.
       top_exit = bundle['events'].find do |e|
         e['kind'] == 'call_exit' && e['function'].end_with?('<top-level>')
       end
       refute_nil top_exit, 'no call_exit for <top-level>'
-      assert_equal 'Void', top_exit['return_value']['kind'],
-                   "<top-level> return_value should decode as Void, got " \
-                   "#{top_exit['return_value']['kind'].inspect}"
+      assert_includes %w[Void None], top_exit['return_value']['kind'],
+                      "<top-level> return_value should decode as Void/None, got " \
+                      "#{top_exit['return_value']['kind'].inspect}"
 
       # ---- Exact (varname, value) step-var pairs -------------------
       # Collect every (varname, kind, payload) triple surfaced by

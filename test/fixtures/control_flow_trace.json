@@ -57,9 +57,7 @@
   {
     "Call": {
       "function_id": 0,
-      "args": [
-
-      ]
+      "args": []
     }
   },
   {
@@ -184,9 +182,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -330,9 +326,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -489,9 +483,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -664,9 +656,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -904,9 +894,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -935,9 +923,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -964,9 +950,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -983,9 +967,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1005,9 +987,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -1034,9 +1014,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -1063,9 +1041,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -1115,9 +1091,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1193,9 +1167,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1342,9 +1314,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1430,9 +1400,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1599,9 +1567,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1697,9 +1663,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1972,9 +1936,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2024,9 +1986,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2046,9 +2006,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -2075,9 +2033,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -2133,9 +2089,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2216,9 +2170,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2309,9 +2261,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2501,9 +2451,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2644,9 +2592,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2787,9 +2733,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2974,9 +2918,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -3122,9 +3064,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -3171,9 +3111,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -3193,9 +3131,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -3258,9 +3194,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -3324,9 +3258,7 @@
       "value": {
         "kind": "Sequence",
         "type_id": 6,
-        "elements": [
-
-        ],
+        "elements": [],
         "is_slice": false
       }
     }
@@ -3343,9 +3275,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -3507,9 +3437,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -3814,9 +3742,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -3982,9 +3908,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },

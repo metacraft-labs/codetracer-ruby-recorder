@@ -57,9 +57,7 @@
   {
     "Call": {
       "function_id": 0,
-      "args": [
-
-      ]
+      "args": []
     }
   },
   {
@@ -121,7 +119,17 @@
           {
             "kind": "String",
             "type_id": 1,
-            "text": "1 2 3"
+            "text": "1"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "2"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "3"
           }
         ],
         "is_slice": false
@@ -162,7 +170,17 @@
               {
                 "kind": "String",
                 "type_id": 1,
-                "text": "1 2 3"
+                "text": "1"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "2"
+              },
+              {
+                "kind": "String",
+                "type_id": 1,
+                "text": "3"
               }
             ],
             "is_slice": false
@@ -183,9 +201,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -205,7 +221,17 @@
           {
             "kind": "String",
             "type_id": 1,
-            "text": "1 2 3"
+            "text": "1"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "2"
+          },
+          {
+            "kind": "String",
+            "type_id": 1,
+            "text": "3"
           }
         ],
         "is_slice": false
@@ -227,7 +253,7 @@
       "value": {
         "kind": "Int",
         "type_id": 0,
-        "i": 1
+        "i": 6
       }
     }
   },
@@ -236,7 +262,7 @@
       "return_value": {
         "kind": "Int",
         "type_id": 0,
-        "i": 1
+        "i": 6
       }
     }
   },
@@ -249,7 +275,7 @@
   {
     "Event": {
       "kind": 0,
-      "content": "1\n",
+      "content": "6\n",
       "metadata": ""
     }
   }

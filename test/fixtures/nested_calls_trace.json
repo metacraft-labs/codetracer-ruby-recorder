@@ -57,9 +57,7 @@
   {
     "Call": {
       "function_id": 0,
-      "args": [
-
-      ]
+      "args": []
     }
   },
   {
@@ -190,9 +188,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -280,9 +276,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -370,9 +364,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -560,9 +552,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -659,9 +649,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -758,9 +746,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -857,9 +843,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -956,9 +940,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1190,9 +1172,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1296,9 +1276,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1395,9 +1373,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1494,9 +1470,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1593,9 +1567,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1820,9 +1792,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -1919,9 +1889,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2018,9 +1986,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2117,9 +2083,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
@@ -2216,9 +2180,7 @@
       "pass_by": "Value",
       "from": {
         "kind": "Compound",
-        "data": [
-
-        ]
+        "data": []
       }
     }
   },
