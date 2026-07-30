@@ -1,107 +1,180 @@
 # frozen_string_literal: true
 
-require 'json'
-require 'tmpdir'
+require_relative 'span_recorder'
 
 module CodeTracer
   module Rack
-    # Rack middleware that wraps each HTTP request in a CodeTracer span.
-    # Captures method, URL, status code, and duration as span metadata.
+    # Rack middleware that records each HTTP request as a `web-request` span in
+    # the CodeTracer trace container the recorder is producing (RS-M6).
     #
-    # Usage:
+    # ## What changed in RS-M6
+    #
+    # This middleware used to append a row of HTTP metadata to a
+    # `codetracer_spans.jsonl` sidecar, and to call a
+    # `CodeTracer::Native.begin_span` that had never existed.  It now writes a
+    # span RECORD into the container's `spans.dat` stream (spec:
+    # `codetracer-specs/Trace-Files/CTFS-Request-Span-Streams.md`).
+    #
+    # The difference that matters is *binding*.  A sidecar row was HTTP
+    # metadata with no way back into the recording; a span record names a
+    # `(process, thread, step range)` coordinate INSIDE the container, which is
+    # what lets CodeTracer's Request Panel seek from a request row into that
+    # request's handler.  Sidecar emission is retained one more release but is
+    # now opt-in — see `span_recorder.rb`.
+    #
+    # ## Usage
+    #
     #   use CodeTracer::Rack::Middleware
     #
+    # In Sinatra:
+    #
+    #   class App < Sinatra::Base
+    #     use CodeTracer::Rack::Middleware, framework: 'sinatra'
+    #   end
+    #
     # In Rails:
-    #   config.middleware.use CodeTracer::Rack::Middleware
+    #
+    #   config.middleware.use CodeTracer::Rack::Middleware, framework: 'rails'
+    #
+    # Mounting it is always safe: with no recorder installed in the process
+    # every entry point is a no-op and nothing is written anywhere.
+    #
+    # ## Options
+    #
+    # * `:framework` — recorded as the `framework` metadata key.
+    # * `:concurrent` — mark the emitted spans as possibly overlapping their
+    #   siblings.  Set it for a thread-per-request server; the default (false)
+    #   describes the single-threaded serving the tests and demos use.
+    # * `:publish_open` — append an in-flight record at request start (default
+    #   true), which is what makes a live panel show a request before it
+    #   finishes.
+    # * `:manifest_path` — write the legacy JSONL sidecar to this path.
+    #   Opt-in; `CODETRACER_SPAN_MANIFEST` does the same.
+    # * `:route` — fallback `http.route` for an app whose framework publishes
+    #   none.
+    #
+    # ## Where the middleware must sit
+    #
+    # `http.route` is read from the request environment AFTER the wrapped app
+    # has run, because the router is what puts it there.  That works from any
+    # position in the stack, but the span's step range only means "this
+    # request's handler" if the middleware is close to the app: everything
+    # below it in the stack falls inside the range.
     class Middleware
       def initialize(app, options = {})
         @app = app
         @options = options
+        @span_recorder = RequestSpanRecorder.new(
+          framework: options[:framework].to_s,
+          concurrent: options.fetch(:concurrent, false),
+          publish_open: options.fetch(:publish_open, true),
+          manifest_path: options[:manifest_path]
+        )
       end
 
       def call(env)
-        start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        method = env['REQUEST_METHOD']
-        path = env['PATH_INFO']
+        http_method = env['REQUEST_METHOD']
+        url = request_url(env)
+        # The span object lives in THIS frame for the whole request.  No
+        # thread-local, no "current span" global: two requests in flight at once
+        # (a threaded server, or an app that re-enters this middleware) must not
+        # be able to see each other's state.
+        pending = @span_recorder.begin_request(http_method, url, env['REMOTE_ADDR'].to_s)
 
-        # Record span start
-        span_id = begin_span(method, path)
+        begin
+          status, headers, body = @app.call(env)
+        rescue StandardError => e
+          # An exception that escapes the app is a 500 as far as the client is
+          # concerned, and the span says so plus why.  The exception is
+          # re-raised: this middleware observes, it never swallows.
+          pending.finish(
+            500,
+            route: route_for(env),
+            error_message: "#{e.class}: #{e.message}"
+          )
+          raise
+        end
 
-        status, headers, body = @app.call(env)
-
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round
-
-        # Record span end with response metadata
-        end_span(span_id, status, duration_ms, headers)
-
+        pending.finish(
+          status.to_i,
+          response_size: response_size(headers),
+          route: route_for(env),
+          error_message: error_message_for(env, status)
+        )
         [status, headers, body]
-      rescue StandardError
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round
-        end_span(span_id, 500, duration_ms, {}) if span_id
-        raise
       end
 
       private
 
-      def begin_span(method, path)
-        span = {
-          id: generate_span_id,
-          label: "#{method} #{path}",
-          span_type: 'web-request',
-          metadata: {
-            'http.method' => method,
-            'http.url' => path
-          },
-          start_time: Time.now.iso8601(3)
-        }
-
-        # Store in thread-local so end_span can access it
-        Thread.current[:codetracer_current_span] = span
-
-        # If the recorder native extension is available, call it
-        if defined?(CodeTracer::Native) && CodeTracer::Native.respond_to?(:begin_span)
-          CodeTracer::Native.begin_span(span.to_json)
-        end
-
-        span[:id]
+      # The request URL as the panel shows it: path plus query string.
+      #
+      # `SCRIPT_NAME` is included so a Rack app mounted under a prefix reports
+      # the URL the client actually asked for.
+      def request_url(env)
+        path = "#{env['SCRIPT_NAME']}#{env['PATH_INFO']}"
+        path = '/' if path.empty?
+        query = env['QUERY_STRING'].to_s
+        query.empty? ? path : "#{path}?#{query}"
       end
 
-      def end_span(span_id, status, duration_ms, _headers)
-        span = Thread.current[:codetracer_current_span]
-        return unless span && span[:id] == span_id
-
-        span[:metadata]['http.status_code'] = status.to_s
-        span[:metadata]['http.duration_ms'] = duration_ms.to_s
-        span[:end_time] = Time.now.iso8601(3)
-        span[:status] = status >= 400 ? 'error' : 'ok'
-
-        # Write span end marker via native extension if available
-        if defined?(CodeTracer::Native) && CodeTracer::Native.respond_to?(:end_span)
-          CodeTracer::Native.end_span(span.to_json)
+      # The ROUTED PATTERN this request matched, not the concrete path — which
+      # is the whole point of `http.route`: `/api/users/:id` groups every
+      # request to that endpoint, while `/api/users/42` groups nothing.
+      #
+      # Each framework publishes it in the request environment during dispatch,
+      # so this must be read AFTER the app has run:
+      #
+      # * Sinatra sets `sinatra.route` to `"GET /api/users/:id"`
+      #   (`sinatra/base.rb`, `route_eval`); the method is stripped here so the
+      #   value is a route in every framework.
+      # * Rails (>= 7.1) sets `action_dispatch.route_uri_pattern` to the Journey
+      #   pattern, e.g. `/api/users/:id(.:format)`
+      #   (`action_dispatch/journey/router.rb`); the optional format suffix is
+      #   dropped because it is a Rails encoding detail rather than part of the
+      #   route a user recognises.
+      #
+      # A plain Rack app has no router and therefore no route; the key is then
+      # omitted rather than filled in with the raw path, which would make an
+      # unrouted app look as though it had one route per URL.
+      def route_for(env)
+        sinatra_route = env['sinatra.route']
+        if sinatra_route.is_a?(String) && !sinatra_route.empty?
+          # "GET /api/users/:id" -> "/api/users/:id"
+          parts = sinatra_route.split(' ', 2)
+          return parts.length == 2 ? parts[1] : sinatra_route
         end
 
-        # Write to manifest file (fallback when native extension not available)
-        write_span_to_manifest(span)
-
-        Thread.current[:codetracer_current_span] = nil
-      end
-
-      # Generates a unique span ID using thread identity and monotonic clock.
-      def generate_span_id
-        "span_#{Thread.current.object_id}_#{Process.clock_gettime(Process::CLOCK_MONOTONIC).to_i}"
-      end
-
-      # Appends a completed span as a JSON line to the manifest file.
-      # The manifest path is configurable via the CODETRACER_SPAN_MANIFEST
-      # environment variable, defaulting to <tmpdir>/codetracer_spans.jsonl.
-      def write_span_to_manifest(span)
-        manifest_path = ENV['CODETRACER_SPAN_MANIFEST'] || File.join(Dir.tmpdir, 'codetracer_spans.jsonl')
-        File.open(manifest_path, 'a') do |f|
-          f.puts(span.to_json)
+        rails_route = env['action_dispatch.route_uri_pattern']
+        if rails_route.is_a?(String) && !rails_route.empty?
+          return rails_route.sub(/\(\.:format\)\z/, '')
         end
-      rescue StandardError => e
-        # Don't crash the app if manifest writing fails
-        warn "CodeTracer: failed to write span: #{e.message}"
+
+        @options[:route]
+      end
+
+      # `Content-Length` when the framework computed one.  Returns nil (rather
+      # than 0) when it did not, so "no size reported" stays distinguishable
+      # from "an empty body" in the panel.
+      def response_size(headers)
+        return nil unless headers.respond_to?(:each)
+
+        headers.each do |key, value|
+          return value.to_i if key.to_s.downcase == 'content-length'
+        end
+        nil
+      end
+
+      # A 5xx produced by the framework's OWN exception handling — Rails rescues
+      # in `ActionDispatch::ShowExceptions`, Sinatra in `Sinatra::Base#call!` —
+      # never reaches this middleware's `rescue`.  Both leave the exception in
+      # the environment, so the span can still say what went wrong.
+      def error_message_for(env, status)
+        return nil if status.to_i < 500
+
+        error = env['action_dispatch.exception'] || env['sinatra.error'] || env['rack.exception']
+        return nil unless error.respond_to?(:message)
+
+        "#{error.class}: #{error.message}"
       end
     end
   end

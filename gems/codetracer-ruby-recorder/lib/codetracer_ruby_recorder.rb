@@ -17,6 +17,7 @@ require 'optparse'
 require 'fileutils'
 require 'rbconfig'
 require_relative 'codetracer/kernel_patches'
+require_relative 'codetracer/native'
 
 module CodeTracer
   class RubyRecorder
@@ -149,6 +150,11 @@ module CodeTracer
         native_recorder.disable_tracing if native_recorder
         CodeTracer::KernelPatches.uninstall(recorder)
         recorder.instance_variable_set(:@active, false)
+        # Unbind the span entry points BEFORE the writer is closed.  A
+        # middleware still finishing a request at shutdown then gets the
+        # "not recording" answer (`register_span` -> false) instead of an
+        # IOError from a closed writer.
+        CodeTracer::Native.uninstall
         native_recorder.flush_trace if native_recorder
       end
 
@@ -202,6 +208,9 @@ module CodeTracer
 
     # Flush trace to output directory
     def flush_trace
+      # See the note in `trace_ruby_file`: the span entry points must stop
+      # pointing at a writer that is about to be closed.
+      CodeTracer::Native.uninstall
       @recorder.flush_trace if @recorder
     end
 
@@ -214,30 +223,21 @@ module CodeTracer
 
     def load_native_recorder(out_dir)
       begin
-        # Load native extension at module level
-        ext_dir = File.expand_path('../ext/native_tracer/target/release', __dir__)
-        dlext = RbConfig::CONFIG['DLEXT']
-        target_path = File.join(ext_dir, "codetracer_ruby_recorder.#{dlext}")
-        extensions = %w[so bundle dylib dll]
-        alt_path = extensions
-                  .map { |ext| File.join(ext_dir, "libcodetracer_ruby_recorder.#{ext}") }
-                  .find { |path| File.exist?(path) }
-        if alt_path && (!File.exist?(target_path) || File.mtime(alt_path) > File.mtime(target_path))
-          begin
-            FileUtils.rm_f(target_path)
-            File.symlink(alt_path, target_path)
-          rescue StandardError
-            FileUtils.cp(alt_path, target_path)
-          end
-        end
-
-        require target_path
+        # The dlopen dance (Cargo's `lib`-prefixed cdylib name vs. the name
+        # `require` expects) lives in CodeTracer::Native, which also needs it
+        # for its read-side helpers.
+        CodeTracer::Native.load_extension!
         # Format is hard-pinned to CTFS — the second positional argument
         # to the native `initialize` is kept for backward FFI compatibility
         # but every Ruby caller passes :ctfs.  See
         # ext/native_tracer/src/lib.rs::begin_trace which now writes only
         # the CTFS multi-stream container.
         @recorder = CodeTracerNativeRecorder.new(out_dir, :ctfs)
+        # RS-M6: publish the live recorder so middleware in OTHER gems (the
+        # Rack middleware above all) can append request spans to this
+        # container.  Done here rather than in `start` because the span entry
+        # points are useful — and harmless — before the event hook is armed.
+        CodeTracer::Native.install(@recorder)
       rescue Exception => e
         warn "native tracer unavailable: #{e}"
         @recorder = nil

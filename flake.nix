@@ -158,6 +158,8 @@
             # Copy Ruby wrapper files
             cp "$GEM_ROOT/lib/codetracer_ruby_recorder.rb" $out/gems/lib/
             cp "$GEM_ROOT/lib/codetracer/kernel_patches.rb" $out/gems/lib/codetracer/
+            # RS-M6: the span-emission facade the Rack middleware talks to.
+            cp "$GEM_ROOT/lib/codetracer/native.rb" $out/gems/lib/codetracer/
 
             # Copy bin entry script
             cp "$GEM_ROOT/bin/codetracer-ruby-recorder" $out/gems/bin/
@@ -199,6 +201,16 @@
           rubyWithTestGems = pkgs.ruby_3_4.withPackages (ps: [
             ps.minitest
             ps.rack
+            # RS-M6 (`codetracer-specs/Planned-Features/Request-Panel-Live-Sessions.milestones.org`)
+            # requires the Rack middleware's request spans to be verified
+            # against REAL framework apps — `test/test_request_spans.rb` and the
+            # demo apps in `test-programs/web/{sinatra,rails}/`.  Sinatra and
+            # Rails supply the two route sources the milestone cares about:
+            # `env['sinatra.route']` and Rails'
+            # `env['action_dispatch.route_uri_pattern']`, which is what makes
+            # `http.route` a routed PATTERN rather than the raw path.
+            ps.sinatra
+            ps.rails
           ]);
         in
         {

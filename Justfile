@@ -145,3 +145,71 @@ build-gem:
 
 verify-gem:
     just verify-package rubygems
+
+# --- RS-M6: Request Panel demo and fixture --------------------------------
+# `codetracer-specs/Planned-Features/Request-Panel-Live-Sessions.milestones.org`
+
+# Record the Ruby web demo app under the recorder and open the recorded
+# session in the CodeTracer GUI with its Request Panel populated.
+#
+# This is the Ruby row of the `just demo-request-panel <lang>` convention
+# established by codetracer's RS-M4 recipe.  The container-production half
+# lives here (only this repo can record Ruby); the GUI half is codetracer's, so
+# `direnv exec ../codetracer just demo-request-panel ruby` calls back into this
+# recipe with `CODETRACER_DEMO_DIR` set and then opens the result.
+#
+# What is real: a real Sinatra (or Rails) app served over real HTTP by a real
+# recorded process, and real `web-request` span records in the container's
+# `spans.dat` (meta.dat bit 13, set by the writer because spans were
+# registered).  Nothing is synthesised — that was RS-M4's demo, which this
+# replaces for Ruby.
+#
+# FRAMEWORK selects the demo app: sinatra (default) or rails.
+demo-request-panel-ruby FRAMEWORK="sinatra":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    demo_dir="${CODETRACER_DEMO_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/codetracer/demos/request-panel-ruby}"
+    echo "=== RS-M6 Request Panel demo — ruby/{{FRAMEWORK}} ==="
+    just build-extension
+    rm -rf "$demo_dir"
+    mkdir -p "$demo_dir"
+    ruby test-programs/web/session_driver.rb \
+        --framework {{FRAMEWORK}} --trace-dir "$demo_dir" --print-spans
+    echo "[demo] recorded session in $demo_dir"
+    if [ -n "${CODETRACER_DEMO_RECORD_ONLY:-}" ]; then
+      # Invoked as the container-production half of codetracer's
+      # `just demo-request-panel ruby`, which opens the GUI itself.
+      exit 0
+    fi
+    if command -v ct >/dev/null 2>&1; then
+      echo "[demo] launching the GUI; the REQUESTS panel docks itself once the"
+      echo "[demo] first delta arrives (bottom edge strip if you close it)."
+      exec ct replay -t "$demo_dir"
+    fi
+    echo "[demo] no 'ct' on PATH — open it by hand with:"
+    echo "         ct replay -t $demo_dir"
+    echo "[demo] (or run this through codetracer's recipe, which supplies ct:"
+    echo "         direnv exec ../codetracer just demo-request-panel ruby)"
+
+# Regenerate the committed Ruby request-panel fixture consumed by codetracer's
+# `vm_ruby_request_panel_rows` ViewModel test.
+#
+# OUT is a directory in the codetracer checkout; the recorded trace folder (the
+# `.ct` container plus the recorded app sources) is written there.  Run this
+# whenever the demo app or the span metadata changes, then commit the result in
+# codetracer — the fixture is checked in so the ViewModel test needs no Ruby
+# toolchain.
+record-request-panel-fixture OUT FRAMEWORK="sinatra":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just build-extension
+    rm -rf "{{OUT}}"
+    mkdir -p "{{OUT}}"
+    ruby test-programs/web/session_driver.rb \
+        --framework {{FRAMEWORK}} --trace-dir "{{OUT}}" --print-spans
+    # The bundled sources are keyed by the recording machine's ABSOLUTE paths,
+    # so they are pure churn in a checked-in fixture and the ViewModel test
+    # reads only the container.  `demo-request-panel-ruby` keeps them, because
+    # opening that session in the GUI does want the code.
+    rm -rf "{{OUT}}/meta_dat"
+    echo "[fixture] wrote {{OUT}}"

@@ -4,3 +4,31 @@ The native tracer (Rust extension) caches frequently used Ruby method IDs and
 class constants in the `Recorder` struct. When adding new Ruby method calls,
 ensure the IDs are interned once during allocation and stored in the struct for
 reuse.
+
+RS-M6 (request spans) — three things that cost real time:
+
+* An exception raised INSIDE the event hook wedges the recorder. `rb_raise`
+  `longjmp`s straight out of `event_hook_raw`, past the `MutexGuard` on
+  `Recorder.tracer`, so the lock is never released and the next `flush_trace`
+  blocks forever — the process hangs with no output at all. One instance of this
+  is fixed (`ruby_integer_to_i64`: `rb_num2long` used to raise `RangeError` for
+  any Integer above 2**63, so recording `x = 2**70` hung). The general hazard is
+  still there: every `rb_funcall` in the value encoder (`to_s`, `to_a`,
+  `members`, `instance_variable_get`, ...) can raise, and only `to_s` is behind
+  `rb_protect`. Symptom to recognise: `/proc/<pid>/wchan` == `futex_wait_queue`
+  and no listening socket / no output.
+
+* Loading a big framework INSIDE the recording is not viable.
+  `require "action_controller/railtie"` under an armed event hook took over
+  400 s (versus ~10 s untraced) — the hook fires per executed line and pays
+  `rb_tracearg_path` + a String allocation before `should_ignore_path` discards
+  it. `test-programs/web/serve.rb` therefore drives `CodeTracer::RubyRecorder`
+  as a library (`new` / `start` / `stop` / `flush_trace`) and loads the
+  framework first, instead of running under `bin/codetracer-ruby-recorder`,
+  which arms the hook before it loads the program.
+
+* No trace filter is needed for web recordings. `should_ignore_path` already
+  drops `gems/` and `lib/ruby`, which is where Sinatra, Rails, Rack and the
+  CodeTracer middleware live, so an eight-request Sinatra session is ~750 steps
+  in three files. (The Python recorder needed a whole `trace_filter.toml` for
+  the same milestone.)

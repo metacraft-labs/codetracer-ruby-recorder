@@ -14,21 +14,23 @@ use codetracer_trace_types::{
     EventLogKind, FullValueRecord, Line, TypeId, TypeKind, ValueRecord, NONE_TYPE_ID,
 };
 use codetracer_trace_writer_nim::{
-    create_trace_writer, trace_writer::TraceWriter, StreamingValueEncoder, TraceEventsFileFormat,
+    create_trace_writer, read_span_stream_json, trace_writer::TraceWriter, NimTraceReaderHandle,
+    SpanRecord, StreamingValueEncoder, TraceEventsFileFormat, SPAN_STATUS_ERROR,
 };
 use rb_sys::{
     rb_add_event_hook2, rb_ary_entry, rb_cArray, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct,
     rb_cThread, rb_cTime, rb_check_typeddata, rb_const_defined, rb_const_get,
     rb_data_type_struct__bindgen_ty_1, rb_data_type_t, rb_data_typed_object_wrap,
-    rb_define_alloc_func, rb_define_class, rb_define_method, rb_eIOError, rb_eval_string,
-    rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t, rb_funcall, rb_id2name, rb_id2sym,
-    rb_intern, rb_method_boundp, rb_num2dbl, rb_num2long, rb_obj_classname, rb_obj_is_kind_of,
-    rb_protect, rb_raise, rb_remove_event_hook_with_data, rb_set_errinfo, rb_string_value_cstr,
-    rb_sym2id, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id, rb_tracearg_event_flag,
-    rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception, rb_tracearg_return_value,
-    rb_tracearg_self, Qfalse, Qnil, Qtrue, ID, NIL_P, RARRAY_LEN, RB_FLOAT_TYPE_P,
-    RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE,
-    RUBY_EVENT_RETURN, VALUE,
+    rb_define_alloc_func, rb_define_class, rb_define_method, rb_define_singleton_method,
+    rb_eIOError, rb_eval_string, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t,
+    rb_funcall, rb_hash_aref, rb_id2name, rb_id2sym, rb_intern, rb_intern2, rb_method_boundp,
+    rb_num2dbl, rb_num2long, rb_num2ull, rb_obj_classname, rb_obj_is_kind_of, rb_protect, rb_raise,
+    rb_remove_event_hook_with_data, rb_set_errinfo, rb_string_value_cstr, rb_sym2id,
+    rb_thread_current, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id,
+    rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception,
+    rb_tracearg_return_value, rb_tracearg_self, rb_ull2inum, rb_utf8_str_new, Qfalse, Qnil, Qtrue,
+    ID, NIL_P, RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P,
+    RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN, VALUE,
 };
 
 type RubyEventHook = unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE);
@@ -435,6 +437,38 @@ unsafe fn value_to_string_exception_safe(recorder: &RecorderData, val: VALUE) ->
     }
 }
 
+unsafe extern "C" fn call_num2long(arg: VALUE) -> VALUE {
+    let data = &mut *(arg as *mut (VALUE, i64));
+    data.1 = rb_num2long(data.0) as i64;
+    Qnil.into()
+}
+
+/// A Ruby Integer as an `i64`, or `None` when it does not fit in one.
+///
+/// `rb_num2long` RAISES `RangeError` for an Integer outside the machine word —
+/// `2 ** 70` is enough — and a raise from inside the event hook is not merely a
+/// lost value: it `longjmp`s straight out of `event_hook_raw`, past the
+/// `MutexGuard` on the tracer, so the recorder's lock is never released and the
+/// next `flush_trace` blocks forever.  Recording a program that computes a big
+/// integer therefore used to hang it (reproducible with two lines of Ruby and
+/// no middleware in sight).  `rb_protect` turns that into a `None` the caller
+/// can encode some other way.
+unsafe fn ruby_integer_to_i64(val: VALUE) -> Option<i64> {
+    let mut state: c_int = 0;
+    let mut data = (val, 0i64);
+    rb_protect(
+        Some(call_num2long),
+        &mut data as *mut (VALUE, i64) as VALUE,
+        &mut state,
+    );
+    if state != 0 {
+        rb_set_errinfo(Qnil.into());
+        None
+    } else {
+        Some(data.1)
+    }
+}
+
 /// Maximum recursion depth for streaming encoding. Prevents stack overflow
 /// from deeply nested Ruby structures and stays within the encoder's
 /// compound nesting limit (32 levels).
@@ -477,8 +511,17 @@ unsafe fn encode_ruby_value_streaming(
         return;
     }
     if RB_INTEGER_TYPE_P(val) {
-        let i = rb_num2long(val) as i64;
-        encoder.write_int(i, recorder.int_type_id);
+        match ruby_integer_to_i64(val) {
+            Some(i) => encoder.write_int(i, recorder.int_type_id),
+            None => {
+                // Outside the machine word.  The value stays VISIBLE as its
+                // decimal text instead of aborting the recording — see
+                // `ruby_integer_to_i64` for what "aborting" used to mean.
+                let text = value_to_string_exception_safe(recorder, val);
+                let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Raw, "Integer");
+                encoder.write_raw(&text, type_id);
+            }
+        }
         return;
     }
     if RB_FLOAT_TYPE_P(val) {
@@ -1058,6 +1101,285 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     recorder.data.in_event_hook = false;
 }
 
+// ---------------------------------------------------------------------------
+// Request / interval spans (RS-M6)
+// ---------------------------------------------------------------------------
+//
+// A *span* is a bounded, labeled interval of execution — an HTTP request, a
+// process, a test — appended to the container's `spans.dat` stream (spec:
+// `codetracer-specs/Trace-Files/CTFS-Request-Span-Streams.md`).  These three
+// entry points are what `CodeTracer::Rack::Middleware` calls instead of writing
+// a `codetracer_spans.jsonl` sidecar, so a recorded request becomes a
+// *(process, thread, step range)* coordinate INSIDE the very container the
+// recorder is writing — which is what lets the Request Panel seek from a
+// request row into that request's handler.
+//
+// They are deliberately thin: span *identity* and the request-shaped policy
+// (which metadata keys, in which order, what counts as an error) live in Ruby,
+// in `CodeTracer::Native` and the Rack middleware.  Only the two things Ruby
+// cannot do — read the writer's step counter and append a record — are here.
+//
+// The `codetracer-rack` gem never calls these directly; it goes through the
+// `CodeTracer::Native` facade, which is a no-op when no recording is active.
+
+/// Intern a Ruby symbol from a runtime string.
+///
+/// `rb_intern!` only accepts literals, and these keys are looked up from a
+/// table, so the runtime form (`rb_intern2`) is used instead.
+unsafe fn ruby_symbol(name: &str) -> VALUE {
+    rb_id2sym(rb_intern2(
+        name.as_ptr() as *const c_char,
+        name.len() as c_long,
+    ))
+}
+
+/// `spec[:key]`, or `nil` when absent.
+unsafe fn spec_value(spec: VALUE, key: &str) -> VALUE {
+    rb_hash_aref(spec, ruby_symbol(key))
+}
+
+/// `spec[:key]` as an unsigned integer; absent / nil is 0.
+///
+/// 0 is the wire encoding of "unset" for every numeric span field except
+/// `span_id` (which the caller validates separately), so conflating nil with
+/// zero is exactly right here.
+unsafe fn spec_u64(spec: VALUE, key: &str) -> u64 {
+    let value = spec_value(spec, key);
+    if NIL_P(value) {
+        0
+    } else {
+        rb_num2ull(value) as u64
+    }
+}
+
+/// `spec[:key]` in Ruby truthiness: only `nil` and `false` are false.
+///
+/// There is no "default true" here on purpose — `shares_timeline` defaults to
+/// true, but that default belongs in the `CodeTracer::Native` facade with the
+/// rest of the span policy, not in the FFI shim.
+unsafe fn spec_bool(spec: VALUE, key: &str) -> bool {
+    let value = spec_value(spec, key);
+    !NIL_P(value) && value != (Qfalse as VALUE)
+}
+
+/// `spec[:key]` as a String, converting non-strings through `to_s`.
+///
+/// Uses the exception-safe conversion because a middleware may hand us any
+/// object as a metadata value, and a `to_s` that raises must not propagate out
+/// of a span registration into the application's request handling.
+unsafe fn spec_string(recorder: &RecorderData, spec: VALUE, key: &str) -> String {
+    let value = spec_value(spec, key);
+    if NIL_P(value) {
+        String::new()
+    } else {
+        value_to_string_exception_safe(recorder, value)
+    }
+}
+
+/// `spec[:metadata]` as ordered key/value pairs.
+///
+/// Metadata arrives as an Array of two-element Arrays and never as a Hash:
+/// metadata ORDER is part of the wire contract (consumers render the keys in
+/// emission order), and while Ruby hashes happen to preserve insertion order,
+/// making the ordering explicit in the type is what keeps a future refactor
+/// from silently reordering the panel's columns.
+unsafe fn spec_metadata(recorder: &RecorderData, spec: VALUE) -> Vec<(String, String)> {
+    let array = spec_value(spec, "metadata");
+    if NIL_P(array) || !RB_TYPE_P(array, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
+        return Vec::new();
+    }
+    let len = RARRAY_LEN(array) as usize;
+    let mut pairs = Vec::with_capacity(len);
+    for i in 0..len {
+        let pair = ruby_array_entry(array, i);
+        if !RB_TYPE_P(pair, rb_sys::ruby_value_type::RUBY_T_ARRAY) || RARRAY_LEN(pair) < 2 {
+            continue;
+        }
+        let key = value_to_string_exception_safe(recorder, ruby_array_entry(pair, 0));
+        let value = value_to_string_exception_safe(recorder, ruby_array_entry(pair, 1));
+        pairs.push((key, value));
+    }
+    pairs
+}
+
+/// Raise a Ruby `IOError` carrying `message`.
+///
+/// `rb_raise` never returns (it `longjmp`s), so every caller must have released
+/// any `MutexGuard` first: an unwinding-free non-local exit skips destructors,
+/// and a still-held tracer lock would wedge every later event-hook callback.
+unsafe fn raise_io_error(message: &str) -> ! {
+    let text = std::ffi::CString::new(message)
+        .unwrap_or_else(|_| std::ffi::CString::new("codetracer: unknown error").unwrap());
+    // `rb_raise` is declared diverging in the bindings, which is why this
+    // function can be `-> !` with no trailing expression.
+    rb_raise(rb_eIOError, c"%s".as_ptr() as *const c_char, text.as_ptr())
+}
+
+/// The exec-stream index the NEXT recorded event will occupy — the `start_step`
+/// a span opened right now must carry.
+///
+/// This MUST come from the writer and must never be a recorder-side count of
+/// `register_step` calls.  `MultiStreamTraceWriter.stepCount` advances for every
+/// exec-stream event — absolute steps, column deltas, raise / catch, thread
+/// start / exit / switch — and that counter IS the step id readers walk (a
+/// span's `start_step`, the Request Panel's `startGeid`).  This recorder emits
+/// a thread-switch event on the first event of every thread, so a self-counted
+/// index would already be wrong for the very first request.
+unsafe extern "C" fn next_step_index(self_val: VALUE) -> VALUE {
+    let recorder = &mut *get_recorder(self_val);
+    // The tracer lock is also taken by the event hook.  Setting the re-entrancy
+    // flag makes the hook return BEFORE it tries to lock, so a Ruby-level event
+    // fired from inside this call cannot deadlock against us.
+    let was_in_hook = recorder.data.in_event_hook;
+    recorder.data.in_event_hook = true;
+    let index = {
+        let locked_tracer = recorder.tracer.lock().unwrap();
+        TraceWriter::next_step_index(&**locked_tracer)
+    };
+    recorder.data.in_event_hook = was_in_hook;
+    rb_ull2inum(index)
+}
+
+/// The thread id THIS RECORDER uses for the calling thread.
+///
+/// Not `Thread#object_id` and not an OS tid: the event hook identifies threads
+/// by the `VALUE` of `Thread.current` and emits `register_thread_switch` with
+/// exactly that number, so a span whose `thread_id` came from anywhere else
+/// would name a thread the container has never heard of.  Reading it here is
+/// what makes a span's thread coordinate resolvable against the recording's own
+/// thread events.
+unsafe extern "C" fn current_thread_id(_self_val: VALUE) -> VALUE {
+    // `rb_thread_current()` is what `Thread.current` evaluates to, which is the
+    // expression `event_hook_raw` uses for the same purpose.
+    rb_ull2inum(rb_thread_current())
+}
+
+/// Append one span record to the recording's span stream.
+///
+/// `spec` is a Hash with symbol keys mirroring the wire record; see
+/// `CodeTracer::Native.register_span`, which owns the defaults.  Returns `true`
+/// on success and raises `IOError` when the writer refuses the record — a
+/// middleware that believes it recorded a request must never be told it
+/// succeeded when nothing was stored.
+unsafe extern "C" fn register_span_api(self_val: VALUE, spec: VALUE) -> VALUE {
+    let recorder = &mut *get_recorder(self_val);
+
+    if !RB_TYPE_P(spec, rb_sys::ruby_value_type::RUBY_T_HASH) {
+        raise_io_error("register_span expects a Hash with symbol keys");
+    }
+
+    let was_in_hook = recorder.data.in_event_hook;
+    recorder.data.in_event_hook = true;
+
+    // Every Ruby->Rust conversion happens BEFORE the tracer lock is taken:
+    // `value_to_string_exception_safe` can call back into Ruby (`to_s`), and
+    // Ruby code running while we hold the lock would re-enter the event hook.
+    let span_id = spec_u64(spec, "span_id");
+    let status = spec_u64(spec, "status");
+    let is_open = spec_bool(spec, "is_open");
+    let span = SpanRecord {
+        span_id,
+        parent_span_id: spec_u64(spec, "parent_span_id"),
+        is_open,
+        // Ruby emits INLINE spans only: the steps are in this very container.
+        // The external binding exists for recorders that must write a separate
+        // container per request (PHP-FPM), which this one never does.
+        is_external: false,
+        status: status as u8,
+        start_wall_ns: spec_u64(spec, "start_wall_ns"),
+        end_wall_ns: if is_open {
+            0
+        } else {
+            spec_u64(spec, "end_wall_ns")
+        },
+        process_ord: spec_u64(spec, "process_ord"),
+        thread_id: spec_u64(spec, "thread_id"),
+        start_step: spec_u64(spec, "start_step"),
+        end_step: if is_open {
+            0
+        } else {
+            spec_u64(spec, "end_step")
+        },
+        external_recording: String::new(),
+        external_path: String::new(),
+        span_type: spec_string(&recorder.data, spec, "span_type"),
+        label: spec_string(&recorder.data, spec, "label"),
+        contiguous_on_one_thread: spec_bool(spec, "contiguous_on_one_thread"),
+        shares_timeline: spec_bool(spec, "shares_timeline"),
+        concurrent_with_siblings: spec_bool(spec, "concurrent_with_siblings"),
+        metadata: spec_metadata(&recorder.data, spec),
+    };
+
+    // Validate before touching the writer so a bad record fails loudly rather
+    // than being half-written.
+    let validation = if span_id == 0 {
+        Some("span_id must be >= 1 (0 is the wire encoding of \"no span\")".to_string())
+    } else if status > u64::from(SPAN_STATUS_ERROR) {
+        Some(format!(
+            "invalid span status {status}; expected 0 (unknown), 1 (ok) or 2 (error)"
+        ))
+    } else {
+        None
+    };
+
+    let outcome = if validation.is_some() {
+        validation
+    } else {
+        let mut locked_tracer = recorder.tracer.lock().unwrap();
+        match TraceWriter::register_span(&mut **locked_tracer, &span) {
+            Ok(()) => None,
+            Err(e) => Some(format!("failed to record span: {e}")),
+        }
+    };
+
+    recorder.data.in_event_hook = was_in_hook;
+    match outcome {
+        // Raised only after the guard above has been dropped — see
+        // `raise_io_error`.
+        Some(message) => raise_io_error(&message),
+        None => Qtrue.into(),
+    }
+}
+
+/// Decode the span stream of the `.ct` container at `path` into JSON.
+///
+/// The READ counterpart of [`register_span_api`], present so this recorder's own
+/// integration tests assert on the spans they wrote through the CANONICAL Nim
+/// decoder (`initSpanStreamReader`, the same one `ct print -f http` uses) rather
+/// than through a second, test-only decoder that could agree with a writer bug.
+///
+/// A singleton method rather than an instance method: reading a container is not
+/// an operation on a live recording, and a test process that only wants to
+/// inspect a `.ct` file must not have to start one.
+///
+/// `settled` applies last-record-wins per `span_id` and sorts ascending by
+/// `span_id` (what a panel displays); a false `settled` returns every record in
+/// append order, open records included.
+unsafe extern "C" fn span_stream_json(_klass: VALUE, path: VALUE, settled: VALUE) -> VALUE {
+    let path_string = rstring_checked_or_empty(path);
+    let want_settled = !NIL_P(settled) && settled != (Qfalse as VALUE);
+    match read_span_stream_json(Path::new(&path_string), want_settled) {
+        Ok(json) => rb_utf8_str_new(json.as_ptr() as *const c_char, json.len() as c_long),
+        Err(e) => raise_io_error(&format!(
+            "failed to read the span stream of {path_string}: {e}"
+        )),
+    }
+}
+
+/// The number of steps recorded in the `.ct` container at `path`.
+///
+/// Exposed alongside [`span_stream_json`] so a test can check that a span's
+/// `[start_step, end_step]` really is a coordinate INSIDE that container — the
+/// property that distinguishes an inline-bound span from the sidecar rows it
+/// replaces.  Read through the canonical Nim reader.
+unsafe extern "C" fn trace_step_count(_klass: VALUE, path: VALUE) -> VALUE {
+    let path_string = rstring_checked_or_empty(path);
+    match NimTraceReaderHandle::open(&path_string) {
+        Ok(reader) => rb_ull2inum(reader.step_count()),
+        Err(e) => raise_io_error(&format!("failed to open {path_string}: {e}")),
+    }
+}
+
 unsafe fn ruby_method(func: *const ()) -> Option<RubyMethod> {
     Some(transmute::<*const (), RubyMethod>(func))
 }
@@ -1100,6 +1422,40 @@ pub extern "C" fn Init_codetracer_ruby_recorder() {
             c"record_event".as_ptr() as *const c_char,
             ruby_method(record_event_api as *const ()),
             3,
+        );
+        // RS-M6 span emission.  See the "Request / interval spans" section
+        // above; `CodeTracer::Native` is the Ruby-side facade over these.
+        rb_define_method(
+            class,
+            c"next_step_index".as_ptr() as *const c_char,
+            ruby_method(next_step_index as *const ()),
+            0,
+        );
+        rb_define_method(
+            class,
+            c"register_span".as_ptr() as *const c_char,
+            ruby_method(register_span_api as *const ()),
+            1,
+        );
+        rb_define_method(
+            class,
+            c"current_thread_id".as_ptr() as *const c_char,
+            ruby_method(current_thread_id as *const ()),
+            0,
+        );
+        // Read side — singleton methods, because inspecting a finished
+        // container is not an operation on a live recording.
+        rb_define_singleton_method(
+            class,
+            c"span_stream_json".as_ptr() as *const c_char,
+            ruby_method(span_stream_json as *const ()),
+            2,
+        );
+        rb_define_singleton_method(
+            class,
+            c"trace_step_count".as_ptr() as *const c_char,
+            ruby_method(trace_step_count as *const ()),
+            1,
         );
     }
 }
