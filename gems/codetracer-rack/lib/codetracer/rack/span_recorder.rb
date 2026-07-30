@@ -33,19 +33,17 @@
 # (`Trace-Spans.md` § 2.4), and it carries the thread id the recorder itself
 # uses, so the coordinate resolves against the recording's own thread events.
 #
-# ## Sidecar JSONL
+# ## No sidecar (RS-M12)
 #
-# Sidecar emission (`codetracer_spans.jsonl`) is retained for one release per
-# the milestone plan, but is now **opt-in**: it happens only when a manifest
-# path is passed explicitly or `CODETRACER_SPAN_MANIFEST` is set.  It used to
-# default to `<tmpdir>/codetracer_spans.jsonl`, which would have meant every
-# recorded request landing in BOTH the container and a sidecar — and RS-M6's
-# definition of done is span emission "with no sidecar file involved".
-# Read-only consumers of already-written sidecars are unaffected; RS-M11
-# removes the write path entirely.
-
-require 'json'
-require 'time'
+# Until RS-M6 this middleware wrote request metadata to a
+# `codetracer_spans.jsonl` sidecar; RS-M6 moved it into the container's span
+# stream and kept the sidecar writer one release behind an opt-in
+# `CODETRACER_SPAN_MANIFEST`.  RS-M12 removed that writer: nothing here opens
+# a file, and the environment variable is no longer read.  A sidecar row is
+# not seekable — it names no coordinate in any recording — which is exactly
+# what the span stream fixed, so there was nothing left for it to carry.
+# Sessions recorded before the change are still readable through CodeTracer's
+# db-backend shim (`src/db-backend/src/request_spans.rs`).
 
 module CodeTracer
   module Rack
@@ -58,10 +56,6 @@ module CodeTracer
     SPAN_STATUS_ERROR = 2
 
     SPAN_TYPE_WEB_REQUEST = 'web-request'
-
-    # Environment variable enabling the legacy JSONL sidecar.  Opt-in; see the
-    # header.
-    ENV_SPAN_MANIFEST = 'CODETRACER_SPAN_MANIFEST'
 
     # One in-flight request.  Created by {RequestSpanRecorder#begin_request}.
     class PendingRequestSpan
@@ -84,13 +78,6 @@ module CodeTracer
 
       def label
         "#{@http_method} #{@url}"
-      end
-
-      # The span's start as an ISO-8601 timestamp, for the legacy JSONL
-      # sidecar's `start_time` field.  The span RECORD carries the same instant
-      # as `start_wall_ns`; only the sidecar spells it as text.
-      def start_time_iso8601
-        Time.at(@start_wall_ns / 1_000_000_000.0).utc.iso8601(3)
       end
 
       # Append the OPEN record: the request has started, nothing else is known.
@@ -146,14 +133,12 @@ module CodeTracer
           )
         end
 
-        @recorder.write_sidecar(self, status_code, meta)
         recorded
       end
 
-      # Map an HTTP status to a span status.  `>= 400` is an error — the same
-      # mapping the sidecar JSONL used, and the one the Request Panel's
-      # colouring assumes.  A missing status stays "unknown" rather than being
-      # guessed as 200.
+      # Map an HTTP status to a span status.  `>= 400` is an error — the
+      # mapping the Request Panel's colouring assumes.  A missing status stays
+      # "unknown" rather than being guessed as 200.
       def self.status_for(status_code)
         return SPAN_STATUS_UNKNOWN if status_code.nil? || status_code <= 0
 
@@ -209,13 +194,10 @@ module CodeTracer
     class RequestSpanRecorder
       attr_reader :framework, :concurrent
 
-      def initialize(framework: '', concurrent: false, publish_open: true, manifest_path: nil)
+      def initialize(framework: '', concurrent: false, publish_open: true)
         @framework = framework
         @concurrent = concurrent
         @publish_open = publish_open
-        # Opt-in only — see this file's header on sidecar retirement.
-        @manifest_path = manifest_path || ENV.fetch(ENV_SPAN_MANIFEST, nil)
-        @sidecar_mutex = Mutex.new
       end
 
       # Open a span for a request that is about to be handled.
@@ -233,36 +215,12 @@ module CodeTracer
         pending
       end
 
-      # Append the legacy JSONL line, when a manifest path was configured.
-      #
-      # Retained for one release for consumers of already-recorded sessions;
-      # not written unless explicitly asked for.  Never raises: the sidecar is
-      # diagnostic, and a full disk must not break the wrapped application.
-      def write_sidecar(pending, status_code, metadata)
-        return if @manifest_path.nil? || @manifest_path.empty?
-
-        record = {
-          'id' => "span_#{pending.span_id}",
-          'label' => pending.label,
-          'span_type' => SPAN_TYPE_WEB_REQUEST,
-          'metadata' => metadata.to_h,
-          'status' => status_code >= 400 ? 'error' : 'ok',
-          'start_time' => pending.start_time_iso8601,
-          'end_time' => Time.now.utc.iso8601(3)
-        }
-        @sidecar_mutex.synchronize do
-          File.open(@manifest_path, 'a') { |f| f.puts(record.to_json) }
-        end
-      rescue StandardError => e
-        warn "CodeTracer: failed to write span sidecar: #{e.message}"
-      end
-
       private
 
       # Span identity comes from the recorder when one is installed, so ids are
       # unique across every middleware instance in the container.  Without a
-      # recorder the ids only have to be unique within this process (they end
-      # up in the sidecar, if anywhere), so a local counter suffices.
+      # recorder nothing is written anywhere, so ids only have to be unique
+      # within this process and a local counter suffices.
       def allocate_span_id
         return CodeTracer::Native.allocate_span_id if native_available?
 

@@ -194,13 +194,24 @@ class TestRequestSpans < Minitest::Test
   # `ServerUnderRecorder` bounds every wait itself.
   def setup
     @trace_dirs = []
-    # A stray manifest variable in the developer's shell would re-enable the
-    # sidecar this milestone took off the recorded path.
-    @saved_manifest = ENV.delete('CODETRACER_SPAN_MANIFEST')
+    # RS-M12 removed the sidecar writer, so the opt-in that used to switch it
+    # back on is set ON PURPOSE here and pointed at a path nothing else
+    # touches.  A recorded session that produces a file at that path has
+    # resurrected the write path; asserting on an UNSET variable would only
+    # have tested today's default.
+    @saved_manifest = ENV['CODETRACER_SPAN_MANIFEST']
+    @manifest_probe = File.join(Dir.tmpdir, "codetracer_sidecar_probe_#{$PROCESS_ID}.jsonl")
+    File.delete(@manifest_probe) if File.exist?(@manifest_probe)
+    ENV['CODETRACER_SPAN_MANIFEST'] = @manifest_probe
   end
 
   def teardown
-    ENV['CODETRACER_SPAN_MANIFEST'] = @saved_manifest if @saved_manifest
+    if @saved_manifest
+      ENV['CODETRACER_SPAN_MANIFEST'] = @saved_manifest
+    else
+      ENV.delete('CODETRACER_SPAN_MANIFEST')
+    end
+    File.delete(@manifest_probe) if @manifest_probe && File.exist?(@manifest_probe)
     @trace_dirs.each { |dir| FileUtils.remove_entry(dir) if File.directory?(dir) }
   end
 
@@ -234,8 +245,11 @@ class TestRequestSpans < Minitest::Test
     assert_equal SPAN_STATUS_ERROR, not_found['status']
     assert_equal '', meta(not_found, 'error.message')
 
-    # Sidecar emission is opt-in since RS-M6; a recorded session must not have
-    # written one behind the container's back.
+    # RS-M12 removed the sidecar writer.  `CODETRACER_SPAN_MANIFEST` is SET
+    # for this test (see `setup`), so this asserts the write path is gone
+    # rather than merely switched off by default.
+    refute File.exist?(@manifest_probe),
+           'CODETRACER_SPAN_MANIFEST must no longer produce a JSONL sidecar'
     refute File.exist?(File.join(Dir.tmpdir, 'codetracer_spans.jsonl')),
            'the recorded path must not write a JSONL sidecar'
   end

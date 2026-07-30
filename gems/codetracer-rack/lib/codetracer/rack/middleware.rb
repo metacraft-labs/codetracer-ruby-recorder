@@ -19,8 +19,8 @@ module CodeTracer
     # metadata with no way back into the recording; a span record names a
     # `(process, thread, step range)` coordinate INSIDE the container, which is
     # what lets CodeTracer's Request Panel seek from a request row into that
-    # request's handler.  Sidecar emission is retained one more release but is
-    # now opt-in — see `span_recorder.rb`.
+    # request's handler.  RS-M12 removed the sidecar writer entirely — see
+    # `span_recorder.rb`.
     #
     # ## Usage
     #
@@ -48,8 +48,6 @@ module CodeTracer
     # * `:publish_open` — append an in-flight record at request start (default
     #   true), which is what makes a live panel show a request before it
     #   finishes.
-    # * `:manifest_path` — write the legacy JSONL sidecar to this path.
-    #   Opt-in; `CODETRACER_SPAN_MANIFEST` does the same.
     # * `:route` — fallback `http.route` for an app whose framework publishes
     #   none.
     #
@@ -67,8 +65,7 @@ module CodeTracer
         @span_recorder = RequestSpanRecorder.new(
           framework: options[:framework].to_s,
           concurrent: options.fetch(:concurrent, false),
-          publish_open: options.fetch(:publish_open, true),
-          manifest_path: options[:manifest_path]
+          publish_open: options.fetch(:publish_open, true)
         )
       end
 

@@ -1,16 +1,31 @@
 # frozen_string_literal: true
 
-# Integration test for CodeTracer Rack middleware.
+# Integration test for the CodeTracer Rack middleware over a real socket.
 #
-# Starts a real TCP-based HTTP server (no WEBrick/Puma dependency),
-# sends actual HTTP requests over the network, then verifies the
-# JSONL span manifest contains the expected spans.
+# Starts a real TCP-based HTTP server (no WEBrick/Puma dependency) and sends
+# actual HTTP requests over the network, with **no recorder installed** — the
+# configuration a Rack app is in when it mounts the middleware and the native
+# extension is absent.  What must hold there is that the middleware is
+# invisible: every response reaches the client byte for byte as the wrapped
+# app produced it.
+#
+# ## What changed in RS-M12
+#
+# This test used to point `CODETRACER_SPAN_MANIFEST` at a temporary file and
+# assert the JSONL rows the middleware appended to it.  RS-M12 removed that
+# writer (see `gems/codetracer-rack/lib/codetracer/rack/span_recorder.rb`).
+#
+# The span content those rows carried is asserted by `test_request_spans.rb`
+# against a REAL recorded container, over real HTTP, against a real Sinatra
+# and a real Rails app — including the span type, the status mapping, the
+# metadata order, the open/settled pairing and the step range, which a
+# sidecar row never carried at all.  So nothing here is lost; what is added is
+# a direct guard that setting the retired opt-in produces no file.
 
+require 'English'
 require 'minitest/autorun'
 require 'net/http'
-require 'json'
 require 'socket'
-require 'time'
 require 'tmpdir'
 require 'rack'
 require 'uri'
@@ -131,7 +146,10 @@ end
 
 class TestRackIntegration < Minitest::Test
   def setup
+    # Deliberately switched ON: RS-M12 removed the writer, so this asserts the
+    # removal rather than today's default.
     @manifest_path = File.join(Dir.tmpdir, "codetracer_rack_integration_#{$PROCESS_ID}.jsonl")
+    @saved_manifest = ENV['CODETRACER_SPAN_MANIFEST']
     ENV['CODETRACER_SPAN_MANIFEST'] = @manifest_path
     File.delete(@manifest_path) if File.exist?(@manifest_path)
 
@@ -173,23 +191,29 @@ class TestRackIntegration < Minitest::Test
   def teardown
     @server&.stop
     File.delete(@manifest_path) if File.exist?(@manifest_path)
-    ENV.delete('CODETRACER_SPAN_MANIFEST')
+    if @saved_manifest
+      ENV['CODETRACER_SPAN_MANIFEST'] = @saved_manifest
+    else
+      ENV.delete('CODETRACER_SPAN_MANIFEST')
+    end
   end
 
-  # Sends 5 HTTP requests (GET, POST, GET, DELETE, GET) over TCP
-  # and verifies that the middleware records correct spans in the
-  # JSONL manifest file.
+  # Sends 5 HTTP requests (GET, POST, GET, DELETE, GET) over TCP and verifies
+  # that the middleware passes every response through untouched and writes no
+  # sidecar manifest, even with the retired opt-in switched on.
   def test_e2e_rack_5_requests
     base = "http://127.0.0.1:#{@port}"
 
     # 1. GET /api/users -> 200
     res1 = Net::HTTP.get_response(URI("#{base}/api/users"))
     assert_equal '200', res1.code
+    assert_equal '[{"id":1},{"id":2}]', res1.body
 
     # 2. POST /api/users -> 201
     res2 = Net::HTTP.post(URI("#{base}/api/users"), '{"name":"Alice"}',
                           'Content-Type' => 'application/json')
     assert_equal '201', res2.code
+    assert_equal '{"id":3}', res2.body
 
     # 3. GET /api/users -> 200
     res3 = Net::HTTP.get_response(URI("#{base}/api/users"))
@@ -203,69 +227,17 @@ class TestRackIntegration < Minitest::Test
     # 5. GET /health -> 200
     res5 = Net::HTTP.get_response(URI("#{base}/health"))
     assert_equal '200', res5.code
+    assert_equal 'ok', res5.body
 
-    # Read and parse the manifest
-    assert File.exist?(@manifest_path), 'span manifest file should exist'
-    lines = File.readlines(@manifest_path)
-    assert_equal 5, lines.length, "expected 5 spans, got #{lines.length}"
-
-    spans = lines.map { |l| JSON.parse(l) }
-
-    # -- Verify span 1: GET /api/users -> 200 --
-    assert_equal 'GET', spans[0]['metadata']['http.method']
-    assert_equal '/api/users', spans[0]['metadata']['http.url']
-    assert_equal '200', spans[0]['metadata']['http.status_code']
-    assert_equal 'ok', spans[0]['status']
-
-    # -- Verify span 2: POST /api/users -> 201 --
-    assert_equal 'POST', spans[1]['metadata']['http.method']
-    assert_equal '/api/users', spans[1]['metadata']['http.url']
-    assert_equal '201', spans[1]['metadata']['http.status_code']
-    assert_equal 'ok', spans[1]['status']
-
-    # -- Verify span 3: GET /api/users -> 200 --
-    assert_equal 'GET', spans[2]['metadata']['http.method']
-    assert_equal '/api/users', spans[2]['metadata']['http.url']
-    assert_equal '200', spans[2]['metadata']['http.status_code']
-
-    # -- Verify span 4: DELETE /api/users -> 204 --
-    assert_equal 'DELETE', spans[3]['metadata']['http.method']
-    assert_equal '/api/users', spans[3]['metadata']['http.url']
-    assert_equal '204', spans[3]['metadata']['http.status_code']
-    assert_equal 'ok', spans[3]['status']
-
-    # -- Verify span 5: GET /health -> 200 --
-    assert_equal 'GET', spans[4]['metadata']['http.method']
-    assert_equal '/health', spans[4]['metadata']['http.url']
-    assert_equal '200', spans[4]['metadata']['http.status_code']
-
-    # Verify all spans have web-request type
-    spans.each_with_index do |span, i|
-      assert_equal 'web-request', span['span_type'],
-                   "span #{i} should have span_type 'web-request'"
-    end
-
-    # Verify all durations are non-negative
-    spans.each_with_index do |span, i|
-      duration = span['metadata']['http.duration_ms'].to_i
-      assert duration >= 0,
-             "span #{i} duration should be >= 0, got #{duration}"
-    end
-
-    # Verify spans are in chronological order (by start_time)
-    start_times = spans.map { |s| Time.parse(s['start_time']) }
-    start_times.each_cons(2).with_index do |(t1, t2), i|
-      assert t1 <= t2,
-             "span #{i} start_time (#{t1}) should be <= span #{i + 1} start_time (#{t2})"
-    end
-
-    # Verify all span IDs are properly prefixed.
-    # Note: ID uniqueness is not asserted here because the current
-    # generate_span_id implementation truncates the monotonic clock
-    # to integer seconds, so rapid sequential requests on the same
-    # thread may share an ID. This is a known middleware limitation.
-    ids = spans.map { |s| s['id'] }
-    ids.each { |id| assert_match(/\Aspan_/, id, 'span ID should start with span_ prefix') }
+    # RS-M12: the opt-in that used to switch the sidecar writer back on is
+    # SET for this test (see `setup`).  Nothing may appear at that path, nor
+    # at the pre-RS-M6 default — asserted after five real requests over a real
+    # socket, which is the only configuration in which a stray write would
+    # have happened.
+    refute File.exist?(@manifest_path),
+           'CODETRACER_SPAN_MANIFEST must no longer produce a JSONL sidecar'
+    refute File.exist?(File.join(Dir.tmpdir, 'codetracer_spans.jsonl')),
+           'no sidecar may be written to the pre-RS-M6 default path'
   end
 
   private

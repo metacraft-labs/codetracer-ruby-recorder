@@ -84,12 +84,12 @@ module CodeTracerDemo
     def start
       FileUtils.mkdir_p(@trace_dir)
 
-      env = {
-        # A stray manifest variable from the developer's shell would re-enable
-        # the sidecar this milestone took off the recorded path.
-        'CODETRACER_SPAN_MANIFEST' => nil,
-        'CODETRACER_RUBY_RECORDER_OUT_DIR' => @trace_dir
-      }
+      # RS-M12 removed the sidecar writer, so `CODETRACER_SPAN_MANIFEST` is
+      # deliberately NOT stripped here: whatever the surrounding shell sets,
+      # the recorded server must produce no sidecar.  `codetracer`'s
+      # `no_recorder_writes_sidecar_manifests` sets it on purpose and asserts
+      # exactly that.
+      env = { 'CODETRACER_RUBY_RECORDER_OUT_DIR' => @trace_dir }
       # `serve.rb` drives the recorder as a LIBRARY rather than running under
       # `bin/codetracer-ruby-recorder`, so that the framework is loaded before
       # the event hook is armed; see that file's header for why that is the
