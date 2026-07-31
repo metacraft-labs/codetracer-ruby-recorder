@@ -5,18 +5,41 @@ class constants in the `Recorder` struct. When adding new Ruby method calls,
 ensure the IDs are interned once during allocation and stored in the struct for
 reuse.
 
-RS-M6 (request spans) — three things that cost real time:
+A Ruby exception raised INSIDE the recorder used to wedge the recorded process,
+and the structure that prevents it is not optional. `rb_raise` (and every Ruby
+method that raises, and `rb_num2long` on a Bignum, and `rb_string_value_cstr` on
+a String containing a NUL) `longjmp`s past every Rust frame WITHOUT running
+destructors, so a live `MutexGuard` on `Recorder.tracer` was never released and
+the next `flush_trace` blocked forever. Symptom to recognise: `/proc/<pid>/wchan`
+== `futex_wait_queue`, no listening socket, no output at all.
 
-* An exception raised INSIDE the event hook wedges the recorder. `rb_raise`
-  `longjmp`s straight out of `event_hook_raw`, past the `MutexGuard` on
-  `Recorder.tracer`, so the lock is never released and the next `flush_trace`
-  blocks forever — the process hangs with no output at all. One instance of this
-  is fixed (`ruby_integer_to_i64`: `rb_num2long` used to raise `RangeError` for
-  any Integer above 2**63, so recording `x = 2**70` hung). The general hazard is
-  still there: every `rb_funcall` in the value encoder (`to_s`, `to_a`,
-  `members`, `instance_variable_get`, ...) can raise, and only `to_s` is behind
-  `rb_protect`. Symptom to recognise: `/proc/<pid>/wchan` == `futex_wait_queue`
-  and no listening socket / no output.
+The rule now is structural, not a convention: **no Ruby code may run while a
+`MutexGuard` on the tracer is live.** The writer lives in `GuardedTracer`
+(module `tracer_lock` in `ext/native_tracer/src/lib.rs`) whose `Mutex` field is
+private to that module, so the compiler — not a comment — is what stops you from
+locking and then calling Ruby. `GuardedTracer::with` holds the guard OUTSIDE the
+`rb_protect` region the writer is used from, so a raise at any depth returns
+normally and the lock is released by ordinary scope exit; `protect` is the same
+primitive without the lock, for narrowing the blast radius to a single value.
+The trade-off to know about: a caught raise leaks whatever Rust allocations were
+live at that instant (destructors are skipped), which is why the protected
+regions are deliberately small.
+
+Consequences worth remembering:
+
+* New `rb_funcall`s inside a `with` body are safe by construction. New Ruby
+  calls added OUTSIDE one hold no lock, so they are safe too. Adding a
+  `Mutex<...>` field of your own re-opens the hazard.
+* Prefer the non-dispatching C API when one exists: `rb_obj_class` instead of
+  `rb_funcall(self, :class)`, `rb_thread_current()` instead of
+  `rb_eval_string("Thread.current")` (the latter compiled and ran a Ruby snippet
+  on EVERY traced event — it was also the single most expensive thing in the
+  hook).
+* `test/test_recorder_never_wedges.rb` covers one case per hazard SHAPE and
+  supervises each recording with an external timeout, so a regression is a
+  failing test rather than a hung suite.
+
+RS-M6 (request spans) — two more things that cost real time:
 
 * Loading a big framework INSIDE the recording is not viable.
   `require "action_controller/railtie"` under an armed event hook took over

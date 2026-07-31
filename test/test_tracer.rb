@@ -8,6 +8,8 @@ require 'rbconfig'
 require 'set'
 require 'tmpdir'
 
+require_relative 'ct_print_support'
+
 class TraceTest < Minitest::Test
   TMP_DIR = File.expand_path('tmp', __dir__)
   FIXTURE_DIR = File.expand_path('fixtures', __dir__)
@@ -17,13 +19,8 @@ class TraceTest < Minitest::Test
 
   # Path to the ct-print binary from codetracer-trace-format-nim, used to
   # convert binary .ct (CTFS) trace files into JSON for test verification.
-  # RbConfig's EXEEXT is "" on Unix and ".exe" on Windows so the path
-  # resolves to the real binary on every platform.
-  CT_PRINT = ENV['CT_PRINT'] ||
-             ENV['PATH'].to_s.split(File::PATH_SEPARATOR)
-                         .map { |dir| File.join(dir, "ct-print#{RbConfig::CONFIG['EXEEXT']}") }
-                         .find { |path| File.executable?(path) } ||
-             File.expand_path("../../codetracer-trace-format-nim/ct-print#{RbConfig::CONFIG['EXEEXT']}", __dir__)
+  # Resolved in `CtPrintSupport`, which the wedge-regression suite shares.
+  CT_PRINT = CtPrintSupport::CT_PRINT
 
   def setup
     FileUtils.mkdir_p(TMP_DIR)

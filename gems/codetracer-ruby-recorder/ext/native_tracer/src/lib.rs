@@ -22,22 +22,193 @@ use rb_sys::{
     rb_cThread, rb_cTime, rb_check_typeddata, rb_const_defined, rb_const_get,
     rb_data_type_struct__bindgen_ty_1, rb_data_type_t, rb_data_typed_object_wrap,
     rb_define_alloc_func, rb_define_class, rb_define_method, rb_define_singleton_method,
-    rb_eIOError, rb_eval_string, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t,
-    rb_funcall, rb_hash_aref, rb_id2name, rb_id2sym, rb_intern, rb_intern2, rb_method_boundp,
-    rb_num2dbl, rb_num2long, rb_num2ull, rb_obj_classname, rb_obj_is_kind_of, rb_protect, rb_raise,
-    rb_remove_event_hook_with_data, rb_set_errinfo, rb_string_value_cstr, rb_sym2id,
+    rb_eIOError, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t, rb_funcall,
+    rb_hash_aref, rb_id2name, rb_id2sym, rb_intern, rb_intern2, rb_method_boundp, rb_num2dbl,
+    rb_num2long, rb_num2ull, rb_obj_class, rb_obj_classname, rb_obj_is_kind_of, rb_protect,
+    rb_raise, rb_remove_event_hook_with_data, rb_set_errinfo, rb_string_value_cstr, rb_sym2id,
     rb_thread_current, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id,
     rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception,
     rb_tracearg_return_value, rb_tracearg_self, rb_ull2inum, rb_utf8_str_new, Qfalse, Qnil, Qtrue,
-    ID, NIL_P, RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P,
-    RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN, VALUE,
+    ID, NIL_P, RARRAY_LEN, RB_FLOAT_TYPE_P, RB_INTEGER_TYPE_P, RB_SYMBOL_P, RB_TYPE_P, RSTRING_LEN,
+    RSTRING_PTR, RUBY_EVENT_CALL, RUBY_EVENT_LINE, RUBY_EVENT_RAISE, RUBY_EVENT_RETURN, VALUE,
 };
+
+use tracer_lock::{protect, GuardedTracer, RubyRaised};
 
 type RubyEventHook = unsafe extern "C" fn(rb_event_flag_t, VALUE, VALUE, ID, VALUE);
 type RubyMethod = unsafe extern "C" fn() -> VALUE;
 
 unsafe fn ruby_array_entry(array: VALUE, index: usize) -> VALUE {
     rb_ary_entry(array, index as c_long)
+}
+
+/// Whether recorder-internal diagnostics are enabled.
+///
+/// Opt-in on purpose: a recorder that chatters on stderr changes the observable
+/// behaviour of the program it is supposed to be observing.  Kept as a
+/// predicate (rather than a `debug!(...)` helper taking a formatted `String`)
+/// so the hot event-hook paths do not build a message they will throw away.
+fn debug_enabled() -> bool {
+    std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some()
+}
+
+/// The tracer lock, and the ONLY route to the trace writer behind it.
+///
+/// # The hazard this module exists to close
+///
+/// A Ruby exception does not unwind the Rust stack.  `rb_raise` (and every
+/// Ruby method that raises, and every MRI conversion helper that raises)
+/// `longjmp`s to the nearest `EC_JUMP_TAG` frame, and **every Rust frame in
+/// between is skipped without running its destructors**.  A live `MutexGuard`
+/// on `Recorder::tracer` in one of those frames is therefore never released:
+/// the mutex stays locked forever and the next `flush_trace` — or the next
+/// event-hook callback — blocks on `lock()` for the rest of the process's
+/// life.  The symptom is a process parked in `futex_wait_queue` producing no
+/// output and no diagnostic at all.
+///
+/// This is not a hazard the value encoder can avoid by being careful.  Every
+/// object it inspects may define `to_a`, `members`, `values`, `to_h`,
+/// `begin`, `end`, `source`, `instance_variables`, `instance_variable_get` or
+/// `to_s` in Ruby, and any of those may raise; `rb_num2long` raises
+/// `RangeError` for an Integer above `2**63`; `rb_string_value_cstr` raises
+/// `ArgumentError` for a String containing a NUL byte.  Auditing ~20 call
+/// sites would only leave the next `rb_funcall` somebody adds as a fresh
+/// landmine.
+///
+/// # The structure
+///
+/// [`GuardedTracer::with`] owns the `MutexGuard` **outside** the `rb_protect`
+/// region that the writer is used from.  A `longjmp` from any depth inside the
+/// body lands in `rb_protect`'s frame, `with` then returns *normally*, and the
+/// guard is dropped by ordinary Rust scope exit.  The `Mutex` field is private
+/// to this module, so it is the **compiler**, not a comment, that stops a
+/// caller from taking the lock and then calling Ruby underneath it.
+///
+/// [`protect`] is the same primitive without the lock, for narrowing the blast
+/// radius *inside* a `with` body: a raise caught by an inner `protect` costs
+/// one value, whereas one caught by the outer `with` costs the rest of the
+/// event.
+///
+/// # What a caught raise does cost
+///
+/// The skipped destructors also mean any Rust allocation live at the moment of
+/// the raise (a `String` name, a `Vec<u8>` of CBOR) is leaked.  That is a
+/// bounded, per-occurrence leak on a path that used to hang the process
+/// outright, and it is why the protected regions here are kept small.
+mod tracer_lock {
+    use super::*;
+
+    /// A Ruby exception unwound out of a protected region: the operation did
+    /// not complete and produced no value.
+    ///
+    /// Deliberately payload-free — the exception has already been discarded
+    /// with `rb_set_errinfo(nil)`, because a recorder that let `$!` survive
+    /// would change what the traced program observes.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct RubyRaised;
+
+    /// The closure and its result, addressed by the `rb_protect` trampoline.
+    ///
+    /// `body` is an `Option` so the trampoline can *move* the `FnOnce` out;
+    /// `result` stays `None` when Ruby raised, which is exactly the signal
+    /// [`protect`] reports.
+    struct ProtectedCall<F, R> {
+        body: Option<F>,
+        result: Option<R>,
+    }
+
+    unsafe extern "C" fn protect_trampoline<F, R>(payload: VALUE) -> VALUE
+    where
+        F: FnOnce() -> R,
+    {
+        let call = &mut *(payload as *mut ProtectedCall<F, R>);
+        if let Some(body) = call.body.take() {
+            call.result = Some(body());
+        }
+        Qnil.into()
+    }
+
+    /// Run `body` with a Ruby exception handler installed around it.
+    ///
+    /// Returns `Err(RubyRaised)` — never propagates — when Ruby raised (or
+    /// threw) anywhere inside.  Callers get a `Result` rather than an
+    /// `Option`-shaped silence so that "Ruby blew up here" has to be handled
+    /// explicitly at every site.
+    ///
+    /// # Safety
+    ///
+    /// Must be called with the GVL held (i.e. from Ruby-facing code).  `body`
+    /// must not hold a lock or any other value whose `Drop` is required for
+    /// correctness, because a raise skips it — see the module docs.
+    pub unsafe fn protect<F, R>(body: F) -> Result<R, RubyRaised>
+    where
+        F: FnOnce() -> R,
+    {
+        let mut call = ProtectedCall {
+            body: Some(body),
+            result: None,
+        };
+        let mut state: c_int = 0;
+        rb_protect(
+            Some(protect_trampoline::<F, R>),
+            &mut call as *mut ProtectedCall<F, R> as VALUE,
+            &mut state,
+        );
+        if state != 0 {
+            // Drop the pending exception: it belongs to the recorder's own
+            // bookkeeping, not to the traced program.
+            rb_set_errinfo(Qnil.into());
+            if debug_enabled() {
+                eprintln!(
+                    "codetracer-ruby-recorder: a Ruby exception was raised inside the recorder \
+                     and discarded (tag {state})"
+                );
+            }
+            return Err(RubyRaised);
+        }
+        call.result.take().ok_or(RubyRaised)
+    }
+
+    /// The trace writer, reachable only from inside a protected region.
+    ///
+    /// See the module documentation for why the `Mutex` is private.
+    pub struct GuardedTracer(Mutex<Box<dyn TraceWriter>>);
+
+    impl GuardedTracer {
+        pub fn new(writer: Box<dyn TraceWriter>) -> GuardedTracer {
+            GuardedTracer(Mutex::new(writer))
+        }
+
+        /// Lock the tracer and hand the writer to `body`, which runs under
+        /// `rb_protect`.
+        ///
+        /// The guard lives in THIS frame, outside the protected region, so a
+        /// Ruby exception raised at any depth inside `body` returns control
+        /// here normally and the lock is released by ordinary scope exit.
+        ///
+        /// # Safety
+        ///
+        /// Must be called with the GVL held.  Must not be called re-entrantly:
+        /// the mutex is not recursive, so a `with` nested inside another
+        /// `with` would deadlock.  Ruby code executed inside `body` is kept
+        /// from re-entering through the event hook by `RecorderData::in_event_hook`.
+        pub unsafe fn with<F, R>(&self, body: F) -> Result<R, RubyRaised>
+        where
+            F: FnOnce(&mut dyn TraceWriter) -> R,
+        {
+            // A poisoned mutex is only reachable through a Rust panic, which is
+            // undefined behaviour across this FFI boundary anyway; recovering
+            // the writer keeps a panic from becoming a *second* way to wedge.
+            let mut guard = self
+                .0
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let writer: *mut dyn TraceWriter = &mut **guard;
+            let outcome = protect(move || body(&mut *writer));
+            drop(guard);
+            outcome
+        }
+    }
 }
 
 #[cfg(test)]
@@ -141,7 +312,6 @@ struct InternedSymbols {
     local_variable_get: ID,
     instance_method: ID,
     parameters: ID,
-    class: ID,
     to_a: ID,
     begin: ID,
     end: ID,
@@ -166,7 +336,6 @@ impl InternedSymbols {
             local_variable_get: rb_intern!("local_variable_get"),
             instance_method: rb_intern!("instance_method"),
             parameters: rb_intern!("parameters"),
-            class: rb_intern!("class"),
             to_a: rb_intern!("to_a"),
             begin: rb_intern!("begin"),
             end: rb_intern!("end"),
@@ -201,7 +370,10 @@ struct RecorderData {
 }
 
 struct Recorder {
-    tracer: Mutex<Box<dyn TraceWriter>>,
+    /// The trace writer.  Reachable only through [`GuardedTracer::with`] —
+    /// see the `tracer_lock` module docs for why that indirection is not
+    /// optional.
+    tracer: GuardedTracer,
     data: RecorderData,
     out_dir: String,
     /// Reusable streaming CBOR encoder — avoids building intermediate
@@ -282,7 +454,7 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
     let recorder = Box::new(Recorder {
-        tracer: Mutex::new(create_trace_writer(
+        tracer: GuardedTracer::new(create_trace_writer(
             "ruby",
             &[],
             TraceEventsFileFormat::Ctfs,
@@ -355,8 +527,9 @@ unsafe extern "C" fn disable_tracing(self_val: VALUE) -> VALUE {
         // enclosing call entry.  The downstream db-backend's
         // `call_key_for_step` then returns CallKey(-1) for those steps
         // and the calltrace pane renders nothing.
-        let mut locked_tracer = recorder.tracer.lock().unwrap();
-        TraceWriter::register_return_cbor(&mut **locked_tracer, &[]);
+        let _ = recorder
+            .tracer
+            .with(|tracer| TraceWriter::register_return_cbor(tracer, &[]));
     }
     Qnil.into()
 }
@@ -399,11 +572,33 @@ unsafe fn rstring_lossy(val: VALUE) -> String {
     rstring_checked(val).unwrap_or_default()
 }
 
+/// A Ruby value's bytes as a Rust `String`.
+///
+/// An actual `T_STRING` is read straight out of the object's buffer.  That is
+/// not just a fast path: `rb_string_value_cstr` RAISES `ArgumentError` when
+/// the string contains a NUL byte, and a raise here is a wedge (see
+/// `tracer_lock`) — which is exactly how a user object whose `to_s` returns
+/// `"bad\0name"` used to hang the recorder *despite* the `rb_protect` around
+/// the `to_s` call itself.  Reading the buffer directly also preserves
+/// embedded NULs instead of truncating at the first one.
+///
+/// A non-String still goes through MRI's conversion (which may call `to_str`
+/// and may raise), so callers must reach that path from inside a protected
+/// region.
 unsafe fn rstring_checked(val: VALUE) -> Result<String, FromUtf8Error> {
+    if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
+        let ptr = RSTRING_PTR(val);
+        let len = RSTRING_LEN(val) as usize;
+        if ptr.is_null() || len == 0 {
+            return Ok(String::new());
+        }
+        let bytes = std::slice::from_raw_parts(ptr as *const u8, len);
+        return String::from_utf8(bytes.to_vec());
+    }
     let mut value = val;
     let ptr = rb_string_value_cstr(&mut value);
     if ptr.is_null() {
-        return String::from_utf8(Vec::new());
+        return Ok(String::new());
     }
     String::from_utf8(CStr::from_ptr(ptr).to_bytes().to_vec())
 }
@@ -416,57 +611,30 @@ unsafe fn rstring_checked_or_empty(val: VALUE) -> String {
     }
 }
 
-unsafe extern "C" fn call_to_s(arg: VALUE) -> VALUE {
-    let data = &*(arg as *const (VALUE, ID));
-    rb_funcall(data.0, data.1, 0)
-}
-
+/// `val.to_s` as a Rust `String`, or an empty string when Ruby raised.
+///
+/// BOTH halves of the conversion are protected, not just the `to_s` dispatch:
+/// `to_s` is arbitrary user code and may raise, and so may turning its result
+/// into bytes when that result is not a plain String (or contains a NUL —
+/// see [`rstring_checked`]).
 unsafe fn value_to_string_exception_safe(recorder: &RecorderData, val: VALUE) -> String {
     if RB_TYPE_P(val, rb_sys::ruby_value_type::RUBY_T_STRING) {
-        rstring_lossy(val)
-    } else {
-        let mut state: c_int = 0;
-        let data = (val, recorder.id.to_s);
-        let str_val = rb_protect(Some(call_to_s), &data as *const _ as VALUE, &mut state);
-        if state != 0 {
-            rb_set_errinfo(Qnil.into());
-            String::default()
-        } else {
-            rstring_lossy(str_val)
-        }
+        return rstring_lossy(val);
     }
-}
-
-unsafe extern "C" fn call_num2long(arg: VALUE) -> VALUE {
-    let data = &mut *(arg as *mut (VALUE, i64));
-    data.1 = rb_num2long(data.0) as i64;
-    Qnil.into()
+    protect(|| rstring_lossy(rb_funcall(val, recorder.id.to_s, 0))).unwrap_or_default()
 }
 
 /// A Ruby Integer as an `i64`, or `None` when it does not fit in one.
 ///
 /// `rb_num2long` RAISES `RangeError` for an Integer outside the machine word —
 /// `2 ** 70` is enough — and a raise from inside the event hook is not merely a
-/// lost value: it `longjmp`s straight out of `event_hook_raw`, past the
-/// `MutexGuard` on the tracer, so the recorder's lock is never released and the
-/// next `flush_trace` blocks forever.  Recording a program that computes a big
-/// integer therefore used to hang it (reproducible with two lines of Ruby and
-/// no middleware in sight).  `rb_protect` turns that into a `None` the caller
-/// can encode some other way.
+/// lost value: it `longjmp`s straight out of the caller, past any live
+/// `MutexGuard` on the tracer (see the `tracer_lock` module docs).  Recording a
+/// program that computes a big integer therefore used to hang it (reproducible
+/// with two lines of Ruby and no middleware in sight).  [`protect`] turns that
+/// into a `None` the caller can encode some other way.
 unsafe fn ruby_integer_to_i64(val: VALUE) -> Option<i64> {
-    let mut state: c_int = 0;
-    let mut data = (val, 0i64);
-    rb_protect(
-        Some(call_num2long),
-        &mut data as *mut (VALUE, i64) as VALUE,
-        &mut state,
-    );
-    if state != 0 {
-        rb_set_errinfo(Qnil.into());
-        None
-    } else {
-        Some(data.1)
-    }
+    protect(|| rb_num2long(val) as i64).ok()
 }
 
 /// Maximum recursion depth for streaming encoding. Prevents stack overflow
@@ -684,9 +852,41 @@ unsafe fn encode_ruby_value_streaming(
     encoder.write_raw(&text, type_id);
 }
 
+/// Type name recorded for a value the recorder could not inspect.
+const ENCODING_ERROR_TYPE: &str = "CodeTracerEncodingError";
+
+/// Repr recorded in place of a value whose inspection raised.
+const ENCODING_ERROR_MESSAGE: &str = "<codetracer: inspecting this value raised a Ruby exception>";
+
+/// CBOR bytes to record in place of a value the recorder could not read.
+///
+/// The value is lost but the SLOT is not: an explicit error record keeps the
+/// variable visible (and says why it has no value) rather than dropping it,
+/// which in a trace is indistinguishable from the variable never existing.
+unsafe fn encode_encoding_failure(
+    tracer: &mut dyn TraceWriter,
+    encoder: &mut StreamingValueEncoder,
+) -> Vec<u8> {
+    // `reset` clears the buffer AND the nesting stack — which matters here,
+    // because an aborted walk may have left a sequence or tuple open.
+    encoder.reset();
+    let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Error, ENCODING_ERROR_TYPE);
+    encoder.write_error(ENCODING_ERROR_MESSAGE, type_id);
+    encoder.get_bytes_copy()
+}
+
 /// Encode a single Ruby value to CBOR bytes, resetting the encoder first.
 /// Returns a copy of the CBOR bytes suitable for passing to
 /// `register_variable_cbor` or `register_return_cbor`.
+///
+/// The walk runs under [`protect`]: `encode_ruby_value_streaming` calls into
+/// Ruby at roughly twenty sites (`to_a`, `begin`, `end`, `members`, `values`,
+/// `to_h`, `source`, `options`, `to_i`, `nsec`, `instance_variables`,
+/// `instance_variable_get`, `to_s`, ...), all of which a user class may define
+/// and any of which may raise.  Protecting HERE, one level above the recursive
+/// walk, keeps a single hostile object from costing more than its own value —
+/// the enclosing [`GuardedTracer::with`] would otherwise abandon the rest of
+/// the event.
 unsafe fn encode_ruby_value_to_cbor(
     recorder: &mut RecorderData,
     tracer: &mut dyn TraceWriter,
@@ -694,7 +894,12 @@ unsafe fn encode_ruby_value_to_cbor(
     val: VALUE,
 ) -> Vec<u8> {
     encoder.reset();
-    encode_ruby_value_streaming(recorder, tracer, encoder, val, MAX_STREAMING_DEPTH);
+    let encoded = protect(|| {
+        encode_ruby_value_streaming(recorder, tracer, encoder, val, MAX_STREAMING_DEPTH)
+    });
+    if encoded.is_err() {
+        return encode_encoding_failure(tracer, encoder);
+    }
     encoder.get_bytes_copy()
 }
 
@@ -707,26 +912,36 @@ unsafe fn record_variables_streaming(
     encoder: &mut StreamingValueEncoder,
     binding: VALUE,
 ) {
-    let vars = rb_funcall(binding, recorder.id.local_variables, 0);
+    let Ok(vars) = protect(|| rb_funcall(binding, recorder.id.local_variables, 0)) else {
+        if debug_enabled() {
+            eprintln!("codetracer-ruby-recorder: Binding#local_variables raised");
+        }
+        return;
+    };
     if !RB_TYPE_P(vars, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
-        if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+        if debug_enabled() {
             eprintln!("codetracer-ruby-recorder: local_variables returned a non-array");
         }
         return;
     }
     let len = RARRAY_LEN(vars) as usize;
-    if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+    if debug_enabled() {
         eprintln!("codetracer-ruby-recorder: recording {len} local variables");
     }
     for i in 0..len {
         let sym = ruby_array_entry(vars, i);
         let name = cstr_to_string(rb_id2name(rb_sym2id(sym))).unwrap_or_default();
-        let value = rb_funcall(binding, recorder.id.local_variable_get, 1, sym);
-        if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+        if debug_enabled() {
             eprintln!("codetracer-ruby-recorder: local {name}");
         }
-        let cbor = encode_ruby_value_to_cbor(recorder, tracer, encoder, value);
-        if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
+        // `Binding#local_variable_get` is ordinary Ruby dispatch and can be
+        // overridden; the variable stays in the trace as an error record when
+        // it raises, so the step does not silently lose a name.
+        let cbor = match protect(|| rb_funcall(binding, recorder.id.local_variable_get, 1, sym)) {
+            Ok(value) => encode_ruby_value_to_cbor(recorder, tracer, encoder, value),
+            Err(RubyRaised) => encode_encoding_failure(tracer, encoder),
+        };
+        if debug_enabled() {
             eprintln!(
                 "codetracer-ruby-recorder: register local {name} cbor_len={}",
                 cbor.len()
@@ -752,11 +967,18 @@ unsafe fn collect_and_register_params_streaming(
     mid: ID,
 ) -> Vec<FullValueRecord> {
     let method_sym = rb_id2sym(mid);
-    if rb_method_boundp(defined_class, mid, 0) == 0 {
+    if NIL_P(defined_class) || rb_method_boundp(defined_class, mid, 0) == 0 {
         return Vec::new();
     }
-    let method_obj = rb_funcall(defined_class, recorder.id.instance_method, 1, method_sym);
-    let params_ary = rb_funcall(method_obj, recorder.id.parameters, 0);
+    // `Module#instance_method` and `Method#parameters` are both overridable
+    // Ruby dispatch; without the parameter list there are simply no args to
+    // record, so a raise degrades to an argument-less call record.
+    let Ok(params_ary) = protect(|| {
+        let method_obj = rb_funcall(defined_class, recorder.id.instance_method, 1, method_sym);
+        rb_funcall(method_obj, recorder.id.parameters, 0)
+    }) else {
+        return Vec::new();
+    };
     if !RB_TYPE_P(params_ary, rb_sys::ruby_value_type::RUBY_T_ARRAY) {
         return Vec::new();
     }
@@ -772,8 +994,12 @@ unsafe fn collect_and_register_params_streaming(
             continue;
         }
         if let Some(name) = cstr_to_string(rb_id2name(rb_sym2id(name_sym))) {
-            let value = rb_funcall(binding, recorder.id.local_variable_get, 1, name_sym);
-            let cbor = encode_ruby_value_to_cbor(recorder, tracer, encoder, value);
+            let cbor = match protect(|| {
+                rb_funcall(binding, recorder.id.local_variable_get, 1, name_sym)
+            }) {
+                Ok(value) => encode_ruby_value_to_cbor(recorder, tracer, encoder, value),
+                Err(RubyRaised) => encode_encoding_failure(tracer, encoder),
+            };
             TraceWriter::register_variable_cbor(tracer, &name, &cbor);
             // Stage the same CBOR bytes on the writer's pending-call-args
             // buffer so the next `register_call` attaches them to the
@@ -799,9 +1025,9 @@ unsafe fn collect_and_register_params_streaming(
 // Legacy collect_parameter_values / register_parameter_values have been
 // removed — replaced by collect_and_register_params_streaming (M59).
 
-unsafe fn record_event(tracer: &mut dyn TraceWriter, path: &str, line: i64, content: String) {
+unsafe fn record_event(tracer: &mut dyn TraceWriter, path: &str, line: i64, content: &str) {
     TraceWriter::register_step(tracer, Path::new(path), Line(line));
-    TraceWriter::register_special_event(tracer, EventLogKind::Write, "", &content)
+    TraceWriter::register_special_event(tracer, EventLogKind::Write, "", content)
 }
 
 unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) -> VALUE {
@@ -828,69 +1054,36 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
         }
     }
 
-    match rstring_checked(out_dir) {
-        Ok(path_str) => {
-            match begin_trace(Path::new(&path_str)) {
-                Ok(t) => {
-                    recorder.tracer = Mutex::new(t);
-                    recorder.out_dir = path_str;
-                    let mut locked_tracer = recorder.tracer.lock().unwrap();
-                    // pre-register common types to match the pure Ruby tracer
-                    recorder.data.int_type_id =
-                        TraceWriter::ensure_type_id(&mut **locked_tracer, TypeKind::Int, "Integer");
-                    recorder.data.string_type_id = TraceWriter::ensure_type_id(
-                        &mut **locked_tracer,
-                        TypeKind::String,
-                        "String",
-                    );
-                    recorder.data.bool_type_id =
-                        TraceWriter::ensure_type_id(&mut **locked_tracer, TypeKind::Bool, "Bool");
-                    recorder.data.float_type_id = NONE_TYPE_ID;
-                    recorder.data.symbol_type_id = TraceWriter::ensure_type_id(
-                        &mut **locked_tracer,
-                        TypeKind::String,
-                        "Symbol",
-                    );
-                    recorder.data.error_type_id = TraceWriter::ensure_type_id(
-                        &mut **locked_tracer,
-                        TypeKind::Error,
-                        "No type",
-                    );
-                    let path = Path::new("");
-                    let func_id = TraceWriter::ensure_function_id(
-                        &mut **locked_tracer,
-                        "<top-level>",
-                        path,
-                        Line(1),
-                    );
-                    // Use register_call (not add_event) — the NimTraceWriter
-                    // backing the CTFS multi-stream output silently drops
-                    // TraceLowLevelEvent variants since it does not maintain
-                    // an in-memory event buffer.  register_call is the
-                    // canonical FFI hook that emits the Call record.
-                    TraceWriter::register_call(&mut **locked_tracer, func_id, vec![]);
-                }
-                Err(e) => {
-                    let msg = std::ffi::CString::new(e.to_string())
-                        .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
-                    rb_raise(
-                        rb_eIOError,
-                        c"Failed to flush trace: %s".as_ptr() as *const c_char,
-                        msg.as_ptr(),
-                    );
-                }
-            }
-        }
-        Err(e) => {
-            let msg = std::ffi::CString::new(e.to_string())
-                .unwrap_or_else(|_| std::ffi::CString::new("invalid utf8").unwrap());
-            rb_raise(
-                rb_eIOError,
-                c"Invalid UTF-8 in path: %s".as_ptr() as *const c_char,
-                msg.as_ptr(),
-            )
-        }
-    }
+    // Both failure paths below raise, so both must run with no lock held.
+    let path_str = match rstring_checked(out_dir) {
+        Ok(path_str) => path_str,
+        Err(e) => raise_io_error(&format!("Invalid UTF-8 in path: {e}")),
+    };
+    let writer = match begin_trace(Path::new(&path_str)) {
+        Ok(writer) => writer,
+        Err(e) => raise_io_error(&format!("Failed to begin trace: {e}")),
+    };
+
+    recorder.tracer = GuardedTracer::new(writer);
+    recorder.out_dir = path_str;
+    let data = &mut recorder.data;
+    let _ = recorder.tracer.with(|tracer| {
+        // pre-register common types to match the pure Ruby tracer
+        data.int_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Int, "Integer");
+        data.string_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::String, "String");
+        data.bool_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Bool, "Bool");
+        data.float_type_id = NONE_TYPE_ID;
+        data.symbol_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::String, "Symbol");
+        data.error_type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Error, "No type");
+        let func_id =
+            TraceWriter::ensure_function_id(tracer, "<top-level>", Path::new(""), Line(1));
+        // Use register_call (not add_event) — the NimTraceWriter
+        // backing the CTFS multi-stream output silently drops
+        // TraceLowLevelEvent variants since it does not maintain
+        // an in-memory event buffer.  register_call is the
+        // canonical FFI hook that emits the Call record.
+        TraceWriter::register_call(tracer, func_id, vec![]);
+    });
 
     Qnil.into()
 }
@@ -898,17 +1091,20 @@ unsafe extern "C" fn initialize(self_val: VALUE, out_dir: VALUE, format: VALUE) 
 unsafe extern "C" fn flush_trace(self_val: VALUE) -> VALUE {
     let recorder_ptr = get_recorder(self_val);
     let recorder = &mut *recorder_ptr;
-    let mut locked_tracer = recorder.tracer.lock().unwrap();
 
-    if let Err(e) = flush_to_dir(&mut **locked_tracer) {
-        let msg = std::ffi::CString::new(e.to_string())
-            .unwrap_or_else(|_| std::ffi::CString::new("unknown error").unwrap());
-        rb_raise(
-            rb_eIOError,
-            c"Failed to flush trace: %s".as_ptr() as *const c_char,
-            msg.as_ptr(),
-        );
+    // The outcome is computed under the lock and RAISED after it is released.
+    // `rb_raise` longjmps, so raising with the guard still live would leave the
+    // tracer locked forever — the very failure mode this function is usually
+    // the first to hit (see the `tracer_lock` module docs).
+    let flushed = recorder
+        .tracer
+        .with(|tracer| flush_to_dir(tracer).map_err(|e| e.to_string()));
+    match flushed {
+        Ok(Ok(())) => {}
+        Ok(Err(message)) => raise_io_error(&format!("Failed to flush trace: {message}")),
+        Err(RubyRaised) => raise_io_error("Failed to flush trace: interrupted by a Ruby exception"),
     }
+
     if std::env::var("CODETRACER_MANAGED_UPLOAD_URL")
         .ok()
         .filter(|value| !value.trim().is_empty())
@@ -918,13 +1114,10 @@ unsafe extern "C" fn flush_trace(self_val: VALUE) -> VALUE {
             Path::new(&recorder.out_dir),
             "ruby",
         ) {
-            let msg = std::ffi::CString::new(e.message)
-                .unwrap_or_else(|_| std::ffi::CString::new("managed upload failed").unwrap());
-            rb_raise(
-                rb_eIOError,
-                c"Failed to upload materialized trace: %s".as_ptr() as *const c_char,
-                msg.as_ptr(),
-            );
+            raise_io_error(&format!(
+                "Failed to upload materialized trace: {}",
+                e.message
+            ));
         }
     }
 
@@ -941,11 +1134,21 @@ unsafe extern "C" fn record_event_api(
     if recorder.data.in_event_hook {
         return Qnil.into();
     }
-    let mut locked_tracer = recorder.tracer.lock().unwrap();
+    // Every Ruby->Rust conversion happens BEFORE the tracer lock is taken (the
+    // `register_span_api` pattern).  `content` is whatever the traced program
+    // passed to `puts` / `p` / `print`, so `to_s` here is arbitrary user code:
+    // it can raise — which with a live guard is a wedge — and it can execute
+    // traced lines, which would re-enter the event hook and self-deadlock on
+    // the non-reentrant tracer lock.  `in_event_hook` closes the second door
+    // while the conversions run.
+    recorder.data.in_event_hook = true;
     let path_string = rstring_checked_or_empty(path);
-    let line_num = rb_num2long(line) as i64;
+    let line_num = ruby_integer_to_i64(line).unwrap_or(0);
     let content_str = value_to_string_exception_safe(&recorder.data, content);
-    record_event(&mut **locked_tracer, &path_string, line_num, content_str);
+    let _ = recorder
+        .tracer
+        .with(|tracer| record_event(tracer, &path_string, line_num, &content_str));
+    recorder.data.in_event_hook = false;
     Qnil.into()
 }
 
@@ -969,136 +1172,157 @@ unsafe extern "C" fn event_hook_raw(data: VALUE, arg: *mut rb_trace_arg_t) {
     if recorder.data.in_event_hook {
         return;
     }
+    // Armed for the whole callback, including the parts that run Ruby: it is
+    // what stops user code executed by the encoder (`to_a`, `to_s`, ...) from
+    // re-entering here and deadlocking on the non-reentrant tracer lock.
     recorder.data.in_event_hook = true;
+    handle_traced_event(recorder, arg);
+    // Reached on EVERY path now, including the one where Ruby raised inside
+    // the encoder: `GuardedTracer::with` returns normally after a raise.  A
+    // raise used to skip this assignment, leaving the recorder permanently
+    // convinced it was still inside a hook — i.e. silently deaf for the rest
+    // of the run, on top of the wedged lock.
+    recorder.data.in_event_hook = false;
+}
 
-    let mut locked_tracer = recorder.tracer.lock().unwrap();
-
+/// The body of the event hook, with `in_event_hook` already armed.
+///
+/// Split out so the flag is restored on exactly one path.  Every early return
+/// here is a filter decision, not an error.
+unsafe fn handle_traced_event(recorder: &mut Recorder, arg: *mut rb_trace_arg_t) {
+    // The filters run BEFORE the tracer is locked.  None of them needs the
+    // writer, and the cheapest way to keep Ruby out from under the lock is to
+    // do as much as possible outside it.
     let ev: rb_event_flag_t = rb_tracearg_event_flag(arg);
     if ((ev & RUBY_EVENT_CALL) != 0 || (ev & RUBY_EVENT_RETURN) != 0) && should_ignore_method(arg) {
-        recorder.data.in_event_hook = false;
         return;
     }
-    let path_val = rb_tracearg_path(arg);
-    let line_val = rb_tracearg_lineno(arg);
-    let path = rstring_checked_or_empty(path_val);
-    let line = rb_num2long(line_val) as i64;
+    let path = rstring_checked_or_empty(rb_tracearg_path(arg));
+    let line = ruby_integer_to_i64(rb_tracearg_lineno(arg)).unwrap_or(0);
     if should_ignore_path(&path) || should_ignore_receiver(arg) {
-        recorder.data.in_event_hook = false;
         return;
     }
 
-    let thread_id: u64 = rb_eval_string(c"Thread.current".as_ptr() as *const c_char);
-    let thread_changed = if let Some(last_thread_id) = recorder.data.last_thread_id {
-        last_thread_id != thread_id
-    } else {
-        true
-    };
-    if thread_changed {
-        // Use the dedicated `register_thread_switch` entry point: the previous
-        // `TraceWriter::add_event(TraceLowLevelEvent::ThreadSwitch(...))` call
-        // dispatched into a silent no-op on the Nim multi-stream backend, so
-        // every thread-switch was lost.  See codetracer-trace-format-nim's
-        // `registerThreadSwitch` proc for the multi-stream lowering, and the
-        // headless Rust tests in
-        // `codetracer-trace-format/codetracer_trace_writer_nim/tests/thread_events.rs`
-        // for the round-trip verification.
-        TraceWriter::register_thread_switch(&mut **locked_tracer, thread_id);
-        recorder.data.last_thread_id = Some(thread_id);
-    }
+    // `rb_thread_current()` is what `Thread.current` evaluates to — the same
+    // number `current_thread_id` reports, so span thread coordinates keep
+    // matching the thread-switch events.  It replaces an `rb_eval_string`,
+    // which compiled and executed a Ruby snippet on every single traced event:
+    // arbitrary Ruby under the lock (so, a raise away from a wedge) and by far
+    // the most expensive thing in this callback.
+    let thread_id: u64 = rb_thread_current();
 
-    // Borrow the streaming encoder alongside the tracer. The encoder lives
-    // on `Recorder` (outside the Mutex), so there is no aliasing conflict.
-    let encoder = &mut recorder.streaming_encoder;
-
-    if (ev & RUBY_EVENT_LINE) != 0 {
-        let binding = rb_tracearg_binding(arg);
-        if std::env::var_os("CODETRACER_RUBY_RECORDER_DEBUG").is_some() {
-            eprintln!(
-                "codetracer-ruby-recorder: LINE {path}:{line} binding={}",
-                if NIL_P(binding) { "nil" } else { "present" }
-            );
+    // From here on the writer is needed, so the tracer is locked — and
+    // everything that touches it runs inside `with`, which is the only place a
+    // Ruby exception can be raised without stranding the lock.
+    let Recorder {
+        tracer,
+        data,
+        streaming_encoder,
+        ..
+    } = recorder;
+    let _ = tracer.with(|writer| {
+        let thread_changed = data.last_thread_id != Some(thread_id);
+        if thread_changed {
+            // Use the dedicated `register_thread_switch` entry point: the previous
+            // `TraceWriter::add_event(TraceLowLevelEvent::ThreadSwitch(...))` call
+            // dispatched into a silent no-op on the Nim multi-stream backend, so
+            // every thread-switch was lost.  See codetracer-trace-format-nim's
+            // `registerThreadSwitch` proc for the multi-stream lowering, and the
+            // headless Rust tests in
+            // `codetracer-trace-format/codetracer_trace_writer_nim/tests/thread_events.rs`
+            // for the round-trip verification.
+            TraceWriter::register_thread_switch(writer, thread_id);
+            data.last_thread_id = Some(thread_id);
         }
-        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
-        if !NIL_P(binding) {
-            record_variables_streaming(&mut recorder.data, &mut **locked_tracer, encoder, binding);
+
+        let encoder = &mut *streaming_encoder;
+
+        if (ev & RUBY_EVENT_LINE) != 0 {
+            let binding = rb_tracearg_binding(arg);
+            if debug_enabled() {
+                eprintln!(
+                    "codetracer-ruby-recorder: LINE {path}:{line} binding={}",
+                    if NIL_P(binding) { "nil" } else { "present" }
+                );
+            }
+            TraceWriter::register_step(writer, Path::new(&path), Line(line));
+            if !NIL_P(binding) {
+                record_variables_streaming(data, writer, encoder, binding);
+            }
+        } else if (ev & RUBY_EVENT_CALL) != 0 {
+            let binding = rb_tracearg_binding(arg);
+
+            let self_val = rb_tracearg_self(arg);
+            let mid_sym = rb_tracearg_callee_id(arg);
+            let mid = rb_sym2id(mid_sym);
+            // `rb_obj_class` rather than `rb_funcall(self, :class)`: the C API
+            // reports the real class without dispatching, so an object that
+            // overrides `#class` (to raise, or to lie) cannot derail the call
+            // record.
+            let defined_class = rb_obj_class(self_val);
+
+            let param_args = if NIL_P(binding) {
+                Vec::new()
+            } else {
+                collect_and_register_params_streaming(
+                    data,
+                    writer,
+                    encoder,
+                    binding,
+                    defined_class,
+                    mid,
+                )
+            };
+
+            // Encode `self` via streaming encoder.
+            let class_name =
+                cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
+            let text = value_to_string_exception_safe(data, self_val);
+            let self_type = TraceWriter::ensure_type_id(writer, TypeKind::Raw, &class_name);
+            encoder.reset();
+            encoder.write_raw(&text, self_type);
+            let self_cbor = encoder.get_bytes_copy();
+            TraceWriter::register_variable_cbor(writer, "self", &self_cbor);
+            // Also stage `self` as the first call arg so the frontend's
+            // calltrace pane can render the receiver alongside the method
+            // name (matches the Ruby convention of method calls being
+            // dispatched on a receiver).
+            TraceWriter::register_call_arg(writer, "self", &self_cbor);
+
+            let self_var_id = TraceWriter::ensure_variable_id(writer, "self");
+            let self_arg = FullValueRecord {
+                variable_id: self_var_id,
+                value: ValueRecord::None {
+                    type_id: data.error_type_id,
+                },
+            };
+            let mut args = vec![self_arg];
+            if !param_args.is_empty() {
+                args.extend(param_args);
+            }
+            TraceWriter::register_step(writer, Path::new(&path), Line(line));
+            let mut name = cstr_to_string(rb_id2name(mid)).unwrap_or_default();
+            if class_name != "Object" {
+                name = format!("{class_name}#{name}");
+            }
+            let fid = TraceWriter::ensure_function_id(writer, &name, Path::new(&path), Line(line));
+            // Emit the call via register_call (the NimTraceWriter handles args
+            // through preceding register_variable_cbor calls — see lines above
+            // for `self` and per-parameter registration).  add_event is a no-op
+            // for the CTFS multi-stream backend.
+            TraceWriter::register_call(writer, fid, args);
+        } else if (ev & RUBY_EVENT_RETURN) != 0 {
+            TraceWriter::register_step(writer, Path::new(&path), Line(line));
+            let ret = rb_tracearg_return_value(arg);
+            let cbor = encode_ruby_value_to_cbor(data, writer, encoder, ret);
+            TraceWriter::register_variable_cbor(writer, "<return_value>", &cbor);
+            TraceWriter::register_return_cbor(writer, &cbor);
+        } else if (ev & RUBY_EVENT_RAISE) != 0 {
+            let exc = rb_tracearg_raised_exception(arg);
+            let msg = value_to_string_exception_safe(data, exc);
+            TraceWriter::register_special_event(writer, EventLogKind::Error, "", &msg);
         }
-    } else if (ev & RUBY_EVENT_CALL) != 0 {
-        let binding = rb_tracearg_binding(arg);
-
-        let self_val = rb_tracearg_self(arg);
-        let mid_sym = rb_tracearg_callee_id(arg);
-        let mid = rb_sym2id(mid_sym);
-        let defined_class = rb_funcall(self_val, recorder.data.id.class, 0);
-
-        let param_args = if NIL_P(binding) {
-            Vec::new()
-        } else {
-            collect_and_register_params_streaming(
-                &mut recorder.data,
-                &mut **locked_tracer,
-                encoder,
-                binding,
-                defined_class,
-                mid,
-            )
-        };
-
-        // Encode `self` via streaming encoder.
-        let class_name =
-            cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
-        let text = value_to_string_exception_safe(&recorder.data, self_val);
-        let self_type =
-            TraceWriter::ensure_type_id(&mut **locked_tracer, TypeKind::Raw, &class_name);
-        encoder.reset();
-        encoder.write_raw(&text, self_type);
-        let self_cbor = encoder.get_bytes_copy();
-        TraceWriter::register_variable_cbor(&mut **locked_tracer, "self", &self_cbor);
-        // Also stage `self` as the first call arg so the frontend's
-        // calltrace pane can render the receiver alongside the method
-        // name (matches the Ruby convention of method calls being
-        // dispatched on a receiver).
-        TraceWriter::register_call_arg(&mut **locked_tracer, "self", &self_cbor);
-
-        let self_var_id = TraceWriter::ensure_variable_id(&mut **locked_tracer, "self");
-        let self_arg = FullValueRecord {
-            variable_id: self_var_id,
-            value: ValueRecord::None {
-                type_id: recorder.data.error_type_id,
-            },
-        };
-        let mut args = vec![self_arg];
-        if !param_args.is_empty() {
-            args.extend(param_args);
-        }
-        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
-        let mut name = cstr_to_string(rb_id2name(mid)).unwrap_or_default();
-        if class_name != "Object" {
-            name = format!("{}#{}", class_name, name);
-        }
-        let fid = TraceWriter::ensure_function_id(
-            &mut **locked_tracer,
-            &name,
-            Path::new(&path),
-            Line(line),
-        );
-        // Emit the call via register_call (the NimTraceWriter handles args
-        // through preceding register_variable_cbor calls — see lines above
-        // for `self` and per-parameter registration).  add_event is a no-op
-        // for the CTFS multi-stream backend.
-        TraceWriter::register_call(&mut **locked_tracer, fid, args);
-    } else if (ev & RUBY_EVENT_RETURN) != 0 {
-        TraceWriter::register_step(&mut **locked_tracer, Path::new(&path), Line(line));
-        let ret = rb_tracearg_return_value(arg);
-        let cbor =
-            encode_ruby_value_to_cbor(&mut recorder.data, &mut **locked_tracer, encoder, ret);
-        TraceWriter::register_variable_cbor(&mut **locked_tracer, "<return_value>", &cbor);
-        TraceWriter::register_return_cbor(&mut **locked_tracer, &cbor);
-    } else if (ev & RUBY_EVENT_RAISE) != 0 {
-        let exc = rb_tracearg_raised_exception(arg);
-        let msg = value_to_string_exception_safe(&recorder.data, exc);
-        TraceWriter::register_special_event(&mut **locked_tracer, EventLogKind::Error, "", &msg);
-    }
-    recorder.data.in_event_hook = false;
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -1232,10 +1456,10 @@ unsafe extern "C" fn next_step_index(self_val: VALUE) -> VALUE {
     // fired from inside this call cannot deadlock against us.
     let was_in_hook = recorder.data.in_event_hook;
     recorder.data.in_event_hook = true;
-    let index = {
-        let locked_tracer = recorder.tracer.lock().unwrap();
-        TraceWriter::next_step_index(&**locked_tracer)
-    };
+    let index = recorder
+        .tracer
+        .with(|tracer| TraceWriter::next_step_index(&*tracer))
+        .unwrap_or(0);
     recorder.data.in_event_hook = was_in_hook;
     rb_ull2inum(index)
 }
@@ -1325,10 +1549,15 @@ unsafe extern "C" fn register_span_api(self_val: VALUE, spec: VALUE) -> VALUE {
     let outcome = if validation.is_some() {
         validation
     } else {
-        let mut locked_tracer = recorder.tracer.lock().unwrap();
-        match TraceWriter::register_span(&mut **locked_tracer, &span) {
-            Ok(()) => None,
-            Err(e) => Some(format!("failed to record span: {e}")),
+        match recorder
+            .tracer
+            .with(|tracer| TraceWriter::register_span(tracer, &span))
+        {
+            Ok(Ok(())) => None,
+            Ok(Err(e)) => Some(format!("failed to record span: {e}")),
+            Err(RubyRaised) => {
+                Some("failed to record span: interrupted by a Ruby exception".to_string())
+            }
         }
     };
 
