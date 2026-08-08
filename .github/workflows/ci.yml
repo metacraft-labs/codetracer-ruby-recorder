@@ -30,12 +30,10 @@ jobs:
             flavor: windows-diy
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Generate CI token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
           private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
@@ -46,6 +44,11 @@ jobs:
         with:
           env-flavor: ${{ matrix.flavor }}
           gh-token: ${{ steps.app-token.outputs.token }}
+          substituters: ${{ vars.SUBSTITUTERS }}
+          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
+          attic-token: ${{ secrets.ATTIC_TOKEN }}
+          attic-cache: ${{ vars.ATTIC_CACHE }}
+          attic-endpoint: ${{ vars.ATTIC_ENDPOINT }}
 
       - name: Install Ruby dependencies
         run: dev-exec bundle install
@@ -62,7 +65,14 @@ jobs:
             set -euo pipefail
             cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
             nimble install -y stew results
-            nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
+            nim_args=()
+            if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists libzstd; then
+              zstd_cflags="$(pkg-config --cflags libzstd)"
+              zstd_libs="$(pkg-config --libs libzstd)"
+              [ -n "$zstd_cflags" ] && nim_args+=(--passC:"$zstd_cflags")
+              [ -n "$zstd_libs" ] && nim_args+=(--passL:"$zstd_libs")
+            fi
+            nim c -d:release -p:src "${nim_args[@]}" -o:ct-print src/codetracer_ct_print.nim
           '
 
       - name: Build extension
@@ -75,12 +85,10 @@ jobs:
     runs-on: [self-hosted, nixos]
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Generate CI token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
           private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
@@ -91,6 +99,14 @@ jobs:
         with:
           env-flavor: nix
           gh-token: ${{ steps.app-token.outputs.token }}
+          substituters: ${{ vars.SUBSTITUTERS }}
+          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
+          attic-token: ${{ secrets.ATTIC_TOKEN }}
+          attic-cache: ${{ vars.ATTIC_CACHE }}
+          attic-endpoint: ${{ vars.ATTIC_ENDPOINT }}
+
+      - name: Fetch benchmark fixtures
+        run: dev-exec git lfs pull --include="test/benchmarks/fixtures/**"
 
       - name: Build ct-print binary
         run: |
@@ -98,7 +114,14 @@ jobs:
             set -euo pipefail
             cd "${GITHUB_WORKSPACE}/../codetracer-trace-format-nim"
             nimble install -y stew results
-            nim c -d:release -p:src -o:ct-print src/codetracer_ct_print.nim
+            nim_args=()
+            if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists libzstd; then
+              zstd_cflags="$(pkg-config --cflags libzstd)"
+              zstd_libs="$(pkg-config --libs libzstd)"
+              [ -n "$zstd_cflags" ] && nim_args+=(--passC:"$zstd_cflags")
+              [ -n "$zstd_libs" ] && nim_args+=(--passL:"$zstd_libs")
+            fi
+            nim c -d:release -p:src "${nim_args[@]}" -o:ct-print src/codetracer_ct_print.nim
           '
 
       - name: Install Ruby dependencies
@@ -112,7 +135,7 @@ jobs:
 
       - name: Post or update PR comment
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -151,12 +174,10 @@ jobs:
     runs-on: [self-hosted, nixos]
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Generate CI token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
           private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
@@ -167,6 +188,11 @@ jobs:
         with:
           env-flavor: nix
           gh-token: ${{ steps.app-token.outputs.token }}
+          substituters: ${{ vars.SUBSTITUTERS }}
+          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
+          attic-token: ${{ secrets.ATTIC_TOKEN }}
+          attic-cache: ${{ vars.ATTIC_CACHE }}
+          attic-endpoint: ${{ vars.ATTIC_ENDPOINT }}
 
       - name: Build native recorder package
         run: nix build .#codetracer-ruby-recorder

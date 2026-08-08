@@ -26,6 +26,10 @@ package codetracer_ruby_recorder:
     "nimble"
     "capnp"
     "zstd"
+    when defined(linux):
+      "gcc"
+    when defined(macosx):
+      "clang"
     when not defined(windows):
       "pkg-config"
       "openssl"
@@ -48,11 +52,18 @@ package codetracer_ruby_recorder:
       when defined(windows): "dll"
       elif defined(macosx): "dylib"
       else: "so"
+    const dylibName =
+      when defined(windows): "codetracer_ruby_recorder"
+      else: "libcodetracer_ruby_recorder"
     const extensionBinary =
-      "gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder." &
-      dylibExt
+      "gems/codetracer-ruby-recorder/ext/native_tracer/target/release/" &
+      dylibName & "." & dylibExt
     const manifestPath =
       "gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml"
+    let cargoCompilerEnv: seq[(string, string)] =
+      when defined(windows): @[]
+      elif defined(macosx): @[("CC", "clang")]
+      else: @[("CC", "gcc")]
 
     let extensionBuild = cargo.build(
       release = true,
@@ -63,7 +74,8 @@ package codetracer_ruby_recorder:
         "gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.lock",
         "gems/codetracer-ruby-recorder/ext/native_tracer/src"
       ],
-      extraOutputs = @[extensionBinary])
+      extraOutputs = @[extensionBinary],
+      extraEnv = cargoCompilerEnv)
     discard collect("default", @[extensionBuild])
 
     # ---- Rust-side cargo tests ---------------------------------------
@@ -77,7 +89,8 @@ package codetracer_ruby_recorder:
       ],
       extraOutputs = @[
         "gems/codetracer-ruby-recorder/ext/native_tracer/target/debug/deps"
-      ])
+      ],
+      extraEnv = cargoCompilerEnv)
 
     let cargoTestsRun = cargo.test(
       manifestPath = manifestPath,
@@ -87,7 +100,8 @@ package codetracer_ruby_recorder:
         manifestPath,
         "gems/codetracer-ruby-recorder/ext/native_tracer/src",
         "gems/codetracer-ruby-recorder/ext/native_tracer/target/debug/deps"
-      ])
+      ],
+      extraEnv = cargoCompilerEnv)
 
     # Collection name deviation: this recorder's repo root has a
     # ``test/`` directory (Ruby's MiniTest convention) that shadows

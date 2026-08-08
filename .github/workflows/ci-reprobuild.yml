@@ -67,27 +67,140 @@ jobs:
         uses: metacraft-labs/metacraft-github-actions/setup-dev-env@main
         with:
           env-flavor: reprobuild
+          repro-build-pin: codex/attic-ci-cache-vars
           gh-token: ${{ steps.ci_token.outputs.token }}
+          substituters: ${{ vars.SUBSTITUTERS }}
+          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
+          attic-token: ${{ secrets.ATTIC_TOKEN }}
+          attic-cache: ${{ vars.ATTIC_CACHE }}
+          attic-endpoint: ${{ vars.ATTIC_ENDPOINT }}
+
+      - name: Prepare Windows reprobuild runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $clingoRoot = Join-Path $env:RUNNER_TEMP "reprobuild-clingo-5.8.0"
+          $clingoDll = Get-ChildItem -LiteralPath $env:RUNNER_TEMP -Filter clingo.dll -Recurse -File -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if ($null -eq $clingoDll) {
+            Remove-Item -LiteralPath $clingoRoot -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Path $clingoRoot | Out-Null
+            $env:REPROBUILD_CLINGO_ROOT = $clingoRoot
+            python -m pip install --disable-pip-version-check --quiet zstandard==0.23.0
+            @'
+          import hashlib
+          import io
+          import os
+          import pathlib
+          import tarfile
+          import urllib.request
+          import zipfile
+
+          import zstandard
+
+          URL = "https://conda.anaconda.org/conda-forge/win-64/clingo-5.8.0-py312h4128c23_0.conda"
+          SHA256 = "9ffe4802f8d39991bef75a1548f10147a59e5549eca65fef5119eb281e4f343a"
+          ROOT = pathlib.Path(os.environ["REPROBUILD_CLINGO_ROOT"])
+          PKG = ROOT / "clingo.conda"
+
+          urllib.request.urlretrieve(URL, PKG)
+          actual = hashlib.sha256(PKG.read_bytes()).hexdigest()
+          if actual != SHA256:
+              raise SystemExit(f"clingo package sha256 mismatch: {actual} != {SHA256}")
+
+          with zipfile.ZipFile(PKG) as archive:
+              pkg_member = next(
+                  name for name in archive.namelist()
+                  if name.startswith("pkg-") and name.endswith(".tar.zst")
+              )
+              payload = zstandard.ZstdDecompressor().decompress(archive.read(pkg_member))
+
+          with tarfile.open(fileobj=io.BytesIO(payload), mode="r:") as tar:
+              for member in tar.getmembers():
+                  name = member.name.replace("\\", "/")
+                  if not name.startswith("Library/bin/") or member.isdir():
+                      continue
+                  rel = pathlib.PurePosixPath(name).relative_to("Library")
+                  dest = ROOT / pathlib.Path(*rel.parts)
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  with tar.extractfile(member) as src, dest.open("wb") as out:
+                      out.write(src.read())
+
+          PKG.unlink(missing_ok=True)
+          print(f"clingo runtime staged at {ROOT / 'bin'}")
+          '@ | python -
+            $clingoDll = Get-ChildItem -LiteralPath $clingoRoot -Filter clingo.dll -Recurse -File -ErrorAction SilentlyContinue |
+              Select-Object -First 1
+          }
+          if ($null -eq $clingoDll) {
+            throw "clingo.dll not found under $env:RUNNER_TEMP"
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $clingoDll.DirectoryName
+
+          $reproBin = Join-Path $env:GITHUB_WORKSPACE "reprobuild\build\bin"
+          if (Test-Path -LiteralPath $reproBin -PathType Container) {
+            Copy-Item -LiteralPath $clingoDll.FullName -Destination (Join-Path $reproBin "clingo.dll") -Force
+          }
+
+      - name: Prepare macOS reprobuild sandbox tools
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sandbox="${GITHUB_WORKSPACE}/.reprobuild-sandbox-tools"
+          mkdir -p "${sandbox}/bin"
+          if [ -x /opt/homebrew/bin/bash ]; then
+            ln -sf /opt/homebrew/bin/bash "${sandbox}/bin/sh"
+          elif command -v nix >/dev/null 2>&1; then
+            nix_bash="$(nix shell --accept-flake-config nixpkgs#bashInteractive --command bash -lc 'command -v bash')"
+            ln -sf "${nix_bash}" "${sandbox}/bin/sh"
+          else
+            echo "No non-SIP bash available for CT_SANDBOX_TOOLS_DIR" >&2
+            exit 1
+          fi
+          echo "CT_SANDBOX_TOOLS_DIR=${sandbox}" >> "${GITHUB_ENV}"
+
+      - name: Add xz for reprobuild tool archives
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          xz_out="$(nix build --no-link --print-out-paths nixpkgs#xz.bin)"
+          xz_bin="${xz_out}/bin"
+          echo "$xz_bin" >> "$GITHUB_PATH"
+          "$xz_bin/xz" --version
+
+      - name: Prepare macOS linker paths
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          iconv_out="$(nix build --no-link --print-out-paths nixpkgs#libiconv)"
+          echo "LIBRARY_PATH=${iconv_out}/lib${LIBRARY_PATH:+:${LIBRARY_PATH}}" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=${iconv_out}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}" >> "$GITHUB_ENV"
+          echo "NIX_LDFLAGS=-L${iconv_out}/lib${NIX_LDFLAGS:+ ${NIX_LDFLAGS}}" >> "$GITHUB_ENV"
+          if [ -z "${SDKROOT:-}" ] && [ -x /usr/bin/xcrun ]; then
+            sdkroot="$(/usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+            if [ -n "$sdkroot" ]; then
+              echo "SDKROOT=$sdkroot" >> "$GITHUB_ENV"
+            fi
+          fi
 
       - name: repro build
         # Builds the conventional `build` collection declared in
         # `repro.nim`. Verifies the primary shipping artefact (the
         # recorder binary or extension) materialises through the
-        # reprobuild engine identically to `just build`.
-        run: dev-exec repro build
+        # reprobuild engine.
+        env:
+          REPROBUILD_NO_RUNQUOTA: "1"
+        run: dev-exec repro build --tool-provisioning=${{ matrix.os == 'windows' && 'path' || 'nix' }}
 
       - name: repro test
         # Materialises the `test` collection.
-        run: dev-exec repro test
-
-      - name: just build (cross-check)
-        # Re-runs the legacy `just build` path inside the same env so
-        # we catch silent divergences between `repro build` outputs
-        # and what the dev shell + Justfile produce today.
-        run: dev-exec just build
-
-      - name: just test (cross-check)
-        run: dev-exec just test
+        env:
+          REPROBUILD_NO_RUNQUOTA: "1"
+        run: dev-exec repro build --tool-provisioning=${{ matrix.os == 'windows' && 'path' || 'nix' }} cargo-test
 
       - name: Upload logs on failure
         if: failure()

@@ -7,7 +7,15 @@ require 'open3'
 require 'rbconfig'
 require 'tmpdir'
 
+module CtPrintJsonParser
+  def parse_ct_print_json(stdout)
+    JSON.parse(stdout.dup.force_encoding(Encoding::UTF_8).scrub(''))
+  end
+end
+
 class HCRTest < Minitest::Test
+  include CtPrintJsonParser
+
   FIXTURE_DIR = File.expand_path('fixtures/hcr', __dir__)
 
   # Path to the ct-print binary from codetracer-trace-format-nim, used to
@@ -156,7 +164,7 @@ class HCRTest < Minitest::Test
       if File.exist?(CT_PRINT)
         stdout, stderr, st = Open3.capture3(CT_PRINT, '--json-events', ct_file)
         assert st.success?, "ct-print failed: #{stderr}"
-        events = JSON.parse(stdout)
+        events = parse_ct_print_json(stdout)
         step_events = events.select { |ev| ev['type'] == 'step' }
         assert step_events.size > 0, 'CTFS trace should contain Step events'
       end
@@ -211,6 +219,8 @@ end
 # additionally verify the binary trace in a dedicated test.
 # ---------------------------------------------------------------------------
 class TestHCRTraceContent < Minitest::Test
+  include CtPrintJsonParser
+
   FIXTURE_DIR = File.expand_path('fixtures/hcr', __dir__)
   # EXEEXT is "" on Unix and ".exe" on Windows.
   CT_PRINT    = ENV['CT_PRINT'] ||
@@ -295,7 +305,7 @@ class TestHCRTraceContent < Minitest::Test
     stdout, _stderr, st = Open3.capture3(CT_PRINT, '--json-events', ct_file)
     return nil unless st.success?
 
-    JSON.parse(stdout)
+    parse_ct_print_json(stdout)
   end
 
   # Build helper structures from the pure-recorder trace.json array.
