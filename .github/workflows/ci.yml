@@ -26,7 +26,7 @@ jobs:
             runs-on: [self-hosted, aarch64-darwin]
             flavor: nix
           - label: windows
-            runs-on: [self-hosted, Windows, X64, nixos-equivalent]
+            runs-on: [self-hosted, Windows, X64, dev-env-ready]
             flavor: windows-diy
     steps:
       - uses: actions/checkout@v4
