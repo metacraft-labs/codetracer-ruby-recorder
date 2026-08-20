@@ -1,0 +1,149 @@
+# =============================================================================
+# Launcher <-> recorder compatibility contract for codetracer-ruby-recorder.
+#
+# WHAT THIS FILE IS
+#   The checked-in contract between this recorder and the `ct` launcher, read
+#   at test time by the shared end-to-end driver
+#   `codetracer/ci/test/launcher-recorder-e2e.sh`
+#   (design: codetracer-specs/Testing/Launcher-Recorder-Compatibility-Tests.md
+#   §5.6; this edge is milestone LRC-4, the schema is LRC-2's).
+#
+#   The driver builds the real launcher, the real desktop core and this
+#   recorder, stages the real `codetracer-desktop` component bundle, and then
+#   runs each scenario below through the LAUNCHER binary, validating the
+#   produced trace with `ct-print` from codetracer-trace-format-nim.
+#
+#   Everything the driver asserts comes from this file.  That is the point: if
+#   this recorder changes its executable name, its output layout, the
+#   extensions it must be routed for, or the shape of the traces it produces,
+#   this file has to change in the SAME commit -- and the launcher/desktop side
+#   finds out on its next cross-repo run instead of silently diverging.
+#
+#   The schema (`launcher-compat/v1`) is documented normatively in the header of
+#   codetracer-python-recorder/cross-repo/launcher-compat.yml.  Read that file
+#   for the YAML subset, the key list and the rules `validate_fixture()`
+#   enforces; only what is SPECIFIC TO RUBY is explained here.
+#
+# WHY `discovery.method: detect-siblings`
+#   The desktop core resolves this recorder with
+#   `findTool("codetracer-ruby-recorder")` -- a plain PATH search
+#   (`rubyRecorderPath`, codetracer/src/common/paths.nim, with
+#   CODETRACER_RUBY_RECORDER_PATH as the override).  Unlike the python
+#   recorder, whose console script lives in a venv the dev shell deliberately
+#   keeps off PATH, this recorder's CLI wrapper sits at a fixed repo path and
+#   `codetracer/scripts/detect-siblings.sh` already prepends
+#   `gems/codetracer-ruby-recorder/bin` for exactly this reason.  So no extra
+#   `path-prepend` is needed -- verified, not assumed: the driver asserts the
+#   `codetracer-ruby-recorder` it resolved lives INSIDE this checkout.
+#
+# WHY `discovery.runtime: ruby`
+#   `recorder_dispatch.nim` models this language's toolchain as TWO artifacts:
+#   the recorder, and the `ruby` interpreter `ct` actually spawns
+#   (`ruby <recorder-script> --out-dir <dir> <program>`; the recorder is a Ruby
+#   script, so the process is the interpreter).  Neither codetracer dev shell
+#   ships `ruby` in its CI flavour, and `detect-siblings.sh` does not provide
+#   one, so the driver takes it from THIS repo's own pinned dev shell.  That is
+#   the correct source rather than any `ruby` on PATH: `ext/native_tracer` is a
+#   cdylib built against one interpreter's ABI, and `load_extension!` `require`s
+#   it into whichever `ruby` is running.  The driver hard-fails if the name
+#   cannot be resolved, and also if it resolves to something that is not
+#   flake-pinned -- `direnv exec` augments the ambient PATH rather than
+#   replacing it, so without that second check a runtime this flake does not
+#   ship would be satisfied by whatever the host happens to carry.
+#
+# WHY `recorder.default-out-dir: .`
+#   The driver proves the core passed `--out-dir` by showing this recorder did
+#   NOT write to its own default location.  That location is per-recorder, and
+#   for this one it is the INHERITED WORKING DIRECTORY itself:
+#   `parse_argv_and_trace_ruby_file` resolves
+#   `options[:out_dir] || ENV['CODETRACER_RUBY_RECORDER_OUT_DIR'] || Dir.pwd`
+#   (gems/codetracer-ruby-recorder/lib/codetracer_ruby_recorder.rb).  `.` is the
+#   spelling for that case; the driver then requires the scratch directory the
+#   recording ran in to be completely empty, which is strictly stronger than
+#   the "a named subdirectory is absent" form the other recorders use.
+#
+#   KNOWN DISCREPANCY, recorded rather than papered over: this recorder's own
+#   `--help` says `--out-dir` "defaults to ./ct-traces", which is what
+#   Recorder-CLI-Conventions.md §3 documents as the convention -- but the code
+#   above defaults to `Dir.pwd`, and `tests/verify-cli-convention-no-silent-skip.sh`
+#   only checks that the string `--out-dir` appears in the help text, so the two
+#   have drifted.  This file describes what the recorder DOES; making the code
+#   and the help agree is a change for this repo to make on its own terms, and
+#   when it does, this line becomes `ct-traces`.
+#
+# WHY THE SAMPLE PRINTS ${CODETRACER_COMPONENT_DIR}
+#   It is the gate's only proof of hop 1 -- see the sample's own header and
+#   `validate_fixture()` in the driver.
+# =============================================================================
+
+schema: launcher-compat/v1
+
+recorder:
+  repo: codetracer-ruby-recorder
+  lang: ruby
+  binary: codetracer-ruby-recorder
+  version-prefix: "codetracer-ruby-recorder "
+  default-out-dir: .
+
+build:
+  # `just build-extension` compiles gems/codetracer-ruby-recorder/ext/native_tracer
+  # and normalises the cdylib to the name `require` expects.  The artifact is
+  # the compiled extension and NOT the CLI wrapper: the wrapper is checked in,
+  # so naming it would make both this driver's post-build check and
+  # build-siblings.sh's "already built" short-circuit pass on a tree where
+  # nothing was ever compiled.  `.so` is the Linux DLEXT; this gate is
+  # Linux-x86_64 for v1 (design "Out of scope (v1): Non-Linux hosts").
+  sibling-key: codetracer-ruby-recorder
+  artifact: gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder.so
+
+discovery:
+  method: detect-siblings
+  runtime:
+    - ruby
+
+scenarios:
+  - id: record-ruby-happy-path
+    kind: record
+    command: record
+    extension: .rb
+    sample: cross-repo/samples/launcher_compat_sample.rb
+    recorder-flag:
+      - --out-dir
+    expect:
+      exit-code: 0
+      trace-glob: "*.ct"
+      min-events: 20
+      function:
+        - accumulate
+        - describe_launcher_route
+        - main
+      stdout-contains:
+        - "launcher-recorder-e2e: total=15"
+        - "launcher-recorder-e2e: component-dir=${CODETRACER_COMPONENT_DIR}"
+
+  - id: negative-unhandled-extension
+    kind: negative-routing
+    command: record
+    extension: .rs
+    sample: cross-repo/samples/launcher_compat_unhandled.rs
+    expect:
+      exit-code: nonzero
+      stderr-contains:
+        - "no component handles"
+        - "record"
+
+  - id: launcher-version-shape
+    kind: launcher-version
+    expect:
+      exit-code: 0
+      stdout-matches: "^ct [0-9]+\.[0-9]+"
+
+  - id: empty-component-root-breaks-routing
+    kind: isolation
+    command: record
+    extension: .rb
+    sample: cross-repo/samples/launcher_compat_sample.rb
+    expect:
+      exit-code: nonzero
+      stderr-contains:
+        - "no component handles"

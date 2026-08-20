@@ -1,0 +1,77 @@
+# =============================================================================
+# Recorder -> launcher end-to-end compatibility gate (THE RECORDER EDGE).
+#
+# THIN CALLER.  All of the work -- building the real launcher, the real
+# codetracer desktop core and THIS recorder, staging the codetracer-desktop
+# component bundle, running `ct record` through the LAUNCHER binary and decoding
+# the produced trace with `ct-print` -- lives in one reusable workflow so the
+# assertions can never drift between the three trigger directions:
+#
+#   metacraft-labs/codetracer/.github/workflows/launcher-recorder-e2e.yml
+#
+# Design: codetracer-specs/Testing/Launcher-Recorder-Compatibility-Tests.md
+#         section 6 "CI wiring: three trigger edges, one reusable workflow".
+# Milestone: LRC-4 (the ruby edge of the fan-out; the workflow itself is LRC-3).
+#
+# WHAT THIS EDGE PINS.  This repository is the one under test, so it is pinned
+# to `github.sha`; the launcher and the desktop core are taken at their mainline
+# branch.  That is the design's provisional v1 "branch-ref" pinning; milestone
+# LRC-6 decides whether to move every sibling onto the reproducible
+# workspace-lock SHA instead.
+#
+# WHAT IT ASSERTS ABOUT THIS REPO.  Everything comes from this repo's own
+# checked-in contract fixture, `cross-repo/launcher-compat.yml`: the sample
+# program, the extensions the launcher must route, the recorder flags the
+# desktop core must pass, and the expected decoded-trace shape.  If this
+# recorder changes its CLI wrapper's name, its output layout, its `--version`
+# banner or the extensions it serves, that file has to change in the SAME
+# commit -- the driver refuses to run against a fixture that disagrees with it,
+# and rejects an INCOMPLETE fixture before anything is built.
+#
+# TWO THINGS THIS EDGE NEEDS THAT THE PYTHON PILOT DID NOT, both declared in the
+# fixture rather than hardcoded anywhere:
+#   * the compiled native extension.  `cross-repo/launcher-compat.yml`'s
+#     `build.artifact` names
+#     gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder.so
+#     -- the thing `just build-extension` produces -- and NOT the checked-in CLI
+#     wrapper, so a run in which nothing was compiled fails loudly instead of
+#     being short-circuited as "already built";
+#   * a `ruby` interpreter.  `ct` spawns `ruby <recorder-script> …`, and neither
+#     codetracer dev shell ships one in its CI flavour, so the driver takes
+#     `ruby` from THIS repo's own pinned dev shell -- which is also the only
+#     correct choice, since the native extension is bound to that interpreter's
+#     ABI.
+#
+# WHY IT IS NOT `launcher-integration.yml`.  That workflow is retained as a fast
+# pre-check, but it asserts only that `ct --version` matches
+# `^ct [0-9]+\.[0-9]+` and never runs `ct record`, so it is NON-AUTHORITATIVE
+# for the record contract.  This gate is the authority.
+#
+# NO PATH FILTERS, deliberately: a change anywhere in this recorder can break
+# the record contract.
+# =============================================================================
+
+name: launcher-recorder-e2e
+
+on:
+  push:
+    branches: [main, dev, stable]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: ruby
+    uses: metacraft-labs/codetracer/.github/workflows/launcher-recorder-e2e.yml@dev
+    with:
+      edge: codetracer-ruby-recorder@${{ github.sha }} -> launcher
+      recorder-repo: codetracer-ruby-recorder
+      recorder-lang: ruby
+      recorder-ref: ${{ github.sha }}
+    # `inherit` rather than a named list: the CI Token Provider App ID is held
+    # as a repository SECRET here and as a repository VARIABLE elsewhere in the
+    # org, and the reusable workflow accepts either.
+    secrets: inherit
