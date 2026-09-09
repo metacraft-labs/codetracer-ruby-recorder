@@ -55,3 +55,22 @@ RS-M6 (request spans) — two more things that cost real time:
   CodeTracer middleware live, so an eight-request Sinatra session is ~750 steps
   in three files. (The Python recorder needed a whole `trace_filter.toml` for
   the same milestone.)
+
+Correlation markers — the shape to copy, and the one trap:
+
+* The Ruby facade never calls `to_s`. `CodeTracer::Native.mark_correlation_send`
+  hands `key:` / `show:` to the extension UNCONVERTED, because those are the
+  traced program's own objects: converting them in Ruby would let an exploding
+  `to_s` kill a program that only annotated itself. The extension renders them
+  with `value_to_string_exception_safe`, before the tracer lock, which is also
+  what lets a NUL-containing key through instead of raising.
+  (`register_span`'s `metadata` DOES call `to_s` in Ruby — those are the
+  middleware's own strings, not user values. The asymmetry is deliberate.)
+* Nothing here decides what a marker IS. The `MarkerPayload`, the label
+  interning table and the `corrmark.ns` index are built once in the shared
+  writer library so ~20 recorders cannot drift; a drifted payload would produce
+  markers that are INVISIBLE rather than broken. Do not add a label cache to
+  this repo — hoist `ensure_marker_id` at the call site and pass `marker_id:`.
+* `ct print --json-events` does NOT carry the IO metadata slot, so it cannot see
+  markers. `ct print --markers --json-out` is the view that decodes them;
+  `test/ct_print_support.rb#ct_print_markers` wraps it.

@@ -1570,6 +1570,258 @@ unsafe extern "C" fn register_span_api(self_val: VALUE, spec: VALUE) -> VALUE {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Correlation markers
+// ---------------------------------------------------------------------------
+//
+// A *correlation marker* declares that a value crossed a boundary — a queue, a
+// socket, an IPC channel — so a debugger can pair the `send` side with the
+// `recv` side and a consumer can ask "does this recording cover span X?"
+// without decoding the event stream.  Spec:
+// `codetracer-specs/Testing/CTFS-Correlation-Marker-Contract.md` §§10, 11a and
+// `codetracer-specs/GUI/Debugging-Features/Correlation-Markers.md` §2.4.
+//
+// **Nothing about what a marker IS lives here.**  The `MarkerPayload` document,
+// the label-interning table and the `corrmark.ns` index are built once, in the
+// shared writer library, precisely so that ~20 CTFS recorders cannot drift into
+// writing payloads that are *unreadable* rather than merely degraded (§11a).
+// These entry points marshal arguments and nothing else.
+//
+// Three properties are load-bearing and are the reason this code is shaped like
+// `register_span_api` rather than like the obvious thing:
+//
+// * **No step is minted** (§11a.6).  The marker attaches to the enclosing step.
+//   That is the writer's behaviour, not ours — we simply do not call
+//   `register_step` — and `test/test_correlation_markers.rb` pins it by
+//   recording the same program with and without markers and comparing step
+//   counts.
+// * **Every Ruby value is stringified BEFORE the tracer lock is taken**
+//   (§11a.5).  `key:` is whatever the traced program passed, so rendering it is
+//   arbitrary user code: it may raise — which with a live `MutexGuard` wedges
+//   the process forever (see the `tracer_lock` module docs) — and it may execute
+//   traced lines, which would re-enter the event hook and self-deadlock on the
+//   non-reentrant lock.  `in_event_hook` closes the second door while the
+//   conversions run and is restored on EVERY path.
+// * **Pointer + length, never a C string** (§11a.5).  A Ruby String may legally
+//   contain a NUL byte and `rb_string_value_cstr` RAISES on one — a known wedge.
+//   `value_to_string_exception_safe` reads the string's buffer directly, and the
+//   shared library's entry points take a length, so the byte survives into the
+//   payload (as ` `) instead of truncating the key or hanging the process.
+
+/// A Ruby Integer as a `u64`, or `None` when it is absent or Ruby refused.
+///
+/// `rb_num2ull` RAISES — `RangeError` for a negative or oversized Integer,
+/// `TypeError` for a non-numeric — and a raise here `longjmp`s straight out of
+/// the entry point, skipping the `in_event_hook` restore and leaving the
+/// recorder permanently convinced it is inside a hook (i.e. silently deaf).
+/// [`protect`] turns that into a `None` the caller can default.
+unsafe fn ruby_integer_to_u64(val: VALUE) -> Option<u64> {
+    if NIL_P(val) {
+        return None;
+    }
+    protect(|| rb_num2ull(val) as u64).ok()
+}
+
+/// The marshalled form of a `mark_correlation` spec Hash.
+///
+/// Every field is an owned Rust `String` by the time this exists, which is the
+/// point: it is constructed OUTSIDE the tracer lock and used inside it, so no
+/// Ruby code can run while the writer is held.
+struct MarkerSpec {
+    direction: String,
+    boundary: String,
+    key_value: String,
+    show_value: String,
+    description: String,
+    key_text: String,
+    show_text: String,
+    /// A previously interned label id.  `Some` selects the by-id path, which
+    /// is the primary one (§11a.4): a caller hoists `ensure_marker_id` out of
+    /// its hot path so the per-crossing call does no string lookup.
+    marker_id: Option<u64>,
+}
+
+/// Intern a correlation-marker boundary label and return its id.
+///
+/// Returns the id as an Integer, or `nil` when it could not be interned —
+/// because the writer refused, or because Ruby raised while rendering `label`.
+/// `nil` rather than an exception on purpose: a marker is an annotation a
+/// program makes about itself, and a recorder that aborted the traced program
+/// because it could not annotate it would be worse than one that recorded
+/// nothing.  The caller's fallback is the string-label path, which costs a
+/// lookup per crossing but still writes a correct marker.
+unsafe extern "C" fn ensure_marker_id_api(self_val: VALUE, label: VALUE) -> VALUE {
+    let recorder = &mut *get_recorder(self_val);
+
+    let was_in_hook = recorder.data.in_event_hook;
+    recorder.data.in_event_hook = true;
+
+    // Rendered before the lock — `label` may be any object, so `to_s` here is
+    // arbitrary user code.
+    let label_string = value_to_string_exception_safe(&recorder.data, label);
+    let interned = recorder
+        .tracer
+        .with(|tracer| TraceWriter::ensure_marker_id(tracer, &label_string));
+
+    recorder.data.in_event_hook = was_in_hook;
+
+    match interned {
+        Ok(Ok(id)) => rb_ull2inum(id),
+        Ok(Err(e)) => {
+            if debug_enabled() {
+                eprintln!("codetracer-ruby-recorder: could not intern marker label: {e}");
+            }
+            Qnil.into()
+        }
+        Err(RubyRaised) => Qnil.into(),
+    }
+}
+
+/// Declare that a value crossed a boundary.
+///
+/// `spec` is a Hash with symbol keys — `direction`, `boundary`, `key_value`,
+/// and optionally `show_value`, `description`, `key_text`, `show_text` and
+/// `marker_id`; `CodeTracer::Native` owns the public spelling and the defaults.
+///
+/// Returns `true` when the marker was recorded and `false` when the writer
+/// refused it or Ruby raised while rendering one of the values.  It does NOT
+/// raise, for the reason given on [`ensure_marker_id_api`]: this call sits in
+/// the traced program's own control flow, unlike `register_span`, which a
+/// middleware makes on the program's behalf.  A refusal is reported on stderr
+/// under `CODETRACER_RUBY_RECORDER_DEBUG`, so a `false` is diagnosable rather
+/// than merely silent.
+///
+/// A non-Hash argument DOES raise: that is a caller mistake, not a recording
+/// failure, and it can only be reached by bypassing the facade.
+unsafe extern "C" fn mark_correlation_api(self_val: VALUE, spec: VALUE) -> VALUE {
+    let recorder = &mut *get_recorder(self_val);
+
+    if !RB_TYPE_P(spec, rb_sys::ruby_value_type::RUBY_T_HASH) {
+        raise_io_error("mark_correlation expects a Hash with symbol keys");
+    }
+
+    let was_in_hook = recorder.data.in_event_hook;
+    recorder.data.in_event_hook = true;
+
+    // The whole extraction runs under one `protect`, not just the individual
+    // `to_s` dispatches: `rb_hash_aref` itself can execute Ruby (a Hash with a
+    // `default_proc`), so "the conversions cannot escape" has to be a property
+    // of the block rather than of each site in it.
+    let data = &recorder.data;
+    let marshalled = protect(|| MarkerSpec {
+        direction: spec_string(data, spec, "direction"),
+        boundary: spec_string(data, spec, "boundary"),
+        key_value: spec_string(data, spec, "key_value"),
+        show_value: spec_string(data, spec, "show_value"),
+        description: spec_string(data, spec, "description"),
+        key_text: spec_string(data, spec, "key_text"),
+        show_text: spec_string(data, spec, "show_text"),
+        marker_id: ruby_integer_to_u64(spec_value(spec, "marker_id")),
+    });
+
+    let outcome = match marshalled {
+        Err(RubyRaised) => Err(RubyRaised),
+        Ok(marker) => recorder.tracer.with(|tracer| match marker.marker_id {
+            // The by-id path still carries the label, because the on-disk
+            // payload spells `boundary_id` as text for the debugger while the
+            // index keys on the id.
+            Some(id) => TraceWriter::mark_correlation_by_id(
+                tracer,
+                id,
+                &marker.boundary,
+                &marker.direction,
+                &marker.key_value,
+                &marker.show_value,
+                &marker.description,
+                &marker.key_text,
+                &marker.show_text,
+            ),
+            None => TraceWriter::mark_correlation(
+                tracer,
+                &marker.direction,
+                &marker.boundary,
+                &marker.key_value,
+                &marker.show_value,
+                &marker.description,
+                &marker.key_text,
+                &marker.show_text,
+            ),
+        }),
+    };
+
+    // Restored before anything can leave this function, on every path.
+    recorder.data.in_event_hook = was_in_hook;
+
+    match outcome {
+        Ok(Ok(())) => Qtrue.into(),
+        Ok(Err(e)) => {
+            if debug_enabled() {
+                eprintln!("codetracer-ruby-recorder: could not record correlation marker: {e}");
+            }
+            Qfalse.into()
+        }
+        Err(RubyRaised) => {
+            if debug_enabled() {
+                eprintln!(
+                    "codetracer-ruby-recorder: correlation marker abandoned — a Ruby exception \
+                     was raised while rendering its values"
+                );
+            }
+            Qfalse.into()
+        }
+    }
+}
+
+/// Declare that this recording covers a distributed-trace span.
+///
+/// The ids arrive as lowercase-or-uppercase hex (32 characters for `trace_id`,
+/// 16 for `span_id`) because that is what every OTel API hands a Ruby program.
+/// The hex→bytes conversion is done by the SHARED library, not here: the
+/// correlation index keys on the wire bytes, so a recorder that hashed the hex
+/// rendering instead would build an index that is present, correct-looking, and
+/// permanently unqueryable — the exact silent-failure class this whole contract
+/// exists to remove.
+///
+/// Returns `true` on success and `false` when the writer refused the marker or
+/// the ids were not valid hex; see [`mark_correlation_api`] for why it does not
+/// raise.
+unsafe extern "C" fn mark_span_coverage_api(
+    self_val: VALUE,
+    trace_id_hex: VALUE,
+    span_id_hex: VALUE,
+    wall_time_unix_ns: VALUE,
+    monotonic_time_ns: VALUE,
+) -> VALUE {
+    let recorder = &mut *get_recorder(self_val);
+
+    let was_in_hook = recorder.data.in_event_hook;
+    recorder.data.in_event_hook = true;
+
+    // Same rule as everywhere else on this path: every Ruby->Rust conversion
+    // finishes before the tracer lock is taken.
+    let trace_id = value_to_string_exception_safe(&recorder.data, trace_id_hex);
+    let span_id = value_to_string_exception_safe(&recorder.data, span_id_hex);
+    let wall = ruby_integer_to_u64(wall_time_unix_ns).unwrap_or(0);
+    let monotonic = ruby_integer_to_u64(monotonic_time_ns).unwrap_or(0);
+
+    let outcome = recorder.tracer.with(|tracer| {
+        TraceWriter::mark_span_coverage_hex(tracer, &trace_id, &span_id, wall, monotonic)
+    });
+
+    recorder.data.in_event_hook = was_in_hook;
+
+    match outcome {
+        Ok(Ok(())) => Qtrue.into(),
+        Ok(Err(e)) => {
+            if debug_enabled() {
+                eprintln!("codetracer-ruby-recorder: could not record span coverage: {e}");
+            }
+            Qfalse.into()
+        }
+        Err(RubyRaised) => Qfalse.into(),
+    }
+}
+
 /// Decode the span stream of the `.ct` container at `path` into JSON.
 ///
 /// The READ counterpart of [`register_span_api`], present so this recorder's own
@@ -1671,6 +1923,28 @@ pub extern "C" fn Init_codetracer_ruby_recorder() {
             c"current_thread_id".as_ptr() as *const c_char,
             ruby_method(current_thread_id as *const ()),
             0,
+        );
+        // Correlation markers.  See the section above; `CodeTracer::Native`
+        // is the process-wide facade over these, and it is what user code
+        // spells (`mark_correlation_send` / `_recv`), because a traced program
+        // never sees the recorder object.
+        rb_define_method(
+            class,
+            c"ensure_marker_id".as_ptr() as *const c_char,
+            ruby_method(ensure_marker_id_api as *const ()),
+            1,
+        );
+        rb_define_method(
+            class,
+            c"mark_correlation".as_ptr() as *const c_char,
+            ruby_method(mark_correlation_api as *const ()),
+            1,
+        );
+        rb_define_method(
+            class,
+            c"mark_span_coverage".as_ptr() as *const c_char,
+            ruby_method(mark_span_coverage_api as *const ()),
+            4,
         );
         // Read side — singleton methods, because inspecting a finished
         // container is not an operation on a live recording.

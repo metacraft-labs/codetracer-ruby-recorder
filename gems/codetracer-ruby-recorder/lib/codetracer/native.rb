@@ -1,6 +1,17 @@
 # frozen_string_literal: true
 
-# RS-M6 — span emission into the recorded `.ct` container.
+# The process-wide facade over the native recorder.
+#
+# Two things live here, and they share the facade for the same reason: user code
+# never sees the recorder object, so both need a process-wide seam that is a
+# no-op when nothing is being recorded.
+#
+#   * **Spans** (RS-M6) — bounded, labeled intervals of execution, written by
+#     `CodeTracer::Rack::Middleware` in a different gem.
+#   * **Correlation markers** — boundary crossings declared by the traced
+#     program itself; see the section further down.
+#
+# ## Spans
 #
 # A *span* is a bounded, labeled interval of execution — an HTTP request, a
 # process, a test.  Since RS-M1 the trace container carries them in its own
@@ -174,6 +185,140 @@ module CodeTracer
           concurrent_with_siblings: concurrent_with_siblings,
           metadata: metadata.map { |key, value| [key.to_s, value.to_s] }
         )
+      end
+
+      # --- Correlation markers -------------------------------------------
+      #
+      # A *correlation marker* records that a value crossed a boundary — a
+      # queue, a socket, an IPC channel — so the debugger can pair the sending
+      # side with the receiving side, and so a consumer can ask "does this
+      # recording cover span X?" through the container's `corrmark.ns` index
+      # instead of decoding the event stream.
+      #
+      # Public spellings per
+      # `codetracer-specs/GUI/Debugging-Features/Correlation-Markers.md` §2.4:
+      #
+      #   CodeTracer::Native.mark_correlation_send('order-processing',
+      #                                            key: msg.id, show: msg.body,
+      #                                            desc: 'Outbound order')
+      #   # ... on the other side ...
+      #   CodeTracer::Native.mark_correlation_recv('order-processing',
+      #                                            key: envelope.id,
+      #                                            show: envelope.body)
+      #
+      # ## Three things this facade deliberately does NOT do
+      #
+      # 1. **It does not call `to_s` on anything.**  `key:` and `show:` are
+      #    whatever the traced program passed, and an object whose `to_s`
+      #    raises must not take the program down just because it was being
+      #    recorded.  The values are handed to the extension untouched and
+      #    rendered there, exception-safely, before the writer lock is taken —
+      #    which is also what keeps a NUL-containing String from wedging the
+      #    recorder.  (Contrast {register_span}'s `metadata`, whose values are
+      #    the middleware's own strings.)
+      # 2. **It does not cache boundary-label ids.**  Interning lives in the
+      #    shared writer library on purpose: a per-recorder label cache is
+      #    exactly the drift the shared API exists to prevent
+      #    (`CTFS-Correlation-Marker-Contract.md` §11a.4).  A caller with a hot
+      #    boundary hoists {ensure_marker_id} itself and passes `marker_id:`.
+      # 3. **It does not build the payload.**  Field names, the `corrmark.ns`
+      #    index and the send/recv defaulting are the library's, so ~20
+      #    recorders cannot fall out of step and write markers that are
+      #    *unreadable* rather than merely degraded.
+      #
+      # Every entry point returns `false` when no recording is active.  That is
+      # the no-op contract, not an error: user code calls these unconditionally
+      # and is only sometimes recorded.
+
+      # Wire values of a marker's `direction`.  Anything else is normalised to
+      # `send` by the writer, because a marker with no side is unpairable and
+      # an unpairable marker is worse than one that picked a side.
+      DIRECTION_SEND = 'send'
+      DIRECTION_RECV = 'recv'
+
+      # Intern `boundary` and return its numeric marker id, or `nil` when
+      # nothing is recording (or the writer could not intern it).
+      #
+      # THE PRIMARY OPERATION for a hot boundary: hoist this out of the loop and
+      # pass the result to {mark_correlation_send} / {mark_correlation_recv} as
+      # `marker_id:`, and the per-crossing call does no string lookup.  Callers
+      # that cross a boundary occasionally can ignore it entirely — the
+      # string-label path interns for them.
+      def ensure_marker_id(boundary)
+        recorder = @recorder
+        return nil if recorder.nil?
+
+        recorder.ensure_marker_id(boundary)
+      end
+
+      # Declare that a value LEFT this process across `boundary`.
+      #
+      # `key:` is the pairing key — the value that will be recognisable on the
+      # other side (a message id, a correlation header).  `show:` is an
+      # optional payload rendered next to the marker in the Event Log, `desc:`
+      # an optional human note.
+      #
+      # `key_text:` / `show_text:` are the NAMES those values were read under.
+      # `show_text` is load-bearing rather than cosmetic: a cross-process origin
+      # chain resumes its walk on that name in the sending recording, so a
+      # marker that drops it is visible with its history unreachable.  They
+      # default to the library's `"key"` / `"show"`.
+      #
+      # Returns `true` when the marker was recorded, `false` when nothing is
+      # recording or the writer refused it.
+      def mark_correlation_send(boundary, key:, show: nil, desc: nil,
+                                key_text: nil, show_text: nil, marker_id: nil)
+        mark_correlation(DIRECTION_SEND, boundary, key: key, show: show, desc: desc,
+                                         key_text: key_text, show_text: show_text,
+                                         marker_id: marker_id)
+      end
+
+      # Declare that a value ARRIVED in this process across `boundary`.
+      # The counterpart of {mark_correlation_send}; see it for the arguments.
+      def mark_correlation_recv(boundary, key:, show: nil, desc: nil,
+                                key_text: nil, show_text: nil, marker_id: nil)
+        mark_correlation(DIRECTION_RECV, boundary, key: key, show: show, desc: desc,
+                                         key_text: key_text, show_text: show_text,
+                                         marker_id: marker_id)
+      end
+
+      # The direction-agnostic form, for a caller that has the direction in a
+      # variable.  `direction` is {DIRECTION_SEND} or {DIRECTION_RECV}.
+      def mark_correlation(direction, boundary, key:, show: nil, desc: nil,
+                           key_text: nil, show_text: nil, marker_id: nil)
+        recorder = @recorder
+        return false if recorder.nil?
+
+        # Values go through UNCONVERTED — see the note above on why this facade
+        # never calls `to_s`.
+        recorder.mark_correlation(
+          direction: direction,
+          boundary: boundary,
+          key_value: key,
+          show_value: show,
+          description: desc,
+          key_text: key_text,
+          show_text: show_text,
+          marker_id: marker_id
+        )
+      end
+
+      # Declare that this recording covers the distributed-trace span
+      # `(trace_id, span_id)`.
+      #
+      # The ids are hex, as every OTel Ruby API hands them over: 32 characters
+      # for `trace_id`, 16 for `span_id`.  They are converted to wire bytes by
+      # the shared library, never here — the correlation index keys on those
+      # bytes, and an index keyed on a hex rendering would be present,
+      # correct-looking and permanently unqueryable.
+      #
+      # Returns `true` when the coverage marker was recorded, `false` when
+      # nothing is recording or the ids were not valid hex.
+      def mark_span_coverage(trace_id, span_id, wall_time_unix_ns, monotonic_time_ns)
+        recorder = @recorder
+        return false if recorder.nil?
+
+        recorder.mark_span_coverage(trace_id, span_id, wall_time_unix_ns, monotonic_time_ns)
       end
 
       # Decode the span stream of the `.ct` container at `path`.
