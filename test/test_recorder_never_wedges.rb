@@ -35,6 +35,16 @@
 # * `2 ** 70` — `rb_num2long`'s `RangeError`, the one instance of this class
 #   that was already fixed; kept here so it stays fixed and is covered by the
 #   same harness as the rest.
+# * a correlation marker whose `key:` is an object with an exploding `to_s`,
+#   and one whose key is a String containing a NUL byte — the two shapes above,
+#   reached through an entry point the traced program calls DIRECTLY rather
+#   than through the event hook.
+#
+# **The rule this file states, and which the last two cases exist to honour:
+# every new entry point that touches a Ruby value needs a case here.** An entry
+# point called from user code is if anything more exposed than the hook: the
+# values are chosen by the program, and the hook's own `in_event_hook` guard has
+# to be armed and restored by hand on every path rather than by one caller.
 #
 # ## No mocks
 #
@@ -321,5 +331,108 @@ class RecorderNeverWedgesTest < Minitest::Test
     events = assert_records_without_wedging(source, name: 'bignum', expect_locals: ['big'])
     assert_includes events.to_s, (2**70).to_s,
                     'the out-of-word Integer should still be visible as its decimal text'
+  end
+
+  # A correlation marker whose boundary label and key are objects whose `to_s`
+  # raises.
+  #
+  # `CodeTracer::Native.mark_correlation_send` is called BY THE TRACED PROGRAM,
+  # so `key:` is an arbitrary object and rendering it is arbitrary user code.
+  # Two things have to hold, and only the first is about hanging:
+  #
+  # 1. The raise must not escape into the writer lock (the wedge), and it must
+  #    not escape into the traced program either — a program must not die
+  #    because it annotated itself while being recorded.
+  # 2. The marker must still be WRITTEN, with an empty key. A marker that was
+  #    silently dropped would look exactly like one that was never declared,
+  #    which is the invisible-failure mode the marker contract exists to
+  #    eliminate.
+  def test_correlation_marker_with_an_exploding_to_s_does_not_wedge
+    source = <<~RUBY
+      class ExplodingKey
+        def to_s
+          raise 'to_s exploded'
+        end
+      end
+
+      def probe
+        key = ExplodingKey.new
+        CodeTracer::Native.mark_correlation_send(ExplodingKey.new, key: key,
+                                                 show: ExplodingKey.new)
+      end
+
+      recorded = probe
+      puts "MARKER-RECORDED \#{recorded}"
+      puts '#{COMPLETION_MARKER}'
+    RUBY
+    recording = record(source, name: 'marker_to_s')
+    assert_marker_survived(recording, name: 'marker_to_s')
+
+    markers = ct_print_markers(single_container(recording))
+    assert_equal 1, markers.length,
+                 'the marker was dropped instead of being recorded with an unreadable key, ' \
+                 'so it is indistinguishable from one that was never declared'
+    assert_equal '', markers.first['key_value'],
+                 'an unrenderable key must come through as empty, not as some guess'
+    assert_equal 'send', markers.first['direction']
+  end
+
+  # A correlation-marker key that is a String containing a literal NUL byte.
+  #
+  # This is the `rb_string_value_cstr` shape (`ArgumentError` on an embedded
+  # NUL) at a NEW entry point.  It is the specific hazard
+  # `CTFS-Correlation-Marker-Contract.md` §11a.5 names — the reason the shared
+  # library's marker entry points take pointer + length instead of a
+  # NUL-terminated string, so the byte survives into the payload rather than
+  # truncating the key or raising on the way there.
+  def test_correlation_marker_with_a_nul_in_the_key_does_not_wedge
+    source = <<~'RUBY'
+      def probe
+        CodeTracer::Native.mark_correlation_recv('queue', key: "bad\0key",
+                                                 show: "bad\0body")
+      end
+
+      recorded = probe
+      puts "MARKER-RECORDED #{recorded}"
+      puts 'PROGRAM-COMPLETED'
+    RUBY
+    recording = record(source, name: 'marker_nul_key')
+    assert_marker_survived(recording, name: 'marker_nul_key')
+
+    markers = ct_print_markers(single_container(recording))
+    assert_equal 1, markers.length, 'the NUL-containing marker was dropped'
+    assert_equal "bad\0key", markers.first['key_value'],
+                 'the key was truncated at the NUL byte instead of being carried whole'
+    assert_equal 'queue', markers.first['boundary_id']
+    assert_equal 'recv', markers.first['direction']
+  end
+
+  private
+
+  # The wedge assertions shared by the two marker cases.
+  #
+  # Deliberately NOT `assert_records_without_wedging`: that helper asserts the
+  # trace has steps and named locals, which is about the event hook. What
+  # matters here is that the recorder survived, the program survived, and the
+  # marker call reported success rather than an exception.
+  def assert_marker_survived(recording, name:)
+    refute recording.timed_out,
+           "recording #{name} did not finish within #{RECORD_TIMEOUT_SECONDS}s — the recorder " \
+           "wedged (a Ruby exception raised inside a marker entry point stranded the tracer " \
+           "lock).\nRecorder output so far:\n#{recording.output}"
+    assert_predicate recording.status, :success?,
+                     "recorder exited with #{recording.status.inspect}\n#{recording.output}"
+    assert_includes recording.output, COMPLETION_MARKER,
+                    "the traced program did not run to completion — the exception raised " \
+                    "inside the recorder escaped into the program\n#{recording.output}"
+    assert_includes recording.output, 'MARKER-RECORDED true',
+                    "the marker entry point reported failure\n#{recording.output}"
+  end
+
+  # The single `.ct` container a recording produced.
+  def single_container(recording)
+    containers = Dir.glob(File.join(recording.out_dir, '*.ct'))
+    refute_empty containers, "no .ct container was written\n#{recording.output}"
+    containers.first
   end
 end
