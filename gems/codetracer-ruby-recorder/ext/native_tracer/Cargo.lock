@@ -93,6 +93,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d20789868f4b01b2f2caec9f5c4e0213b41e3e5702a50157d699ae31ced2fcb"
 
 [[package]]
+name = "cbor4ii"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0948fe1a10668d439d5fd476904223ab08a6783945d451fb996728e952ebcc7"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -211,6 +220,7 @@ dependencies = [
 name = "codetracer_trace_writer_nim"
 version = "0.1.0"
 dependencies = [
+ "cbor4ii",
  "ciborium",
  "codetracer_trace_types",
  "serde_json",
