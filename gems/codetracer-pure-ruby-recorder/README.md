@@ -86,5 +86,5 @@ JSON or text.
 - [`../../test/test_tracer.rb`](../../test/test_tracer.rb) —
   cross-recorder test harness; `normalise_ct_events` documents the
   exact shape this gem is expected to produce.
-- [`../../CLAUDE.md`](../../CLAUDE.md) — repo-level notes including the
+- [`../../AGENTS.md`](../../AGENTS.md) — repo-level notes including the
   rationale for keeping both recorders side by side.
