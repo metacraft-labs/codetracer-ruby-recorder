@@ -40,7 +40,7 @@ on:
 
 jobs:
   rubygems-bundling:
-    runs-on: [self-hosted, nixos]
+    runs-on: [self-hosted, linux, x64]
     name: rubygems bundling smoke-test
     steps:
       - name: Generate CI token

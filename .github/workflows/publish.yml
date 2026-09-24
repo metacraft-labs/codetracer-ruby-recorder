@@ -18,7 +18,7 @@ on:
 
 jobs:
   publish:
-    runs-on: [self-hosted, nixos]
+    runs-on: [self-hosted, linux, x64]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Ruby
