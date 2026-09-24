@@ -20,7 +20,7 @@ jobs:
       matrix:
         include:
           - label: linux
-            runs-on: [self-hosted, nixos]
+            runs-on: [self-hosted, linux, x64]
             flavor: nix
           - label: macos
             runs-on: [self-hosted, aarch64-darwin]
@@ -72,6 +72,8 @@ jobs:
         run: dev-exec just test
 
   benchmark:
+    # `nixos`: keeps benchmark numbers on the persistent NixOS hosts rather than
+    # varying across ephemeral containers; not a dedicated benchmark runner.
     runs-on: [self-hosted, nixos]
     steps:
       - uses: actions/checkout@v4
@@ -148,7 +150,7 @@ jobs:
 
   nix-build:
     name: Verify nix flake packages build
-    runs-on: [self-hosted, nixos]
+    runs-on: [self-hosted, linux, x64]
     steps:
       - uses: actions/checkout@v4
         with:
