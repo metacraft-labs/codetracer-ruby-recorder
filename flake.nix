@@ -34,28 +34,14 @@
     };
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      fenix,
-      pre-commit-hooks,
-      codetracer-trace-format,
-      codetracer-trace-format-nim,
-      nim-stew,
-      nim-results,
-    }:
+  outputs = { self, nixpkgs, fenix, pre-commit-hooks, codetracer-trace-format
+    , codetracer-trace-format-nim, nim-stew, nim-results, }:
     let
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
+      systems =
+        [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSystem = nixpkgs.lib.genAttrs systems;
 
-      rust-toolchain-for =
-        system:
+      rust-toolchain-for = system:
         fenix.packages.${system}.fromToolchainFile {
           file = ./rust-toolchain.toml;
           sha256 = "sha256-Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
@@ -64,13 +50,11 @@
       # Helper function to build the native Ruby recorder for a given pkgs and Ruby.
       # Consumers can call this with their own nixpkgs and Ruby version to ensure
       # ABI compatibility (the native .so must match the Ruby that loads it).
-      mkRubyRecorderPackage =
-        pkgs: ruby:
+      mkRubyRecorderPackage = pkgs: ruby:
         let
           inherit (pkgs) stdenv lib;
           isLinux = stdenv.isLinux;
-        in
-        stdenv.mkDerivation {
+        in stdenv.mkDerivation {
           pname = "ruby-recorder-native";
           version = builtins.readFile ./version.txt;
 
@@ -90,10 +74,7 @@
             # codetracer_trace_writer".
             pkgs.nim
             pkgs.nimble
-          ]
-          ++ lib.optionals stdenv.isDarwin [
-            pkgs.libiconv
-          ];
+          ] ++ lib.optionals stdenv.isDarwin [ pkgs.libiconv ];
 
           buildInputs = [ ruby ];
 
@@ -103,21 +84,24 @@
           # so skip it and feed the sources directly.
           CODETRACER_TRACE_FORMAT_NIM_DIR = "${codetracer-trace-format-nim}";
           CODETRACER_TRACE_FORMAT_NIM_SKIP_NIMBLE_INSTALL = "1";
-          CODETRACER_TRACE_FORMAT_NIM_EXTRA_PATHS = "${nim-stew}:${nim-results}";
+          CODETRACER_TRACE_FORMAT_NIM_EXTRA_PATHS =
+            "${nim-stew}:${nim-results}";
 
           # bindgen needs LIBCLANG_PATH to find libclang.so
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
           # bindgen also needs C standard headers (stdio.h, stddef.h, etc.)
-          BINDGEN_EXTRA_CLANG_ARGS = lib.optionalString isLinux (
-            builtins.concatStringsSep " " [
+          BINDGEN_EXTRA_CLANG_ARGS = lib.optionalString isLinux
+            (builtins.concatStringsSep " " [
               "-isystem ${stdenv.cc.libc.dev}/include"
-              "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${lib.versions.major pkgs.llvmPackages.libclang.version}/include"
-            ]
-          );
+              "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${
+                lib.versions.major pkgs.llvmPackages.libclang.version
+              }/include"
+            ]);
 
           cargoDeps = pkgs.rustPlatform.importCargoLock {
-            lockFile = ./gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.lock;
+            lockFile =
+              ./gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.lock;
           };
 
           postUnpack = ''
@@ -171,8 +155,7 @@
 
           doCheck = false;
         };
-    in
-    {
+    in {
       # Expose the helper function for consumers who need a custom Ruby version
       lib.mkRubyRecorderPackage = mkRubyRecorderPackage;
 
@@ -191,8 +174,7 @@
         };
       });
 
-      devShells = forEachSystem (
-        system:
+      devShells = forEachSystem (system:
         let
           pkgs = import nixpkgs { inherit system; };
           preCommit = self.checks.${system}.pre-commit-check;
@@ -212,83 +194,73 @@
             ps.sinatra
             ps.rails
           ]);
-        in
-        {
-          default =
-            pkgs.mkShell {
-              packages =
-                with pkgs;
-                [
-                  # WARNING: `3.4` needed in `./gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs`
-                  #          for the `thread` field of `rb_internal_thread_event_data_t`
-                  rubyWithTestGems
+        in {
+          default = pkgs.mkShell {
+            packages = with pkgs;
+              [
+                # WARNING: `3.4` needed in `./gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs`
+                #          for the `thread` field of `rb_internal_thread_event_data_t`
+                rubyWithTestGems
 
-                  # The native extension is implemented in Rust
-                  (rust-toolchain-for system)
-                  libiconv # Required dependency when building the rb-sys Rust crate on macOS and some Linux systems
+                # The native extension is implemented in Rust
+                (rust-toolchain-for system)
+                libiconv # Required dependency when building the rb-sys Rust crate on macOS and some Linux systems
 
-                  # Required for bindgen (used by rb-sys crate for generating Ruby C API bindings)
-                  # Without these, build fails with "Unable to find libclang" error
-                  libclang # Provides libclang library that bindgen requires
-                  llvmPackages.clang # Clang compiler used by bindgen for parsing C headers
-                  pkg-config # Used by build scripts to find library paths
+                # Required for bindgen (used by rb-sys crate for generating Ruby C API bindings)
+                # Without these, build fails with "Unable to find libclang" error
+                libclang # Provides libclang library that bindgen requires
+                llvmPackages.clang # Clang compiler used by bindgen for parsing C headers
+                pkg-config # Used by build scripts to find library paths
 
-                  # For build automation
-                  just
-                  prek
-                  git-lfs
+                # For build automation
+                just
+                prek
+                git-lfs
 
-                  capnproto # Required for the native tracer's Cap'n Proto serialization
-                  zstd # Required for linking the Nim trace writer (libzstd)
+                capnproto # Required for the native tracer's Cap'n Proto serialization
+                zstd # Required for linking the Nim trace writer (libzstd)
 
-                  # codetracer_trace_writer_nim/build.rs invokes nim+nimble
-                  # to compile the FFI sources into a static library.
-                  nim
-                  nimble
-                ]
-                ++ pkgs.lib.optionals isLinux [
-                  # C standard library headers required for Ruby C extension compilation on Linux
-                  # Without this, build fails with "stdarg.h file not found" error
-                  glibc.dev
-                ]
-                ++ preCommit.enabledPackages;
+                # codetracer_trace_writer_nim/build.rs invokes nim+nimble
+                # to compile the FFI sources into a static library.
+                nim
+                nimble
+              ] ++ pkgs.lib.optionals isLinux [
+                # C standard library headers required for Ruby C extension compilation on Linux
+                # Without this, build fails with "stdarg.h file not found" error
+                glibc.dev
+              ] ++ preCommit.enabledPackages;
 
-              # Environment variables required to fix build issues with rb-sys/bindgen
+            # Environment variables required to fix build issues with rb-sys/bindgen
 
-              # LIBCLANG_PATH: Required by bindgen to locate libclang shared library
-              # Without this, bindgen fails with "couldn't find any valid shared libraries" error
-              LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            # LIBCLANG_PATH: Required by bindgen to locate libclang shared library
+            # Without this, bindgen fails with "couldn't find any valid shared libraries" error
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
 
-              # Compiler environment variables to ensure consistent toolchain usage
-              # These help rb-sys and other build scripts use the correct clang installation
-              CLANG_PATH = "${pkgs.llvmPackages.clang}/bin/clang";
-              CC = "${pkgs.llvmPackages.clang}/bin/clang";
-              CXX = "${pkgs.llvmPackages.clang}/bin/clang++";
+            # Compiler environment variables to ensure consistent toolchain usage
+            # These help rb-sys and other build scripts use the correct clang installation
+            CLANG_PATH = "${pkgs.llvmPackages.clang}/bin/clang";
+            CC = "${pkgs.llvmPackages.clang}/bin/clang";
+            CXX = "${pkgs.llvmPackages.clang}/bin/clang++";
 
-              inherit (preCommit) shellHook;
-            }
-            // pkgs.lib.optionalAttrs isLinux {
-              # BINDGEN_EXTRA_CLANG_ARGS: Additional clang arguments for bindgen when parsing Ruby headers
-              # Includes system header paths that are not automatically discovered in NixOS
-              # --sysroot ensures clang can find standard C library headers like stdarg.h
-              BINDGEN_EXTRA_CLANG_ARGS =
-                with pkgs;
-                builtins.concatStringsSep " " [
-                  "-I${libclang.lib}/lib/clang/${libclang.version}/include" # Clang builtin headers
-                  "-I${glibc.dev}/include" # System C headers
-                  "--sysroot=${glibc.dev}" # System root for header resolution
-                ];
-            };
-        }
-      );
+            inherit (preCommit) shellHook;
+          } // pkgs.lib.optionalAttrs isLinux {
+            # BINDGEN_EXTRA_CLANG_ARGS: Additional clang arguments for bindgen when parsing Ruby headers
+            # Includes system header paths that are not automatically discovered in NixOS
+            # --sysroot ensures clang can find standard C library headers like stdarg.h
+            BINDGEN_EXTRA_CLANG_ARGS = with pkgs;
+              builtins.concatStringsSep " " [
+                "-I${libclang.lib}/lib/clang/${libclang.version}/include" # Clang builtin headers
+                "-I${glibc.dev}/include" # System C headers
+                "--sysroot=${glibc.dev}" # System root for header resolution
+              ];
+          };
+        });
 
-      packages = forEachSystem (
-        system:
+      packages = forEachSystem (system:
         let
           pkgs = import nixpkgs { inherit system; };
           ruby = pkgs.ruby;
-        in
-        {
+        in {
           # Native Rust extension-based recorder (default)
           codetracer-ruby-recorder = mkRubyRecorderPackage pkgs ruby;
           default = self.packages.${system}.codetracer-ruby-recorder;
@@ -307,7 +279,6 @@
               ln -s $out/gems/bin/codetracer-pure-ruby-recorder $out/bin/codetracer-pure-ruby-recorder
             '';
           };
-        }
-      );
+        });
     };
 }

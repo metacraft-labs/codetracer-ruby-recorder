@@ -16,6 +16,7 @@
 ## ``msys64/``-vendored libclang at the same prefix root.
 
 import repro_project_dsl
+import repro_dsl_stdlib/foreign_env
 
 package codetracer_ruby_recorder:
   uses:
@@ -38,6 +39,9 @@ package codetracer_ruby_recorder:
   library codetracerRubyRecorder
 
   devEnv:
+    when not defined(windows):
+      useFlakeDevShell()
+
     activity "default"
 
   build:
