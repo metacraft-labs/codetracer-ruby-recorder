@@ -2,9 +2,12 @@ alias t := test
 
 cargo_build_target_opt := if os_family() == "windows" { "--target x86_64-pc-windows-gnu" } else { "" }
 
-# Primary build target — required by Repo-Requirements.md §1.3 and
-# §2.4. Builds the native extension via `build-extension`; the
-# packaged gem is produced separately by `build-gem`.
+# Primary build target — required by
+# metacraft-dev-guidelines/policies/repo-requirements.md §3 (the general
+# requirements moved out of Repo-Requirements.md, whose §1.3 no longer
+# exists) and Repo-Requirements.md §2.4. Builds the native extension
+# via `build-extension`; the packaged gem is produced separately by
+# `build-gem`.
 build: build-extension
 
 test: ensure-ct-print
@@ -96,7 +99,7 @@ bump-version version:
     print(f"version.txt: {cur} -> {new}")
 
 # --- M13: Packaging UX Standardization ---
-# Implements Repo-Requirements.md §2.8 packaging UX for the Ruby
+# Implements Repo-Requirements.md §2.5 packaging UX for the Ruby
 # language-ecosystem recorder. Single channel: rubygems.
 
 # Build a release artifact for the given channel.
