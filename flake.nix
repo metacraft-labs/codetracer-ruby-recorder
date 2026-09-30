@@ -263,7 +263,42 @@
               CC = "${pkgs.llvmPackages.clang}/bin/clang";
               CXX = "${pkgs.llvmPackages.clang}/bin/clang++";
 
-              inherit (preCommit) shellHook;
+              # `cargo <subcommand>` looks for `cargo-<subcommand>` in
+              # `$CARGO_HOME/bin` BEFORE it searches PATH. On any machine with
+              # rustup -- including the self-hosted macOS runner -- that
+              # directory holds rustup's proxies, so `cargo fmt` runs rustup's
+              # `cargo-fmt` instead of the toolchain above and fails with
+              # "'cargo-fmt' is not installed for the toolchain" (or formats
+              # with a different rustfmt than this shell's).
+              #
+              # The shell therefore gets its own CARGO_HOME with no `bin/`, so
+              # subcommand lookup falls through to PATH. `registry/` and `git/`
+              # are symlinks to the real CARGO_HOME, and so are its config and
+              # credentials when present: the download cache is shared, and
+              # only the proxy directory is left behind.
+              shellHook = ''
+                _ct_real_cargo_home="''${CARGO_HOME:-$HOME/.cargo}"
+                _ct_cargo_home="''${XDG_CACHE_HOME:-$HOME/.cache}/codetracer-ruby-recorder/cargo-home"
+                if [ "$_ct_real_cargo_home" != "$_ct_cargo_home" ]; then
+                  mkdir -p "$_ct_cargo_home" \
+                    "$_ct_real_cargo_home/registry" "$_ct_real_cargo_home/git"
+                  # Re-pointed on every entry, so a changed CARGO_HOME is
+                  # followed rather than left sharing the previous one's cache.
+                  # Only a link is ever replaced; a real file placed here is
+                  # left alone.
+                  for _ct_entry in registry git config.toml credentials.toml; do
+                    if [ -e "$_ct_real_cargo_home/$_ct_entry" ] &&
+                      { [ -L "$_ct_cargo_home/$_ct_entry" ] ||
+                        [ ! -e "$_ct_cargo_home/$_ct_entry" ]; }; then
+                      ln -sfn "$_ct_real_cargo_home/$_ct_entry" "$_ct_cargo_home/$_ct_entry"
+                    fi
+                  done
+                  export CARGO_HOME="$_ct_cargo_home"
+                fi
+                unset _ct_real_cargo_home _ct_cargo_home _ct_entry
+
+                ${preCommit.shellHook}
+              '';
             }
             // pkgs.lib.optionalAttrs isLinux {
               # BINDGEN_EXTRA_CLANG_ARGS: Additional clang arguments for bindgen when parsing Ruby headers
