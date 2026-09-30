@@ -170,10 +170,22 @@ module CodeTracer
       0
     end
 
+    # The recorder's own source files. Its methods run on the traced
+    # program's thread (the patched `puts`/`p`/`print` call straight into
+    # `record_event`), so without these every output line would record the
+    # recorder's frames too, and their return values -- the event log
+    # itself -- as program values.
+    OWN_SOURCES = [
+      File.expand_path(__FILE__),
+      File.expand_path('recorder.rb', __dir__),
+      File.expand_path('codetracer/assignment_reconstructor.rb', __dir__),
+      File.expand_path('codetracer/kernel_patches.rb', __dir__)
+    ].freeze
+
     def initialize(out_dir, debug: false)
       @tracing = false
       @record = TraceRecord.new
-      @ignore_list = []
+      @ignore_list = OWN_SOURCES.dup
       @out_dir = out_dir
       @debug = debug
       @call_depth = 0
