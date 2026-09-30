@@ -5,7 +5,7 @@
       "locked": {
         "owner": "metacraft-labs",
         "repo": "codetracer-trace-format",
-        "rev": "d397a8a32acb9e35db16bf4a9a8532014c55ec2c",
+        "rev": "80b9434ec7155607bd5ee321fe86f8503b1f0e8c",
         "type": "github"
       },
       "original": {
@@ -20,7 +20,7 @@
       "locked": {
         "owner": "metacraft-labs",
         "repo": "codetracer-trace-format-nim",
-        "rev": "b636636c755c0ccaee32d7610b956420596b3e9b",
+        "rev": "78a89616a2aa999bdedb011fef49a17ae3a0621d",
         "type": "github"
       },
       "original": {
