@@ -120,7 +120,7 @@ module RequestSpanAssertions
     raw = CodeTracer::Native.read_span_stream(container, settled: false)
     assert_equal schedule.length * 2, raw.length,
                  'expected an open record and a settled record per request'
-    assert_equal schedule.length, raw.count { |s| s['is_open'] }
+    assert_equal(schedule.length, raw.count { |s| s['is_open'] })
     # The open record is appended BEFORE the request is handled, so in a
     # sequential session it always precedes its own settled record.
     schedule.length.times do |i|
@@ -182,7 +182,7 @@ module RequestSpanAssertions
     end
 
     # Span ids are 1-based and monotonic within the container.
-    assert_equal (1..schedule.length).to_a, spans.map { |s| s['span_id'] }
+    assert_equal((1..schedule.length).to_a, spans.map { |s| s['span_id'] })
   end
 end
 
