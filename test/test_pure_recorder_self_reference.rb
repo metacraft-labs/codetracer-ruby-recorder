@@ -4,7 +4,9 @@
 # its own methods on the traced program's thread: the patched `puts` calls
 # straight into the recorder. Those frames are not part of the program and
 # must not be recorded -- recording them also records their return values,
-# the recorder's event log, which grows with every step.
+# the recorder's event log, which grows with every step. And a recorder the
+# program can reach through its own data is recorded as an opaque value, not
+# expanded field by field.
 #
 # No mocks: the real pure recorder library records a real Ruby subprocess and
 # the assertions read the trace.json it writes.
@@ -44,6 +46,16 @@ class PureRecorderSelfReferenceTest < Minitest::Test
     File.read(out_path)
   end
 
+  def each_hash(node, &block)
+    case node
+    when Hash
+      yield node
+      node.each_value { |v| each_hash(v, &block) }
+    when Array
+      node.each { |v| each_hash(v, &block) }
+    end
+  end
+
   def record_script(body)
     trace_dir = File.join(TMP_DIR, 'trace')
     script_path = File.join(TMP_DIR, 'script.rb')
@@ -73,5 +85,19 @@ class PureRecorderSelfReferenceTest < Minitest::Test
     assert_empty own, "the recorder's own methods were recorded as program calls"
     writes = trace.filter_map { |e| e.dig('Event', 'content') }
     assert_equal ["3\n", "4\n"], writes
+  end
+
+  def test_recorder_reachable_from_program_data_is_recorded_opaquely
+    stdout, trace = record_script(<<~RUBY)
+      holder = Struct.new(:rec).new(recorder)
+      puts holder.rec.class
+    RUBY
+
+    assert_equal "CodeTracer::PureRubyRecorder\n", stdout
+    recorder_values = []
+    each_hash(trace) do |h|
+      recorder_values << h if h['kind'] == 'Raw' && h['r'] == '#<CodeTracer::PureRubyRecorder>'
+    end
+    refute_empty recorder_values, '`holder.rec` should be recorded as an opaque Raw value'
   end
 end
