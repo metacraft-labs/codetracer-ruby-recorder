@@ -393,6 +393,17 @@ fn should_ignore_path(path: &str) -> bool {
     if path.starts_with("<internal:") {
         return true;
     }
+    // A gem's specification is Ruby that RubyGems evaluates whenever it
+    // activates the gem, and it lives in `<gem home>/specifications/`, beside
+    // `gems/` rather than inside it. In a per-user gem home
+    // (`~/.local/share/gem/ruby/<ver>/`) neither pattern above covers it, so a
+    // gem activated lazily mid-request (Ruby 3.4's error_highlight loading
+    // prism while an exception is being reported, for one) recorded steps in
+    // the gemspec, and a request's last step landed there instead of in the
+    // application.
+    if path.ends_with(".gemspec") {
+        return true;
+    }
     PATTERNS.iter().any(|p| path.contains(p))
 }
 

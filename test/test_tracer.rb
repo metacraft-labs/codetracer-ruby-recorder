@@ -784,6 +784,66 @@ class TraceTest < Minitest::Test
     end
   end
 
+  # A gem's specification is Ruby that RubyGems evaluates when it activates the
+  # gem, and it sits in `<gem home>/specifications/` — beside `gems/`, not
+  # inside it. With a per-user gem home (`~/.local/share/gem/ruby/<ver>/`) no
+  # library pattern matched it, so a gem activated in the middle of the
+  # program (Ruby 3.4's error_highlight pulling in prism while an exception was
+  # being reported) put the gemspec's lines into the trace, and the last step
+  # of a request that raised landed in `prism-<ver>.gemspec`.
+  #
+  # The program below evaluates a gemspec from such a directory through the
+  # real `Gem::Specification.load`, then calls a method of its own; the trace
+  # must name the program and must not name the gemspec.
+  def test_native_does_not_record_gemspec_evaluation
+    skip 'native recorder extension not built' unless native_extension_built?
+
+    Dir.mktmpdir('ct-gemspec') do |dir|
+      gem_home = File.join(dir, 'share', 'gem', 'ruby', '3.4.0', 'specifications')
+      FileUtils.mkdir_p(gem_home)
+      spec_path = File.join(gem_home, 'demo-1.0.gemspec')
+      File.write(spec_path, <<~SPEC)
+        Gem::Specification.new do |s|
+          s.name = 'demo'
+          s.version = '1.0'
+          s.summary = 'demo'
+          s.authors = ['demo']
+          s.files = []
+        end
+      SPEC
+      program = File.join(dir, 'activate_gem.rb')
+      File.write(program, <<~RUBY)
+        def after_activation(spec)
+          spec.name
+        end
+        spec = Gem::Specification.load(#{spec_path.inspect})
+        puts after_activation(spec)
+      RUBY
+      out_dir = File.join(dir, 'trace')
+      FileUtils.mkdir_p(out_dir)
+
+      Dir.chdir(File.expand_path('..', __dir__)) do
+        stdout, stderr, status = Open3.capture3(
+          RbConfig.ruby, NATIVE_RECORDER_BIN, '--out-dir', out_dir, program
+        )
+        assert status.success?, "trace failed: #{stderr}"
+        assert_equal 'demo', stdout.lines.last.to_s.chomp,
+                     'the gemspec was not evaluated, so this test proves nothing'
+      end
+
+      ct_files = Dir.glob(File.join(out_dir, '*.ct'))
+      refute_empty ct_files, 'native recorder did not produce a .ct trace'
+      assert File.exist?(CT_PRINT), "ct-print binary not found at #{CT_PRINT}"
+      stdout, stderr, status = Open3.capture3(CT_PRINT, '--json', ct_files.first)
+      assert status.success?, "ct-print --json failed: #{stderr}"
+      paths = JSON.parse(stdout).fetch('paths')
+
+      assert_includes paths, program, "the program itself was not recorded: #{paths.inspect}"
+      refute paths.any? { |p| p.end_with?('.gemspec') },
+             "a gem specification was recorded as program code: #{paths.inspect}"
+    end
+  end
+
   def test_pure_debug_smoke
     Dir.chdir(File.expand_path('..', __dir__)) do
       env = { 'CODETRACER_RUBY_RECORDER_DEBUG' => '1' }
