@@ -494,6 +494,14 @@ class TraceRecord
 
   MAX_COUNT = 5000
 
+  # Objects that make up the recorder itself, as opposed to the traced
+  # program's data.
+  def recorder_internal?(v)
+    v.is_a?(TraceRecord) ||
+      (defined?(CodeTracer::PureRubyRecorder) && v.is_a?(CodeTracer::PureRubyRecorder)) ||
+      (defined?(CodeTracer::AssignmentReconstructor) && v.is_a?(CodeTracer::AssignmentReconstructor))
+  end
+
   def to_value(v, depth=10)
     if depth <= 0
       return nil_value
@@ -555,6 +563,12 @@ class TraceRecord
         struct_value('Pair', ['k', 'v'], [k, val], depth)
       end
       sequence_value(pairs, 'Hash')
+    when ->(o) { recorder_internal?(o) }
+      # The recorder's own state is never expanded field by field: it holds
+      # every event recorded so far in arrays of up to MAX_COUNT elements, so
+      # a depth-bounded walk still visits O(MAX_COUNT ** depth) values and a
+      # program that keeps the recorder in a local never finishes a step.
+      raw_obj_value("#<#{v.class.name}>", v.class.name)
     when Object
       # not_supported_value
       class_name = v.class.name

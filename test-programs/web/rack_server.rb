@@ -22,6 +22,7 @@
 # a request line, headers, an optional `Content-Length` body, and a
 # `Connection: close` response.
 
+require 'io/wait'
 require 'socket'
 require 'stringio'
 require 'uri'
@@ -51,13 +52,12 @@ module CodeTracerDemo
     # Accept and handle connections until `POST /__shutdown` arrives or `stop`
     # is called (from a signal handler, say).
     #
-    # `IO.select` with a timeout rather than a bare blocking `accept` so a
+    # A readiness wait with a timeout rather than a bare blocking `accept` so a
     # `stop` from a signal handler is noticed promptly without a second thread.
     def serve
       @running = true
       while @running
-        ready = IO.select([@server], nil, nil, 0.1)
-        next if ready.nil?
+        next if @server.wait_readable(0.1).nil?
 
         client = begin
           @server.accept_nonblock

@@ -3,7 +3,7 @@
 lib_base = File.expand_path('../gems/codetracer-pure-ruby-recorder/lib/codetracer_pure_ruby_recorder', __dir__)
 require lib_base
 
-recorder = CodeTracer::PureRubyRecorder.new
+recorder = CodeTracer::PureRubyRecorder.new(Dir.pwd)
 
 puts 'start trace'
 recorder.stop
@@ -12,4 +12,4 @@ recorder.start
 puts 'this will be traced'
 recorder.stop
 puts 'tracing disabled'
-recorder.flush_trace(Dir.pwd)
+recorder.flush_trace

@@ -21,6 +21,7 @@
 #         --trace-dir /tmp/ct-demo-ruby --print-spans
 
 require 'fileutils'
+require 'io/wait'
 require 'json'
 require 'net/http'
 require 'open3'
@@ -163,7 +164,7 @@ module CodeTracerDemo
 
     # The single `.ct` container the recording produced.
     def container
-      containers = Dir.glob(File.join(@trace_dir, '*.ct')).sort
+      containers = Dir.glob(File.join(@trace_dir, '*.ct'))
       raise "no .ct container in #{@trace_dir}:\n#{log}" if containers.empty?
       raise "expected one container, got #{containers.inspect}" unless containers.length == 1
 
@@ -179,7 +180,7 @@ module CodeTracerDemo
     def read_line_with_deadline(deadline)
       remaining = deadline - Time.now
       return nil if remaining <= 0
-      return nil if IO.select([@stdout], nil, nil, [remaining, 0.5].min).nil?
+      return nil if @stdout.wait_readable([remaining, 0.5].min).nil?
 
       @stdout.gets
     rescue IOError, Errno::EBADF
