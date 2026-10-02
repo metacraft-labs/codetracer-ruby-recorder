@@ -82,6 +82,10 @@ class TraceTest < Minitest::Test
   # path_id) we re-assign them using the same algorithm the pure recorder
   # uses: first-seen-order starting from 0.
   # ---------------------------------------------------------------------------
+  # EventLogKind names in ordinal order (trace-events.md, "EventLogKind").
+  IO_EVENT_KINDS = %w[Write WriteFile WriteOther Read ReadFile ReadOther ReadDir OpenDir
+                      CloseDir Socket Open Error TraceLogEvent EvmEvent].freeze
+
   def normalise_ct_events(raw_events)
     # Mapping from ct-print type kind strings to the integer constants used
     # by the pure recorder (mirrors types.nim / TypeKind enum).
@@ -237,11 +241,8 @@ class TraceTest < Minitest::Test
         value = normalise_ct_value(ev['value'], ct_type_id_to_norm, type_kind_map)
         result << { 'Return' => { 'return_value' => value } }
       when 'io', 'event'
-        kind = case ev['kind']
-               when 'elkWrite', 'ioStdout' then 0
-               when 'elkError', 'ioStderr' then 11
-               else 0
-               end
+        kind = IO_EVENT_KINDS.index(ev['kind'].to_s.delete_prefix('elk')) or
+               raise "ct-print reported io kind #{ev['kind'].inspect}, which is not an EventLogKind"
         result << { 'Event' => {
           'kind' => kind,
           'content' => ev['data'] || ev['content'] || '',
@@ -451,6 +452,10 @@ class TraceTest < Minitest::Test
     trace.select { |ev| ev.key?('Event') }.map { |ev| ev['Event']['content'] }
   end
 
+  def extract_event_kinds(trace)
+    trace.select { |ev| ev.key?('Event') }.map { |ev| ev['Event']['kind'] }
+  end
+
   # Deep-strip type_id fields from a value hash so that values can be
   # compared regardless of ID assignment order.
   def strip_type_ids(val)
@@ -582,6 +587,8 @@ class TraceTest < Minitest::Test
     end
     assert_equal extract_event_content(expected), extract_event_content(actual),
                  "#{msg_prefix}I/O event content differs"
+    assert_equal extract_event_kinds(expected), extract_event_kinds(actual),
+                 "#{msg_prefix}I/O event kinds differ"
 
     # Variable names: the native trace may have all expected names plus
     # extras from duplicate registrations.
@@ -701,6 +708,30 @@ class TraceTest < Minitest::Test
   def test_oracle_comparison_refuses_a_stepless_reference
     stepless = [{ 'Path' => 'x.rb' }, { 'Function' => { 'name' => 'f', 'path_id' => 0, 'line' => 1 } }]
     assert_raises(Minitest::Assertion) { assert_trace_semantic_match(stepless, stepless, '[stepless] ') }
+  end
+
+  # An I/O event's kind round-trips exactly (trace-events.md, "EventLogKind"),
+  # so the oracle comparison holds the two recorders to the same kind, not
+  # only the same bytes.
+  def test_oracle_comparison_refuses_a_differing_io_kind
+    base = [{ 'Path' => 'x.rb' }, { 'Function' => { 'name' => 'f', 'path_id' => 0, 'line' => 1 } },
+            { 'Step' => { 'path_id' => 0, 'line' => 1 } }]
+    stdout = base + [{ 'Event' => { 'kind' => 0, 'content' => "3\n", 'metadata' => '' } }]
+    stderr = base + [{ 'Event' => { 'kind' => 2, 'content' => "3\n", 'metadata' => '' } }]
+    assert_raises(Minitest::Assertion) { assert_trace_semantic_match(stdout, stderr, '[io kind] ') }
+  end
+
+  # ct-print names every EventLogKind; the normaliser keeps each one's ordinal
+  # rather than folding the ones it does not expect onto `Write`.
+  def test_ct_print_io_kinds_normalise_to_their_ordinals
+    names = %w[Write WriteFile WriteOther Read ReadFile ReadOther ReadDir OpenDir
+               CloseDir Socket Open Error TraceLogEvent EvmEvent]
+    names.each_with_index do |name, ordinal|
+      events = normalise_ct_events([{ 'type' => 'io', 'kind' => "elk#{name}", 'data' => 'x' }])
+      io = events.find { |e| e.key?('Event') }
+      assert_equal ordinal, io['Event']['kind'], "elk#{name} should normalise to #{ordinal}"
+    end
+    assert_raises(RuntimeError) { normalise_ct_events([{ 'type' => 'io', 'kind' => 'elkBogus', 'data' => 'x' }]) }
   end
 
   def test_args_sum_with_separator
@@ -929,7 +960,7 @@ class TraceTest < Minitest::Test
   #     path table contains `addition.rb`; function table contains
   #     `<top-level>` and `add` (`end_with?` checks for tolerance to
   #     future namespacing like `Object#add`).
-  #   - **IO event** — a single `ioStdout` write of `"3\n"` (the
+  #   - **IO event** — a single `Write` (EventLogKind 0, stdout) of `"3\n"` (the
   #     `puts add(1, 2)` output, including the trailing newline that
   #     `puts` appends).
   #
@@ -1225,8 +1256,8 @@ class TraceTest < Minitest::Test
       assert_equal 1, io_events.size,
                    "expected exactly 1 io event, got #{io_events.size}: #{io_events.inspect}"
       io = io_events.first
-      assert_equal 'ioStdout', io['io_kind'],
-                   "io event should be ioStdout, got #{io['io_kind'].inspect}"
+      assert_equal 'Write', io['io_kind'],
+                   "io event should be a stdout Write, got #{io['io_kind'].inspect}"
       assert_equal "3\n", io['text'],
                    "io event text should be \"3\\n\", got #{io['text'].inspect}"
       assert_equal "3\n".bytesize, io['bytes_len'],
