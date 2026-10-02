@@ -545,6 +545,14 @@ class TraceTest < Minitest::Test
   #      Bool, String, Raw) match exactly, while complex values are
   #      compared in their simplified raw-string form.
   def assert_trace_semantic_match(expected, actual, msg_prefix = '')
+    # Non-vacuity: every extractor below returns [] for an empty stream, so
+    # two empty (or step-less) traces would agree on everything.  A
+    # reference with no steps or no functions means a recorder recorded
+    # nothing, and the comparison must say so instead of passing.
+    refute_empty extract_steps(expected),
+                 "#{msg_prefix}reference trace has no steps; the oracle comparison would be vacuous"
+    refute_empty extract_function_names(expected),
+                 "#{msg_prefix}reference trace has no functions; the oracle comparison would be vacuous"
     assert_equal extract_steps(expected), extract_steps(actual),
                  "#{msg_prefix}steps differ"
     assert_equal extract_function_names(expected), extract_function_names(actual),
@@ -674,8 +682,25 @@ class TraceTest < Minitest::Test
       if (reason = NATIVE_SEMANTIC_SKIP[base])
         skip "RECORDER BUG: #{reason} (program: #{base}.rb)"
       end
-      assert_trace_semantic_match(expected, native_trace, '[native] ')
+      # The oracle protocol itself: the pure recorder's JSON against the
+      # production recording as decoded by `ct print`.  `pure_trace` equals
+      # the fixture (asserted above), so this is the same comparison stated
+      # directly between the two recorders.
+      assert_trace_semantic_match(pure_trace, native_trace, '[pure vs native] ')
     end
+  end
+
+  # The oracle comparison is only meaningful when there is something to
+  # compare: two empty event streams agree on every extracted property.
+  # These guard the guard -- an empty or step-less reference must fail
+  # the comparison rather than pass it vacuously.
+  def test_oracle_comparison_refuses_empty_streams
+    assert_raises(Minitest::Assertion) { assert_trace_semantic_match([], [], '[empty] ') }
+  end
+
+  def test_oracle_comparison_refuses_a_stepless_reference
+    stepless = [{ 'Path' => 'x.rb' }, { 'Function' => { 'name' => 'f', 'path_id' => 0, 'line' => 1 } }]
+    assert_raises(Minitest::Assertion) { assert_trace_semantic_match(stepless, stepless, '[stepless] ') }
   end
 
   def test_args_sum_with_separator
@@ -693,7 +718,7 @@ class TraceTest < Minitest::Test
 
     # Native recorder: semantic match.
     refute_nil native_trace, 'native recorder produced no trace output'
-    assert_trace_semantic_match(expected, native_trace, '[native separator] ')
+    assert_trace_semantic_match(pure_trace, native_trace, '[pure vs native, separator] ')
 
     expected_out = expected_output("#{base}.rb")
     assert_equal expected_out, pure_out
