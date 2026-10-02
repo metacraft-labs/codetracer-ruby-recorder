@@ -1,8 +1,29 @@
 # codetracer-pure-ruby-recorder
 
-Pure-Ruby reference implementation of the CodeTracer Ruby recorder.
-**Legacy 3-file JSON output (`trace.json`, `trace_metadata.json`,
-`trace_paths.json`) by design.**
+> [!IMPORTANT]
+> **This is a test oracle, not a production recorder.** It writes a JSON
+> trace (`trace.json`, `trace_metadata.json`, `trace_paths.json`) that
+> exists only to be compared against the production recorder's output.
+> **CodeTracer cannot open its output** -- CodeTracer refuses a
+> `trace.json` and says it is a test-oracle output, not a recording. To
+> record Ruby for CodeTracer, use the production native recorder in
+> [`../codetracer-ruby-recorder/`](../codetracer-ruby-recorder/), which
+> writes a `.ct` trace.
+
+## The testing protocol
+
+1. Run a program through this recorder. It writes JSON.
+2. Run the **same** program through the production recorder. It writes
+   a `.ct` recording.
+3. Convert the `.ct` recording to JSON with `ct print` (`ct-print
+   --json-events`, from `codetracer-trace-format-nim`).
+4. Compare the two. The test suite asserts that they agree on steps,
+   functions, variable values, return values and program output.
+
+This is implemented by `test/test_tracer.rb` (one test per program in
+`test/programs/`, plus `test_args_sum_with_separator`). The comparison
+refuses an empty or step-less reference, so two recorders that both
+record nothing fail the test rather than agreeing vacuously.
 
 ## Why a pure-Ruby version exists
 
@@ -59,6 +80,10 @@ its independent oracle.
 - **Do not optimise this recorder for production throughput.** It is a
   reference implementation. Clarity beats speed here; speed is the
   native recorder's job.
+
+- **Do not use it, or recommend it, as a fallback for users** when the
+  native extension cannot be built. Its output is not a recording:
+  CodeTracer cannot open it.
 
 ## Audience
 

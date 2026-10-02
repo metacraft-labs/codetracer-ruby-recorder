@@ -5,8 +5,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Metacraft Labs']
   spec.email         = ['info@metacraft-labs.com']
 
-  spec.summary       = 'Pure-Ruby reference implementation of the CodeTracer Ruby recorder (legacy JSON output)'
-  spec.description   = 'Pure-Ruby reference recorder for CodeTracer. Emits the legacy 3-file JSON trace shape and serves as the cross-validation oracle for the production native gem `codetracer-ruby-recorder`, which writes CTFS v3 bundles. Both recorders are run against the same fixtures in the project test suite to keep them honest.'
+  spec.summary       = 'Test oracle for the CodeTracer Ruby recorder: writes JSON that CodeTracer cannot open'
+  spec.description   = 'A pure-Ruby test oracle, not a production recorder. It writes a JSON trace that the codetracer-ruby-recorder test suite compares against the production recorder\'s .ct output (converted with ct print). CodeTracer cannot open its output; to record Ruby for CodeTracer use the codetracer-ruby-recorder gem.'
   spec.license       = 'MIT'
   spec.homepage      = 'https://github.com/metacraft-labs/codetracer-ruby-recorder'
 
