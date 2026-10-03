@@ -26,6 +26,24 @@ require_relative 'codetracer/kernel_patches'
 
 module CodeTracer
   class PureRubyRecorder
+    # Capture MRI core methods before application execution. Receiver metadata
+    # must not dispatch application renderers or class/name overrides.
+    CORE_EQUAL = BasicObject.instance_method(:equal?)
+    CORE_CLASS = Object.instance_method(:class)
+    CORE_IDENTITY = Object.instance_method(:to_s)
+    CORE_MODULE_NAME = Module.instance_method(:name)
+    CORE_BINDING_RECEIVER = Binding.instance_method(:receiver)
+    unless CORE_CLASS.owner.equal?(Kernel) && CORE_CLASS.source_location == ['<internal:kernel>', 18]
+      raise "CodeTracer requires the pinned MRI core class method"
+    end
+    {CORE_EQUAL => BasicObject, CORE_IDENTITY => Kernel,
+      CORE_MODULE_NAME => Module, CORE_BINDING_RECEIVER => Binding}.each do |method, owner|
+      unless method.owner.equal?(owner) && method.source_location.nil?
+        raise "CodeTracer requires native Ruby receiver inspection"
+      end
+    end
+    MAIN_RECEIVER = CORE_BINDING_RECEIVER.bind_call(TOPLEVEL_BINDING)
+
     attr_accessor :calls_tracepoint, :return_tracepoint,
                   :line_tracepoint, :raise_tracepoint, :tracing
 
@@ -286,14 +304,24 @@ module CodeTracer
         [name.to_sym, value]
       end
 
-      # can be class or module
-      module_name = tp.self.class.name
+      receiver = tp.self
       begin
-        args = [[:self, @record.raw_obj_value(tp.self.to_s, module_name)]] + args_after_self
-      rescue
-        # $stderr.write("error args\n")
-        args = []
+        receiver_class = CORE_CLASS.bind_call(receiver)
+        class_name = CORE_MODULE_NAME.bind_call(receiver_class)
+        text = if CORE_EQUAL.bind_call(receiver, MAIN_RECEIVER)
+          'main'
+        elsif CORE_EQUAL.bind_call(receiver_class, Class) || CORE_EQUAL.bind_call(receiver_class, Module)
+          CORE_MODULE_NAME.bind_call(receiver) || CORE_IDENTITY.bind_call(receiver)
+        else
+          CORE_IDENTITY.bind_call(receiver)
+        end
+        self_value = @record.raw_obj_value(text, class_name)
+      rescue StandardError
+        self_value = ValueRecord.new(kind: 'Error',
+          type_id: @record.load_type_id(ERROR, 'CodeTracerEncodingError'),
+          msg: '<codetracer: inspecting this value raised a Ruby exception>')
       end
+      args = [[:self, self_value]] + args_after_self
 
       args.each do |(name, value)|
         @record.register_variable(name, value)
@@ -308,7 +336,7 @@ module CodeTracer
 
     def record_call(tp)
       if self.tracks_call?(tp)
-        module_name = tp.self.class.name
+        module_name = CORE_MODULE_NAME.bind_call(CORE_CLASS.bind_call(tp.self))
         method_name_prefix = module_name == 'Object' ? '' :  "#{module_name}#"
         method_name = "#{method_name_prefix}#{tp.method_id}"
         if @debug
