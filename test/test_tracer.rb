@@ -646,21 +646,7 @@ class TraceTest < Minitest::Test
   # Per `metacraft-specs/policies/recorder-test-requirements.md` §1
   # ("No silent skips"), every skip MUST emit a SKIP: line via Minitest's
   # `skip` so CI surfaces the deferral.
-  NATIVE_SEMANTIC_SKIP = {
-    # RECORDER BUG (codetracer-ruby-recorder issue TBD):
-    # Procs/lambdas surface as different value records depending on the
-    # backend.  The pure recorder treats a Proc as a generic Object (no
-    # instance variables), so it serialises as Struct{}.  The native
-    # recorder routes the same value through `to_s`, producing
-    # Raw{r="#<Proc:0xADDR path:line>"} — an opaque, address-bearing
-    # string.  The two encodings disagree both in `kind` and in the
-    # presence of a non-deterministic memory address.  Until both
-    # backends agree on a Proc encoding (proposal: a typed
-    # ValueRecord::Closure with source location and arity, no address),
-    # the semantic comparison cannot pass.  See file's program-level
-    # comment for the affected fixture.
-    'blocks_procs_lambdas' => 'Proc/Lambda value encoding diverges between pure (Struct{}) and native (Raw with object address)'
-  }.freeze
+  NATIVE_SEMANTIC_SKIP = {}.freeze
 
   Dir.glob(File.join(FIXTURE_DIR, '*_trace.json')).each do |fixture|
     base = File.basename(fixture, '_trace.json')

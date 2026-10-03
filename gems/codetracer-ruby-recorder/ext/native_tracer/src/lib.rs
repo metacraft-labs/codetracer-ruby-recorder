@@ -18,8 +18,8 @@ use codetracer_trace_writer_nim::{
     SpanRecord, StreamingValueEncoder, TraceEventsFileFormat, SPAN_STATUS_ERROR,
 };
 use rb_sys::{
-    rb_add_event_hook2, rb_ary_entry, rb_cArray, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct,
-    rb_cThread, rb_cTime, rb_check_typeddata, rb_const_defined, rb_const_get,
+    rb_add_event_hook2, rb_ary_entry, rb_cArray, rb_cObject, rb_cProc, rb_cRange, rb_cRegexp,
+    rb_cStruct, rb_cThread, rb_cTime, rb_check_typeddata, rb_const_defined, rb_const_get,
     rb_data_type_struct__bindgen_ty_1, rb_data_type_t, rb_data_typed_object_wrap,
     rb_define_alloc_func, rb_define_class, rb_define_method, rb_define_singleton_method,
     rb_eIOError, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t, rb_funcall,
@@ -855,6 +855,15 @@ unsafe fn encode_ruby_value_streaming(
             let value = rb_funcall(val, recorder.id.instance_variable_get, 1, sym);
             encode_ruby_value_streaming(recorder, tracer, encoder, value, depth - 1);
         }
+        encoder.end_compound();
+        return;
+    }
+    // A successfully inspected Proc with no instance variables has the same
+    // empty object state as the pure recorder. Stream the Struct in place so
+    // enclosing arrays/arguments retain their previously encoded siblings.
+    if rb_obj_is_kind_of(val, rb_cProc) != 0 {
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Struct, &class_name);
+        encoder.begin_struct(type_id, 0);
         encoder.end_compound();
         return;
     }
