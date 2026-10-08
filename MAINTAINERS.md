@@ -105,27 +105,22 @@ rake build
 gem push pkg/codetracer-ruby-recorder-<version>.gem
 ```
 
-### Pure Ruby gem
+### Pure Ruby recorder is not published
 
-The pure Ruby tracer is packaged from the files under `src/`. Build and
-publish it with:
+`gems/codetracer-pure-ruby-recorder` is a test oracle: the test suite
+compares its JSON output with `ct print` of the production recorder's
+`.ct` recording. CodeTracer cannot open its output, so it is not
+published to RubyGems. Versions published earlier remain available and
+are not yanked.
 
-```bash
-gem build codetracer_pure_ruby_recorder.gemspec
-gem push codetracer_pure_ruby_recorder-<version>.gem
-```
-
-Ensure the version matches the native extension gem so that both
-packages can be used interchangeably.
-
-All the above steps are automated by `scripts/publish_gems.rb` which
-builds and publishes the pure Ruby gem and all native variants.
+`scripts/publish_gems.rb` automates the steps above; it builds and
+publishes the native variants and the generic gem only.
 
 ### Automated publishing via GitHub Actions
 
 Gems are published automatically when a tag matching `v<version>` is
 pushed. The workflow defined in `.github/workflows/publish.yml` checks
-that the tag version equals the versions in both gemspecs and then runs
+that the tag version equals the gem version and then runs
 `scripts/publish_gems.rb`.
 
 The workflow requires a RubyGems API key stored as a repository secret

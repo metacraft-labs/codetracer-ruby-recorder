@@ -402,17 +402,12 @@ class TestHCRTraceContent < Minitest::Test
            "Expected mymodule.rb in paths, got: #{path_strings.inspect}"
   end
 
-  # 5. IO events: check if stdout lines are captured. The pure recorder may
-  #    not capture IO as Event objects -- skip gracefully if so.
+  # 5. Real explicit stdout output remains exactly ordered across reload.
   def test_io_events_or_skip
-    if idx[:io_events].empty?
-      skip 'Pure recorder does not capture IO as Event objects in the trace'
-    end
-
-    # If the recorder does capture IO, verify some expected output is present.
-    contents = idx[:io_events].map { |e| e['content'] }
-    assert contents.any? { |c| c.include?('step=') },
-           "Expected IO events with step output, got: #{contents.first(3).inspect}"
+    contents = idx[:io_events].map { |event| event.fetch('content') }.join.lines.map(&:chomp)
+    expected = HCRTest::EXPECTED_LINES
+    assert_equal expected, contents, 'exact HCR stdout byte lines and reload marker'
+    assert idx[:io_events].all? { |event| event.fetch('kind') == 0 }, 'canonical Write ordinal'
   end
 
   # 6. Metadata: program field references the test program.

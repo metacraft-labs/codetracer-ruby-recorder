@@ -18,14 +18,15 @@ use codetracer_trace_writer_nim::{
     SpanRecord, StreamingValueEncoder, TraceEventsFileFormat, SPAN_STATUS_ERROR,
 };
 use rb_sys::{
-    rb_add_event_hook2, rb_ary_entry, rb_cArray, rb_cObject, rb_cRange, rb_cRegexp, rb_cStruct,
-    rb_cThread, rb_cTime, rb_check_typeddata, rb_const_defined, rb_const_get,
-    rb_data_type_struct__bindgen_ty_1, rb_data_type_t, rb_data_typed_object_wrap,
+    rb_add_event_hook2, rb_any_to_s, rb_ary_entry, rb_cArray, rb_cObject, rb_cProc, rb_cRange,
+    rb_cRegexp, rb_cStruct, rb_cThread, rb_cTime, rb_check_typeddata, rb_const_defined,
+    rb_const_get, rb_data_type_struct__bindgen_ty_1, rb_data_type_t, rb_data_typed_object_wrap,
     rb_define_alloc_func, rb_define_class, rb_define_method, rb_define_singleton_method,
     rb_eIOError, rb_event_flag_t, rb_event_hook_flag_t, rb_event_hook_func_t, rb_funcall,
-    rb_hash_aref, rb_id2name, rb_id2sym, rb_intern, rb_intern2, rb_method_boundp, rb_num2dbl,
-    rb_num2long, rb_num2ull, rb_obj_class, rb_obj_classname, rb_obj_is_kind_of, rb_protect,
-    rb_raise, rb_remove_event_hook_with_data, rb_set_errinfo, rb_string_value_cstr, rb_sym2id,
+    rb_gc_register_address, rb_gc_unregister_address, rb_hash_aref, rb_id2name, rb_id2sym,
+    rb_intern, rb_intern2, rb_method_boundp, rb_method_call, rb_mod_name, rb_num2dbl, rb_num2long,
+    rb_num2ull, rb_obj_class, rb_obj_classname, rb_obj_is_kind_of, rb_protect, rb_raise,
+    rb_remove_event_hook_with_data, rb_set_errinfo, rb_string_value_cstr, rb_sym2id,
     rb_thread_current, rb_trace_arg_t, rb_tracearg_binding, rb_tracearg_callee_id,
     rb_tracearg_event_flag, rb_tracearg_lineno, rb_tracearg_path, rb_tracearg_raised_exception,
     rb_tracearg_return_value, rb_tracearg_self, rb_ull2inum, rb_utf8_str_new, Qfalse, Qnil, Qtrue,
@@ -355,6 +356,8 @@ impl InternedSymbols {
 }
 
 struct RecorderData {
+    // Stable Box-owned root; unregister before freeing this field.
+    main_receiver: VALUE,
     active: bool,
     in_event_hook: bool,
     last_thread_id: Option<u64>,
@@ -393,6 +396,17 @@ fn should_ignore_path(path: &str) -> bool {
     if path.starts_with("<internal:") {
         return true;
     }
+    // A gem's specification is Ruby that RubyGems evaluates whenever it
+    // activates the gem, and it lives in `<gem home>/specifications/`, beside
+    // `gems/` rather than inside it. In a per-user gem home
+    // (`~/.local/share/gem/ruby/<ver>/`) neither pattern above covers it, so a
+    // gem activated lazily mid-request (Ruby 3.4's error_highlight loading
+    // prism while an exception is being reported, for one) recorded steps in
+    // the gemspec, and a request's last step landed there instead of in the
+    // application.
+    if path.ends_with(".gemspec") {
+        return true;
+    }
     PATTERNS.iter().any(|p| path.contains(p))
 }
 
@@ -422,7 +436,9 @@ unsafe fn should_ignore_method(arg: *mut rb_trace_arg_t) -> bool {
 
 unsafe extern "C" fn recorder_free(ptr: *mut c_void) {
     if !ptr.is_null() {
-        drop(Box::from_raw(ptr as *mut Recorder));
+        let mut recorder = Box::from_raw(ptr as *mut Recorder);
+        rb_gc_unregister_address(&mut recorder.data.main_receiver);
+        drop(recorder);
     }
 }
 
@@ -453,13 +469,14 @@ unsafe fn get_recorder(obj: VALUE) -> *mut Recorder {
 }
 
 unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
-    let recorder = Box::new(Recorder {
+    let mut recorder = Box::new(Recorder {
         tracer: GuardedTracer::new(create_trace_writer(
             "ruby",
             &[],
             TraceEventsFileFormat::Ctfs,
         )),
         data: RecorderData {
+            main_receiver: Qnil.into(),
             active: false,
             in_event_hook: false,
             last_thread_id: None,
@@ -476,8 +493,47 @@ unsafe extern "C" fn ruby_recorder_alloc(klass: VALUE) -> VALUE {
         out_dir: String::new(),
         streaming_encoder: StreamingValueEncoder::new(),
     });
+    // Bind the trusted native Binding#receiver rather than evaluating `self`,
+    // whose context is the current C-method receiver.
+    let main_receiver = protect(|| {
+        let binding_class = rb_const_get(rb_cObject, rb_intern(c"Binding".as_ptr()));
+        let binding = rb_const_get(rb_cObject, rb_intern(c"TOPLEVEL_BINDING".as_ptr()));
+        let method = rb_funcall(
+            binding_class,
+            rb_intern(c"instance_method".as_ptr()),
+            1,
+            rb_id2sym(rb_intern(c"receiver".as_ptr())),
+        );
+        if !NIL_P(rb_funcall(
+            method,
+            rb_intern(c"source_location".as_ptr()),
+            0,
+        )) {
+            rb_raise(
+                rb_eIOError,
+                c"CodeTracer requires native Binding receiver inspection".as_ptr(),
+            );
+        }
+        let bound = rb_funcall(method, rb_intern(c"bind".as_ptr()), 1, binding);
+        rb_method_call(0, ptr::null(), bound)
+    });
+    recorder.data.main_receiver = match main_receiver {
+        Ok(value) => value,
+        Err(_) => {
+            drop(recorder);
+            raise_io_error("Failed to obtain the real Ruby main receiver")
+        }
+    };
+    rb_gc_register_address(&mut recorder.data.main_receiver);
     let ty = std::ptr::addr_of!(RECORDER_TYPE) as *const rb_data_type_t;
-    rb_data_typed_object_wrap(klass, Box::into_raw(recorder) as *mut c_void, ty)
+    let recorder_ptr = Box::into_raw(recorder);
+    match protect(|| rb_data_typed_object_wrap(klass, recorder_ptr as *mut c_void, ty)) {
+        Ok(value) => value,
+        Err(_) => {
+            recorder_free(recorder_ptr as *mut c_void);
+            raise_io_error("Failed to wrap the Ruby recorder")
+        }
+    }
 }
 
 unsafe extern "C" fn enable_tracing(self_val: VALUE) -> VALUE {
@@ -844,6 +900,15 @@ unsafe fn encode_ruby_value_streaming(
             let value = rb_funcall(val, recorder.id.instance_variable_get, 1, sym);
             encode_ruby_value_streaming(recorder, tracer, encoder, value, depth - 1);
         }
+        encoder.end_compound();
+        return;
+    }
+    // A successfully inspected Proc with no instance variables has the same
+    // empty object state as the pure recorder. Stream the Struct in place so
+    // enclosing arrays/arguments retain their previously encoded siblings.
+    if rb_obj_is_kind_of(val, rb_cProc) != 0 {
+        let type_id = TraceWriter::ensure_type_id(tracer, TypeKind::Struct, &class_name);
+        encoder.begin_struct(type_id, 0);
         encoder.end_compound();
         return;
     }
@@ -1277,11 +1342,34 @@ unsafe fn handle_traced_event(recorder: &mut Recorder, arg: *mut rb_trace_arg_t)
             // Encode `self` via streaming encoder.
             let class_name =
                 cstr_to_string(rb_obj_classname(self_val)).unwrap_or_else(|| "Object".to_string());
-            let text = value_to_string_exception_safe(data, self_val);
-            let self_type = TraceWriter::ensure_type_id(writer, TypeKind::Raw, &class_name);
-            encoder.reset();
-            encoder.write_raw(&text, self_type);
-            let self_cbor = encoder.get_bytes_copy();
+            let receiver_text = protect(|| {
+                if self_val == data.main_receiver {
+                    "main".to_string()
+                } else {
+                    let text = if RB_TYPE_P(self_val, rb_sys::ruby_value_type::RUBY_T_CLASS)
+                        || RB_TYPE_P(self_val, rb_sys::ruby_value_type::RUBY_T_MODULE)
+                    {
+                        let name = rb_mod_name(self_val);
+                        if NIL_P(name) {
+                            rb_any_to_s(self_val)
+                        } else {
+                            name
+                        }
+                    } else {
+                        rb_any_to_s(self_val)
+                    };
+                    rstring_lossy(text)
+                }
+            });
+            let self_cbor = match receiver_text {
+                Ok(text) => {
+                    let self_type = TraceWriter::ensure_type_id(writer, TypeKind::Raw, &class_name);
+                    encoder.reset();
+                    encoder.write_raw(&text, self_type);
+                    encoder.get_bytes_copy()
+                }
+                Err(_) => encode_encoding_failure(writer, encoder),
+            };
             TraceWriter::register_variable_cbor(writer, "self", &self_cbor);
             // Also stage `self` as the first call arg so the frontend's
             // calltrace pane can render the receiver alongside the method

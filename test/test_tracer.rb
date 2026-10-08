@@ -59,6 +59,10 @@ class TraceTest < Minitest::Test
     assert status.success?, "ct-print failed: #{stderr}"
 
     raw_events = JSON.parse(stdout)
+    @native_type_declarations = raw_events.select { |event| event['type'] == 'type' }.to_h do |event|
+      [event.fetch('type_id'), { 'lang_type' => event.fetch('name'),
+                               'kind' => ruby_type_kind_for(event.fetch('name')) }]
+    end
     normalise_ct_events(raw_events)
   end
 
@@ -82,6 +86,10 @@ class TraceTest < Minitest::Test
   # path_id) we re-assign them using the same algorithm the pure recorder
   # uses: first-seen-order starting from 0.
   # ---------------------------------------------------------------------------
+  # EventLogKind names in ordinal order (trace-events.md, "EventLogKind").
+  IO_EVENT_KINDS = %w[Write WriteFile WriteOther Read ReadFile ReadOther ReadDir OpenDir
+                      CloseDir Socket Open Error TraceLogEvent EvmEvent].freeze
+
   def normalise_ct_events(raw_events)
     # Mapping from ct-print type kind strings to the integer constants used
     # by the pure recorder (mirrors types.nim / TypeKind enum).
@@ -237,11 +245,8 @@ class TraceTest < Minitest::Test
         value = normalise_ct_value(ev['value'], ct_type_id_to_norm, type_kind_map)
         result << { 'Return' => { 'return_value' => value } }
       when 'io', 'event'
-        kind = case ev['kind']
-               when 'elkWrite', 'ioStdout' then 0
-               when 'elkError', 'ioStderr' then 11
-               else 0
-               end
+        kind = IO_EVENT_KINDS.index(ev['kind'].to_s.delete_prefix('elk')) or
+               raise "ct-print reported io kind #{ev['kind'].inspect}, which is not an EventLogKind"
         result << { 'Event' => {
           'kind' => kind,
           'content' => ev['data'] || ev['content'] || '',
@@ -451,6 +456,10 @@ class TraceTest < Minitest::Test
     trace.select { |ev| ev.key?('Event') }.map { |ev| ev['Event']['content'] }
   end
 
+  def extract_event_kinds(trace)
+    trace.select { |ev| ev.key?('Event') }.map { |ev| ev['Event']['kind'] }
+  end
+
   # Deep-strip type_id fields from a value hash so that values can be
   # compared regardless of ID assignment order.
   def strip_type_ids(val)
@@ -545,6 +554,14 @@ class TraceTest < Minitest::Test
   #      Bool, String, Raw) match exactly, while complex values are
   #      compared in their simplified raw-string form.
   def assert_trace_semantic_match(expected, actual, msg_prefix = '')
+    # Non-vacuity: every extractor below returns [] for an empty stream, so
+    # two empty (or step-less) traces would agree on everything.  A
+    # reference with no steps or no functions means a recorder recorded
+    # nothing, and the comparison must say so instead of passing.
+    refute_empty extract_steps(expected),
+                 "#{msg_prefix}reference trace has no steps; the oracle comparison would be vacuous"
+    refute_empty extract_function_names(expected),
+                 "#{msg_prefix}reference trace has no functions; the oracle comparison would be vacuous"
     assert_equal extract_steps(expected), extract_steps(actual),
                  "#{msg_prefix}steps differ"
     assert_equal extract_function_names(expected), extract_function_names(actual),
@@ -574,6 +591,8 @@ class TraceTest < Minitest::Test
     end
     assert_equal extract_event_content(expected), extract_event_content(actual),
                  "#{msg_prefix}I/O event content differs"
+    assert_equal extract_event_kinds(expected), extract_event_kinds(actual),
+                 "#{msg_prefix}I/O event kinds differ"
 
     # Variable names: the native trace may have all expected names plus
     # extras from duplicate registrations.
@@ -631,21 +650,42 @@ class TraceTest < Minitest::Test
   # Per `metacraft-specs/policies/recorder-test-requirements.md` §1
   # ("No silent skips"), every skip MUST emit a SKIP: line via Minitest's
   # `skip` so CI surfaces the deferral.
-  NATIVE_SEMANTIC_SKIP = {
-    # RECORDER BUG (codetracer-ruby-recorder issue TBD):
-    # Procs/lambdas surface as different value records depending on the
-    # backend.  The pure recorder treats a Proc as a generic Object (no
-    # instance variables), so it serialises as Struct{}.  The native
-    # recorder routes the same value through `to_s`, producing
-    # Raw{r="#<Proc:0xADDR path:line>"} — an opaque, address-bearing
-    # string.  The two encodings disagree both in `kind` and in the
-    # presence of a non-deterministic memory address.  Until both
-    # backends agree on a Proc encoding (proposal: a typed
-    # ValueRecord::Closure with source location and arity, no address),
-    # the semantic comparison cannot pass.  See file's program-level
-    # comment for the affected fixture.
-    'blocks_procs_lambdas' => 'Proc/Lambda value encoding diverges between pure (Struct{}) and native (Raw with object address)'
-  }.freeze
+  NATIVE_SEMANTIC_SKIP = {}.freeze
+
+  # Approved Ruby-Core-Receiver-Golden-Amendment: only these two fixtures
+  # project implicit receiver addresses. Class, complete Raw shape and alias
+  # identity remain checked; explicit arguments and locals remain untouched.
+  def project_core_receiver_identity(trace, base, native_types: nil)
+    allowed = { 'point_representation' => %w[Point], 'classes' => %w[Animal Dog] }[base]
+    return trace unless allowed
+
+    projected = Marshal.load(Marshal.dump(trace))
+    types = []
+    names = []
+    identities = {}
+    projected.each do |event|
+      types << event.fetch('Type') if event.key?('Type')
+      names << event.fetch('VariableName') if event.key?('VariableName')
+      values = event.key?('Value') ? [event.fetch('Value')] : []
+      values += event.fetch('Call').fetch('args') if event.key?('Call')
+      values.each do |entry|
+        next unless names.fetch(entry.fetch('variable_id')) == 'self'
+        value = entry.fetch('value')
+        type = (native_types || types).fetch(value.fetch('type_id'))
+        next unless allowed.include?(type.fetch('lang_type'))
+        assert_equal 16, type.fetch('kind'), 'receiver type must remain Raw'
+        assert_equal %w[kind r type_id], value.keys.sort, 'complete receiver Raw shape'
+        assert_equal 'Raw', value.fetch('kind')
+        class_name = type.fetch('lang_type')
+        rendering = value.fetch('r')
+        assert_match(/\A#<#{Regexp.escape(class_name)}:0x[0-9a-f]+>\z/, rendering,
+                     'actual core receiver identity must include its class and address')
+        identities[rendering] ||= identities.length
+        value['r'] = "#<#{class_name}:receiver-#{identities.fetch(rendering)}>"
+      end
+    end
+    projected
+  end
 
   Dir.glob(File.join(FIXTURE_DIR, '*_trace.json')).each do |fixture|
     base = File.basename(fixture, '_trace.json')
@@ -658,6 +698,9 @@ class TraceTest < Minitest::Test
       expected = expected_trace("#{base}.rb")
 
       # Pure recorder: exact structural match against fixture.
+      pure_trace = project_core_receiver_identity(pure_trace, base)
+      refute_nil native_trace, 'native recorder produced no trace output'
+      native_trace = project_core_receiver_identity(native_trace, base, native_types: @native_type_declarations)
       assert_equal expected, pure_trace
 
       expected_out = expected_output("#{base}.rb")
@@ -674,8 +717,49 @@ class TraceTest < Minitest::Test
       if (reason = NATIVE_SEMANTIC_SKIP[base])
         skip "RECORDER BUG: #{reason} (program: #{base}.rb)"
       end
-      assert_trace_semantic_match(expected, native_trace, '[native] ')
+      # The oracle protocol itself: the pure recorder's JSON against the
+      # production recording as decoded by `ct print`.  `pure_trace` equals
+      # the fixture (asserted above), so this is the same comparison stated
+      # directly between the two recorders.
+      assert_trace_semantic_match(pure_trace, native_trace, '[pure vs native] ')
     end
+  end
+
+  # The oracle comparison is only meaningful when there is something to
+  # compare: two empty event streams agree on every extracted property.
+  # These guard the guard -- an empty or step-less reference must fail
+  # the comparison rather than pass it vacuously.
+  def test_oracle_comparison_refuses_empty_streams
+    assert_raises(Minitest::Assertion) { assert_trace_semantic_match([], [], '[empty] ') }
+  end
+
+  def test_oracle_comparison_refuses_a_stepless_reference
+    stepless = [{ 'Path' => 'x.rb' }, { 'Function' => { 'name' => 'f', 'path_id' => 0, 'line' => 1 } }]
+    assert_raises(Minitest::Assertion) { assert_trace_semantic_match(stepless, stepless, '[stepless] ') }
+  end
+
+  # An I/O event's kind round-trips exactly (trace-events.md, "EventLogKind"),
+  # so the oracle comparison holds the two recorders to the same kind, not
+  # only the same bytes.
+  def test_oracle_comparison_refuses_a_differing_io_kind
+    base = [{ 'Path' => 'x.rb' }, { 'Function' => { 'name' => 'f', 'path_id' => 0, 'line' => 1 } },
+            { 'Step' => { 'path_id' => 0, 'line' => 1 } }]
+    stdout = base + [{ 'Event' => { 'kind' => 0, 'content' => "3\n", 'metadata' => '' } }]
+    stderr = base + [{ 'Event' => { 'kind' => 2, 'content' => "3\n", 'metadata' => '' } }]
+    assert_raises(Minitest::Assertion) { assert_trace_semantic_match(stdout, stderr, '[io kind] ') }
+  end
+
+  # ct-print names every EventLogKind; the normaliser keeps each one's ordinal
+  # rather than folding the ones it does not expect onto `Write`.
+  def test_ct_print_io_kinds_normalise_to_their_ordinals
+    names = %w[Write WriteFile WriteOther Read ReadFile ReadOther ReadDir OpenDir
+               CloseDir Socket Open Error TraceLogEvent EvmEvent]
+    names.each_with_index do |name, ordinal|
+      events = normalise_ct_events([{ 'type' => 'io', 'kind' => "elk#{name}", 'data' => 'x' }])
+      io = events.find { |e| e.key?('Event') }
+      assert_equal ordinal, io['Event']['kind'], "elk#{name} should normalise to #{ordinal}"
+    end
+    assert_raises(RuntimeError) { normalise_ct_events([{ 'type' => 'io', 'kind' => 'elkBogus', 'data' => 'x' }]) }
   end
 
   def test_args_sum_with_separator
@@ -693,7 +777,7 @@ class TraceTest < Minitest::Test
 
     # Native recorder: semantic match.
     refute_nil native_trace, 'native recorder produced no trace output'
-    assert_trace_semantic_match(expected, native_trace, '[native separator] ')
+    assert_trace_semantic_match(pure_trace, native_trace, '[pure vs native, separator] ')
 
     expected_out = expected_output("#{base}.rb")
     assert_equal expected_out, pure_out
@@ -784,6 +868,66 @@ class TraceTest < Minitest::Test
     end
   end
 
+  # A gem's specification is Ruby that RubyGems evaluates when it activates the
+  # gem, and it sits in `<gem home>/specifications/` — beside `gems/`, not
+  # inside it. With a per-user gem home (`~/.local/share/gem/ruby/<ver>/`) no
+  # library pattern matched it, so a gem activated in the middle of the
+  # program (Ruby 3.4's error_highlight pulling in prism while an exception was
+  # being reported) put the gemspec's lines into the trace, and the last step
+  # of a request that raised landed in `prism-<ver>.gemspec`.
+  #
+  # The program below evaluates a gemspec from such a directory through the
+  # real `Gem::Specification.load`, then calls a method of its own; the trace
+  # must name the program and must not name the gemspec.
+  def test_native_does_not_record_gemspec_evaluation
+    skip 'native recorder extension not built' unless native_extension_built?
+
+    Dir.mktmpdir('ct-gemspec') do |dir|
+      gem_home = File.join(dir, 'share', 'gem', 'ruby', '3.4.0', 'specifications')
+      FileUtils.mkdir_p(gem_home)
+      spec_path = File.join(gem_home, 'demo-1.0.gemspec')
+      File.write(spec_path, <<~SPEC)
+        Gem::Specification.new do |s|
+          s.name = 'demo'
+          s.version = '1.0'
+          s.summary = 'demo'
+          s.authors = ['demo']
+          s.files = []
+        end
+      SPEC
+      program = File.join(dir, 'activate_gem.rb')
+      File.write(program, <<~RUBY)
+        def after_activation(spec)
+          spec.name
+        end
+        spec = Gem::Specification.load(#{spec_path.inspect})
+        puts after_activation(spec)
+      RUBY
+      out_dir = File.join(dir, 'trace')
+      FileUtils.mkdir_p(out_dir)
+
+      Dir.chdir(File.expand_path('..', __dir__)) do
+        stdout, stderr, status = Open3.capture3(
+          RbConfig.ruby, NATIVE_RECORDER_BIN, '--out-dir', out_dir, program
+        )
+        assert status.success?, "trace failed: #{stderr}"
+        assert_equal 'demo', stdout.lines.last.to_s.chomp,
+                     'the gemspec was not evaluated, so this test proves nothing'
+      end
+
+      ct_files = Dir.glob(File.join(out_dir, '*.ct'))
+      refute_empty ct_files, 'native recorder did not produce a .ct trace'
+      assert File.exist?(CT_PRINT), "ct-print binary not found at #{CT_PRINT}"
+      stdout, stderr, status = Open3.capture3(CT_PRINT, '--json', ct_files.first)
+      assert status.success?, "ct-print --json failed: #{stderr}"
+      paths = JSON.parse(stdout).fetch('paths')
+
+      assert_includes paths, program, "the program itself was not recorded: #{paths.inspect}"
+      refute paths.any? { |p| p.end_with?('.gemspec') },
+             "a gem specification was recorded as program code: #{paths.inspect}"
+    end
+  end
+
   def test_pure_debug_smoke
     Dir.chdir(File.expand_path('..', __dir__)) do
       env = { 'CODETRACER_RUBY_RECORDER_DEBUG' => '1' }
@@ -844,7 +988,7 @@ class TraceTest < Minitest::Test
   #     path table contains `addition.rb`; function table contains
   #     `<top-level>` and `add` (`end_with?` checks for tolerance to
   #     future namespacing like `Object#add`).
-  #   - **IO event** — a single `ioStdout` write of `"3\n"` (the
+  #   - **IO event** — a single `Write` (EventLogKind 0, stdout) of `"3\n"` (the
   #     `puts add(1, 2)` output, including the trailing newline that
   #     `puts` appends).
   #
@@ -1140,8 +1284,8 @@ class TraceTest < Minitest::Test
       assert_equal 1, io_events.size,
                    "expected exactly 1 io event, got #{io_events.size}: #{io_events.inspect}"
       io = io_events.first
-      assert_equal 'ioStdout', io['io_kind'],
-                   "io event should be ioStdout, got #{io['io_kind'].inspect}"
+      assert_equal 'Write', io['io_kind'],
+                   "io event should be a stdout Write, got #{io['io_kind'].inspect}"
       assert_equal "3\n", io['text'],
                    "io event text should be \"3\\n\", got #{io['text'].inspect}"
       assert_equal "3\n".bytesize, io['bytes_len'],
