@@ -84,7 +84,8 @@ class TraceTest < Minitest::Test
   # ---------------------------------------------------------------------------
   # EventLogKind names in ordinal order (trace-events.md, "EventLogKind").
   IO_EVENT_KINDS = %w[Write WriteFile WriteOther Read ReadFile ReadOther ReadDir OpenDir
-                      CloseDir Socket Open Error TraceLogEvent EvmEvent].freeze
+                      CloseDir Socket Open Error TraceLogEvent EvmEvent WriteStderr Exec
+                      ReadEnv WriteEnv Stat CreateDir RemoveDir RemoveFile Rename ChangeDir].freeze
 
   def normalise_ct_events(raw_events)
     # Mapping from ct-print type kind strings to the integer constants used
@@ -717,7 +718,7 @@ class TraceTest < Minitest::Test
     base = [{ 'Path' => 'x.rb' }, { 'Function' => { 'name' => 'f', 'path_id' => 0, 'line' => 1 } },
             { 'Step' => { 'path_id' => 0, 'line' => 1 } }]
     stdout = base + [{ 'Event' => { 'kind' => 0, 'content' => "3\n", 'metadata' => '' } }]
-    stderr = base + [{ 'Event' => { 'kind' => 2, 'content' => "3\n", 'metadata' => '' } }]
+    stderr = base + [{ 'Event' => { 'kind' => 14, 'content' => "3\n", 'metadata' => '' } }]
     assert_raises(Minitest::Assertion) { assert_trace_semantic_match(stdout, stderr, '[io kind] ') }
   end
 
@@ -725,13 +726,16 @@ class TraceTest < Minitest::Test
   # rather than folding the ones it does not expect onto `Write`.
   def test_ct_print_io_kinds_normalise_to_their_ordinals
     names = %w[Write WriteFile WriteOther Read ReadFile ReadOther ReadDir OpenDir
-               CloseDir Socket Open Error TraceLogEvent EvmEvent]
+               CloseDir Socket Open Error TraceLogEvent EvmEvent WriteStderr Exec
+               ReadEnv WriteEnv Stat CreateDir RemoveDir RemoveFile Rename ChangeDir]
+    assert_equal 24, names.length
     names.each_with_index do |name, ordinal|
       events = normalise_ct_events([{ 'type' => 'io', 'kind' => "elk#{name}", 'data' => 'x' }])
       io = events.find { |e| e.key?('Event') }
       assert_equal ordinal, io['Event']['kind'], "elk#{name} should normalise to #{ordinal}"
     end
     assert_raises(RuntimeError) { normalise_ct_events([{ 'type' => 'io', 'kind' => 'elkBogus', 'data' => 'x' }]) }
+    assert_raises(RuntimeError) { normalise_ct_events([{ 'type' => 'io', 'kind' => 'elkKind24', 'data' => 'x' }]) }
   end
 
   def test_args_sum_with_separator
