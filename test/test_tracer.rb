@@ -1068,17 +1068,23 @@ class TraceTest < Minitest::Test
       # ---- Counts — stable for the canonical fixture ---------------
       # The Ruby native recorder produces a deterministic event count
       # for this fixture under TracePoint instrumentation:
-      #   - 7 step events (1 sekThreadSwitch synthetic, plus 6
-      #     sekDeltaStep events covering the `def add` line,
+      #   - 6 steps: the DeltaStep records covering the `def add` line,
       #     the `puts add(1, 2)` call site, the `add` body's `a + b`
-      #     return-edge, and the post-call top-level steps)
+      #     return-edge, and the post-call top-level steps.  The
+      #     recorder's synthetic ThreadSwitch record is not a step: it
+      #     is its own `thread_switch` entry and is not counted.
       #   - 2 call entries (synthetic <top-level> wrapper + add)
       #   - 1 io event (the `puts add(1, 2)` write to stdout)
       # If these change, that's a real regression to investigate, not
       # a flake — pin the values strictly.
-      assert_equal 7, bundle['counts']['steps'],
-                   "expected 7 steps, got #{bundle['counts']['steps']}; " \
+      assert_equal 6, bundle['counts']['steps'],
+                   "expected 6 steps, got #{bundle['counts']['steps']}; " \
                    "full counts: #{bundle['counts'].inspect}"
+      assert_equal 6, bundle['events'].count { |e| e['kind'] == 'step' },
+                   "the step entries must match counts.steps"
+      assert_equal 1, bundle['events'].count { |e| e['kind'] == 'thread_switch' },
+                   "expected the one synthetic thread_switch entry: " \
+                   "#{bundle['events'].map { |e| e['kind'] }.tally.inspect}"
       assert_equal 2, bundle['counts']['calls'],
                    "expected 2 calls, got #{bundle['counts']['calls']}; " \
                    "full counts: #{bundle['counts'].inspect}"
