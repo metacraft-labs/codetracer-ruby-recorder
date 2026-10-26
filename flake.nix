@@ -34,28 +34,14 @@
     };
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      fenix,
-      pre-commit-hooks,
-      codetracer-trace-format,
-      codetracer-trace-format-nim,
-      nim-stew,
-      nim-results,
-    }:
+  outputs = { self, nixpkgs, fenix, pre-commit-hooks, codetracer-trace-format
+    , codetracer-trace-format-nim, nim-stew, nim-results, }:
     let
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
+      systems =
+        [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSystem = nixpkgs.lib.genAttrs systems;
 
-      rust-toolchain-for =
-        system:
+      rust-toolchain-for = system:
         fenix.packages.${system}.fromToolchainFile {
           file = ./rust-toolchain.toml;
           sha256 = "sha256-Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
@@ -64,13 +50,11 @@
       # Helper function to build the native Ruby recorder for a given pkgs and Ruby.
       # Consumers can call this with their own nixpkgs and Ruby version to ensure
       # ABI compatibility (the native .so must match the Ruby that loads it).
-      mkRubyRecorderPackage =
-        pkgs: ruby:
+      mkRubyRecorderPackage = pkgs: ruby:
         let
           inherit (pkgs) stdenv lib;
           isLinux = stdenv.isLinux;
-        in
-        stdenv.mkDerivation {
+        in stdenv.mkDerivation {
           pname = "ruby-recorder-native";
           version = builtins.readFile ./version.txt;
 
@@ -90,8 +74,7 @@
             # codetracer_trace_writer".
             pkgs.nim
             pkgs.nimble
-          ]
-          ++ lib.optionals stdenv.isDarwin [ pkgs.libiconv ];
+          ] ++ lib.optionals stdenv.isDarwin [ pkgs.libiconv ];
 
           buildInputs = [ ruby ];
 
@@ -101,21 +84,24 @@
           # so skip it and feed the sources directly.
           CODETRACER_TRACE_FORMAT_NIM_DIR = "${codetracer-trace-format-nim}";
           CODETRACER_TRACE_FORMAT_NIM_SKIP_NIMBLE_INSTALL = "1";
-          CODETRACER_TRACE_FORMAT_NIM_EXTRA_PATHS = "${nim-stew}:${nim-results}";
+          CODETRACER_TRACE_FORMAT_NIM_EXTRA_PATHS =
+            "${nim-stew}:${nim-results}";
 
           # bindgen needs LIBCLANG_PATH to find libclang.so
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
           # bindgen also needs C standard headers (stdio.h, stddef.h, etc.)
-          BINDGEN_EXTRA_CLANG_ARGS = lib.optionalString isLinux (
-            builtins.concatStringsSep " " [
+          BINDGEN_EXTRA_CLANG_ARGS = lib.optionalString isLinux
+            (builtins.concatStringsSep " " [
               "-isystem ${stdenv.cc.libc.dev}/include"
-              "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${lib.versions.major pkgs.llvmPackages.libclang.version}/include"
-            ]
-          );
+              "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${
+                lib.versions.major pkgs.llvmPackages.libclang.version
+              }/include"
+            ]);
 
           cargoDeps = pkgs.rustPlatform.importCargoLock {
-            lockFile = ./gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.lock;
+            lockFile =
+              ./gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.lock;
           };
 
           postUnpack = ''
@@ -169,8 +155,7 @@
 
           doCheck = false;
         };
-    in
-    {
+    in {
       # Expose the helper function for consumers who need a custom Ruby version
       lib.mkRubyRecorderPackage = mkRubyRecorderPackage;
 
@@ -189,8 +174,7 @@
         };
       });
 
-      devShells = forEachSystem (
-        system:
+      devShells = forEachSystem (system:
         let
           pkgs = import nixpkgs { inherit system; };
           preCommit = self.checks.${system}.pre-commit-check;
@@ -210,118 +194,132 @@
             ps.sinatra
             ps.rails
           ]);
-        in
-        {
-          default =
-            pkgs.mkShell {
-              packages =
-                with pkgs;
-                [
-                  # WARNING: `3.4` needed in `./gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs`
-                  #          for the `thread` field of `rb_internal_thread_event_data_t`
-                  rubyWithTestGems
+          # git-hooks.nix installs `.pre-commit-config.yaml` and git hooks into
+          # `git rev-parse --show-toplevel` of the directory the shell is entered
+          # from, so `nix develop /path/to/this-repo` run inside another checkout
+          # would plant this repository's hooks there. `ownRepoOnly` runs a snippet
+          # only when that toplevel is this repository, recognised by a `flake.nix`
+          # identical to the one this shell was evaluated from; anything it cannot
+          # establish counts as another repository, so it fails safe.
+          # tests/test_dev_shell_writes_nothing_elsewhere.sh
+          ownRepoOnly = script: ''
+            _own_repo_root="$(${pkgs.git}/bin/git rev-parse --show-toplevel 2>/dev/null || true)"
+            if [ -n "$_own_repo_root" ] && [ -f "$_own_repo_root/flake.nix" ] \
+              && [ "$(${pkgs.coreutils}/bin/sha256sum "$_own_repo_root/flake.nix" | ${pkgs.coreutils}/bin/cut -d' ' -f1)" \
+                = "${builtins.hashFile "sha256" ./flake.nix}" ]; then
+            ${script}
+            # git-hooks.nix's installer leaves core.hooksPath as the RELATIVE
+            # `.git/hooks`, in the config every worktree shares. A linked worktree
+            # cannot resolve it (there `.git` is a file), so git silently runs no
+            # hooks there. Point it at the common hooks directory instead.
+            if [ "$(${pkgs.git}/bin/git config --local --get core.hooksPath 2>/dev/null)" = .git/hooks ]; then
+              ${pkgs.git}/bin/git config --local core.hooksPath "$(${pkgs.git}/bin/git rev-parse --path-format=absolute --git-common-dir)/hooks"
+            fi
+            fi
+            unset _own_repo_root
+          '';
+        in {
+          default = pkgs.mkShell {
+            packages = with pkgs;
+              [
+                # WARNING: `3.4` needed in `./gems/codetracer-ruby-recorder/ext/native_tracer/src/lib.rs`
+                #          for the `thread` field of `rb_internal_thread_event_data_t`
+                rubyWithTestGems
 
-                  # The native extension is implemented in Rust
-                  (rust-toolchain-for system)
-                  libiconv # Required dependency when building the rb-sys Rust crate on macOS and some Linux systems
+                # The native extension is implemented in Rust
+                (rust-toolchain-for system)
+                libiconv # Required dependency when building the rb-sys Rust crate on macOS and some Linux systems
 
-                  # Required for bindgen (used by rb-sys crate for generating Ruby C API bindings)
-                  # Without these, build fails with "Unable to find libclang" error
-                  libclang # Provides libclang library that bindgen requires
-                  llvmPackages.clang # Clang compiler used by bindgen for parsing C headers
-                  pkg-config # Used by build scripts to find library paths
+                # Required for bindgen (used by rb-sys crate for generating Ruby C API bindings)
+                # Without these, build fails with "Unable to find libclang" error
+                libclang # Provides libclang library that bindgen requires
+                llvmPackages.clang # Clang compiler used by bindgen for parsing C headers
+                pkg-config # Used by build scripts to find library paths
 
-                  # For build automation
-                  just
-                  prek
-                  git-lfs
+                # For build automation
+                just
+                prek
+                git-lfs
 
-                  capnproto # Required for the native tracer's Cap'n Proto serialization
-                  zstd # Required for linking the Nim trace writer (libzstd)
+                capnproto # Required for the native tracer's Cap'n Proto serialization
+                zstd # Required for linking the Nim trace writer (libzstd)
 
-                  # codetracer_trace_writer_nim/build.rs invokes nim+nimble
-                  # to compile the FFI sources into a static library.
-                  nim
-                  nimble
-                ]
-                ++ pkgs.lib.optionals isLinux [
-                  # C standard library headers required for Ruby C extension compilation on Linux
-                  # Without this, build fails with "stdarg.h file not found" error
-                  glibc.dev
-                ]
-                ++ preCommit.enabledPackages;
+                # codetracer_trace_writer_nim/build.rs invokes nim+nimble
+                # to compile the FFI sources into a static library.
+                nim
+                nimble
+              ] ++ pkgs.lib.optionals isLinux [
+                # C standard library headers required for Ruby C extension compilation on Linux
+                # Without this, build fails with "stdarg.h file not found" error
+                glibc.dev
+              ] ++ preCommit.enabledPackages;
 
-              # Environment variables required to fix build issues with rb-sys/bindgen
+            # Environment variables required to fix build issues with rb-sys/bindgen
 
-              # LIBCLANG_PATH: Required by bindgen to locate libclang shared library
-              # Without this, bindgen fails with "couldn't find any valid shared libraries" error
-              LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            # LIBCLANG_PATH: Required by bindgen to locate libclang shared library
+            # Without this, bindgen fails with "couldn't find any valid shared libraries" error
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
 
-              # Compiler environment variables to ensure consistent toolchain usage
-              # These help rb-sys and other build scripts use the correct clang installation
-              CLANG_PATH = "${pkgs.llvmPackages.clang}/bin/clang";
-              CC = "${pkgs.llvmPackages.clang}/bin/clang";
-              CXX = "${pkgs.llvmPackages.clang}/bin/clang++";
+            # Compiler environment variables to ensure consistent toolchain usage
+            # These help rb-sys and other build scripts use the correct clang installation
+            CLANG_PATH = "${pkgs.llvmPackages.clang}/bin/clang";
+            CC = "${pkgs.llvmPackages.clang}/bin/clang";
+            CXX = "${pkgs.llvmPackages.clang}/bin/clang++";
 
-              # `cargo <subcommand>` looks for `cargo-<subcommand>` in
-              # `$CARGO_HOME/bin` BEFORE it searches PATH. On any machine with
-              # rustup -- including the self-hosted macOS runner -- that
-              # directory holds rustup's proxies, so `cargo fmt` runs rustup's
-              # `cargo-fmt` instead of the toolchain above and fails with
-              # "'cargo-fmt' is not installed for the toolchain" (or formats
-              # with a different rustfmt than this shell's).
-              #
-              # The shell therefore gets its own CARGO_HOME with no `bin/`, so
-              # subcommand lookup falls through to PATH. `registry/` and `git/`
-              # are symlinks to the real CARGO_HOME, and so are its config and
-              # credentials when present: the download cache is shared, and
-              # only the proxy directory is left behind.
-              shellHook = ''
-                _ct_real_cargo_home="''${CARGO_HOME:-$HOME/.cargo}"
-                _ct_cargo_home="''${XDG_CACHE_HOME:-$HOME/.cache}/codetracer-ruby-recorder/cargo-home"
-                if [ "$_ct_real_cargo_home" != "$_ct_cargo_home" ]; then
-                  mkdir -p "$_ct_cargo_home" \
-                    "$_ct_real_cargo_home/registry" "$_ct_real_cargo_home/git"
-                  # Re-pointed on every entry, so a changed CARGO_HOME is
-                  # followed rather than left sharing the previous one's cache.
-                  # Only a link is ever replaced; a real file placed here is
-                  # left alone.
-                  for _ct_entry in registry git config.toml credentials.toml; do
-                    if [ -e "$_ct_real_cargo_home/$_ct_entry" ] &&
-                      { [ -L "$_ct_cargo_home/$_ct_entry" ] ||
-                        [ ! -e "$_ct_cargo_home/$_ct_entry" ]; }; then
-                      ln -sfn "$_ct_real_cargo_home/$_ct_entry" "$_ct_cargo_home/$_ct_entry"
-                    fi
-                  done
-                  export CARGO_HOME="$_ct_cargo_home"
-                fi
-                unset _ct_real_cargo_home _ct_cargo_home _ct_entry
+            # `cargo <subcommand>` looks for `cargo-<subcommand>` in
+            # `$CARGO_HOME/bin` BEFORE it searches PATH. On any machine with
+            # rustup -- including the self-hosted macOS runner -- that
+            # directory holds rustup's proxies, so `cargo fmt` runs rustup's
+            # `cargo-fmt` instead of the toolchain above and fails with
+            # "'cargo-fmt' is not installed for the toolchain" (or formats
+            # with a different rustfmt than this shell's).
+            #
+            # The shell therefore gets its own CARGO_HOME with no `bin/`, so
+            # subcommand lookup falls through to PATH. `registry/` and `git/`
+            # are symlinks to the real CARGO_HOME, and so are its config and
+            # credentials when present: the download cache is shared, and
+            # only the proxy directory is left behind.
+            shellHook = ''
+              _ct_real_cargo_home="''${CARGO_HOME:-$HOME/.cargo}"
+              _ct_cargo_home="''${XDG_CACHE_HOME:-$HOME/.cache}/codetracer-ruby-recorder/cargo-home"
+              if [ "$_ct_real_cargo_home" != "$_ct_cargo_home" ]; then
+                mkdir -p "$_ct_cargo_home" \
+                  "$_ct_real_cargo_home/registry" "$_ct_real_cargo_home/git"
+                # Re-pointed on every entry, so a changed CARGO_HOME is
+                # followed rather than left sharing the previous one's cache.
+                # Only a link is ever replaced; a real file placed here is
+                # left alone.
+                for _ct_entry in registry git config.toml credentials.toml; do
+                  if [ -e "$_ct_real_cargo_home/$_ct_entry" ] &&
+                    { [ -L "$_ct_cargo_home/$_ct_entry" ] ||
+                      [ ! -e "$_ct_cargo_home/$_ct_entry" ]; }; then
+                    ln -sfn "$_ct_real_cargo_home/$_ct_entry" "$_ct_cargo_home/$_ct_entry"
+                  fi
+                done
+                export CARGO_HOME="$_ct_cargo_home"
+              fi
+              unset _ct_real_cargo_home _ct_cargo_home _ct_entry
 
-                ${preCommit.shellHook}
-              '';
-            }
-            // pkgs.lib.optionalAttrs isLinux {
-              # BINDGEN_EXTRA_CLANG_ARGS: Additional clang arguments for bindgen when parsing Ruby headers
-              # Includes system header paths that are not automatically discovered in NixOS
-              # --sysroot ensures clang can find standard C library headers like stdarg.h
-              BINDGEN_EXTRA_CLANG_ARGS =
-                with pkgs;
-                builtins.concatStringsSep " " [
-                  "-I${libclang.lib}/lib/clang/${libclang.version}/include" # Clang builtin headers
-                  "-I${glibc.dev}/include" # System C headers
-                  "--sysroot=${glibc.dev}" # System root for header resolution
-                ];
-            };
-        }
-      );
+              ${ownRepoOnly preCommit.shellHook}
+            '';
+          } // pkgs.lib.optionalAttrs isLinux {
+            # BINDGEN_EXTRA_CLANG_ARGS: Additional clang arguments for bindgen when parsing Ruby headers
+            # Includes system header paths that are not automatically discovered in NixOS
+            # --sysroot ensures clang can find standard C library headers like stdarg.h
+            BINDGEN_EXTRA_CLANG_ARGS = with pkgs;
+              builtins.concatStringsSep " " [
+                "-I${libclang.lib}/lib/clang/${libclang.version}/include" # Clang builtin headers
+                "-I${glibc.dev}/include" # System C headers
+                "--sysroot=${glibc.dev}" # System root for header resolution
+              ];
+          };
+        });
 
-      packages = forEachSystem (
-        system:
+      packages = forEachSystem (system:
         let
           pkgs = import nixpkgs { inherit system; };
           ruby = pkgs.ruby;
-        in
-        {
+        in {
           # Native Rust extension-based recorder (default)
           codetracer-ruby-recorder = mkRubyRecorderPackage pkgs ruby;
           default = self.packages.${system}.codetracer-ruby-recorder;
@@ -340,7 +338,6 @@
               ln -s $out/gems/bin/codetracer-pure-ruby-recorder $out/bin/codetracer-pure-ruby-recorder
             '';
           };
-        }
-      );
+        });
     };
 }

@@ -251,7 +251,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 5,
-        "r": "#<Animal >"
+        "r": "#<Animal:receiver-0>"
       }
     }
   },
@@ -303,7 +303,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 5,
-            "r": "#<Animal >"
+            "r": "#<Animal:receiver-0>"
           }
         },
         {
@@ -536,7 +536,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 6,
-        "r": "#<Dog >"
+        "r": "#<Dog:receiver-1>"
       }
     }
   },
@@ -572,7 +572,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 6,
-            "r": "#<Dog >"
+            "r": "#<Dog:receiver-1>"
           }
         },
         {
@@ -626,7 +626,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 6,
-        "r": "#<Dog >"
+        "r": "#<Dog:receiver-1>"
       }
     }
   },
@@ -665,7 +665,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 6,
-            "r": "#<Dog >"
+            "r": "#<Dog:receiver-1>"
           }
         },
         {
@@ -923,7 +923,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 5,
-        "r": "#<Animal cat>"
+        "r": "#<Animal:receiver-0>"
       }
     }
   },
@@ -949,7 +949,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 5,
-            "r": "#<Animal cat>"
+            "r": "#<Animal:receiver-0>"
           }
         }
       ]
@@ -1053,7 +1053,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 6,
-        "r": "#<Dog rex>"
+        "r": "#<Dog:receiver-1>"
       }
     }
   },
@@ -1079,7 +1079,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 6,
-            "r": "#<Dog rex>"
+            "r": "#<Dog:receiver-1>"
           }
         }
       ]
@@ -1097,7 +1097,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 6,
-        "r": "#<Dog rex>"
+        "r": "#<Dog:receiver-1>"
       }
     }
   },
@@ -1116,7 +1116,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 6,
-            "r": "#<Dog rex>"
+            "r": "#<Dog:receiver-1>"
           }
         }
       ]
@@ -1245,7 +1245,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 5,
-        "r": "#<Animal cat>"
+        "r": "#<Animal:receiver-0>"
       }
     }
   },
@@ -1271,7 +1271,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 5,
-            "r": "#<Animal cat>"
+            "r": "#<Animal:receiver-0>"
           }
         }
       ]
@@ -1375,7 +1375,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 6,
-        "r": "#<Dog rex>"
+        "r": "#<Dog:receiver-1>"
       }
     }
   },
@@ -1401,7 +1401,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 6,
-            "r": "#<Dog rex>"
+            "r": "#<Dog:receiver-1>"
           }
         }
       ]

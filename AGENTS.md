@@ -12,31 +12,32 @@ To run the test suite, execute:
 just test
 ```
 
-The test suite executes a number of sample programs in `test/programs` under
+The test suite executes the sample programs in `test/programs` under
 **two separate recorders, by design**:
 
-* `gems/codetracer-ruby-recorder` — the production recorder, a Rust native
-  extension. Emits CTFS v3 binary trace bundles (`<prog>.ct`).
-* `gems/codetracer-pure-ruby-recorder` — a pure-Ruby reference
-  implementation. Emits the legacy 3-file JSON shape (`trace.json`,
-  `trace_metadata.json`, `trace_paths.json`).
+* `gems/codetracer-ruby-recorder` — **the production recorder**, a Rust
+  native extension. Writes a `.ct` recording, which CodeTracer opens.
+* `gems/codetracer-pure-ruby-recorder` — **a test oracle, not a
+  production recorder.** Pure Ruby; writes JSON (`trace.json`,
+  `trace_metadata.json`, `trace_paths.json`). **CodeTracer cannot open
+  its output**, and must not be taught to.
 
-The two recorders exist as a **cross-validation oracle**: every test
-program is run through both, and their outputs are compared
-structurally against the same fixtures in `test/fixtures`. For the
-native recorder the test framework shells out to
-`ct print --json-events` (from `codetracer-trace-format-nim`) and
-normalises the resulting events into the same shape as the pure
-recorder's JSON — see `read_trace` and `normalise_ct_events` in
-`test/test_tracer.rb`. Any behaviour drift between the two
-implementations is caught by structural divergence from the fixtures.
+The testing protocol: run the same program through the pure recorder
+(JSON) and the production recorder (`.ct`), convert the `.ct` with
+`ct print` (`ct-print --json-events`, from `codetracer-trace-format-nim`),
+and compare. `test/test_tracer.rb` does this for every program: the pure
+trace must equal its fixture in `test/fixtures` exactly, and
+`assert_trace_semantic_match(pure_trace, native_trace)` compares the two
+recorders after `read_trace` / `normalise_ct_events` bring the `ct print`
+output into the pure recorder's shape. The comparison refuses a reference
+with no steps or no functions, so it cannot pass vacuously.
 
-The pure-Ruby recorder is **JSON-only by design; do not migrate it to
-CTFS**. Doing so would silently weaken the test suite by removing the
-independent reference. If a shape change is needed, update the pure
-recorder first, regenerate fixtures, and keep `normalise_ct_events` in
-sync. See `gems/codetracer-pure-ruby-recorder/README.md` for the full
-rationale.
+Keep the pure recorder JSON-only (do not migrate it to CTFS), do not add
+a JSON output to the production recorder, and do not offer the pure
+recorder to users as a fallback. If a shape change is needed, update the
+pure recorder first, regenerate fixtures, and keep `normalise_ct_events`
+in sync. See `gems/codetracer-pure-ruby-recorder/README.md` and
+`gems/codetracer-pure-ruby-recorder/AGENTS.md`.
 
 When `just test` fails, I suggest running the two tracers directly and
 analyzing where their outputs differ.

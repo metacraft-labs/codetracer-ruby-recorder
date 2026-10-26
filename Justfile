@@ -2,15 +2,22 @@ alias t := test
 
 cargo_build_target_opt := if os_family() == "windows" { "--target x86_64-pc-windows-gnu" } else { "" }
 
-# Primary build target — required by Repo-Requirements.md §1.3 and
-# §2.4. Builds the native extension via `build-extension`; the
-# packaged gem is produced separately by `build-gem`.
+# Primary build target — required by
+# metacraft-dev-guidelines/policies/repo-requirements.md §3 (the general
+# requirements moved out of Repo-Requirements.md, whose §1.3 no longer
+# exists) and Repo-Requirements.md §2.4. Builds the native extension
+# via `build-extension`; the packaged gem is produced separately by
+# `build-gem`.
 build: build-extension
 
-test: ensure-ct-print
+test: ensure-ct-print cargo-test
     ruby -Itest test/gem_installation.rb
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
     just verify-cli-convention
+
+# Full native Rust tests also belong to both test surfaces.
+cargo-test:
+    cargo test --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
 
 ensure-ct-print:
     @if ! command -v ct-print >/dev/null 2>&1 && [ ! -x ../codetracer-trace-format-nim/ct-print ]; then \
@@ -96,7 +103,7 @@ bump-version version:
     print(f"version.txt: {cur} -> {new}")
 
 # --- M13: Packaging UX Standardization ---
-# Implements Repo-Requirements.md §2.8 packaging UX for the Ruby
+# Implements Repo-Requirements.md §2.5 packaging UX for the Ruby
 # language-ecosystem recorder. Single channel: rubygems.
 
 # Build a release artifact for the given channel.
@@ -213,3 +220,8 @@ record-request-panel-fixture OUT FRAMEWORK="sinatra":
     # opening that session in the GUI does want the code.
     rm -rf "{{OUT}}/meta_dat"
     echo "[fixture] wrote {{OUT}}"
+
+# Entering the dev shell from another git repository must write nothing there.
+# Runs `nix develop`, so it is not part of the in-shell test recipes.
+test-dev-shell:
+    bash tests/test_dev_shell_writes_nothing_elsewhere.sh

@@ -64,9 +64,11 @@ jobs:
           owner: metacraft-labs
 
       - name: Setup dev env (reprobuild flavor)
-        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@dev
+        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@3fcbb26dd920adf6ccc64a87c6d24797ab0b5d94
         with:
           env-flavor: reprobuild
+          repro-from-source: "true"
+          repro-build-pin: "76659f5730ecf698b1963c656494d2cb66eb256d"
           gh-token: ${{ steps.ci_token.outputs.token }}
 
       - name: repro build

@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, dev, stable]
   pull_request:
+    branches-ignore: [agents]
 
 jobs:
   # Build + test through the repo's declared dev env on every supported OS:

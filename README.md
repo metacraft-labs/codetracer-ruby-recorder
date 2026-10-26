@@ -10,22 +10,20 @@ A recorder of Ruby programs that produces [CodeTracer](https://github.com/metacr
 This repository ships **two** gems with different roles:
 
 * [`gems/codetracer-ruby-recorder/`](gems/codetracer-ruby-recorder/) —
-  the production recorder. Rust native extension; emits CTFS v3
-  binary trace bundles (`<prog>.ct`). Use this one in real
-  deployments.
+  **the production recorder.** Rust native extension; writes a `.ct`
+  recording that CodeTracer opens. This is the only Ruby recorder to use.
 * [`gems/codetracer-pure-ruby-recorder/`](gems/codetracer-pure-ruby-recorder/) —
-  a pure-Ruby **reference implementation** that emits the legacy
-  3-file JSON shape (`trace.json`, `trace_metadata.json`,
-  `trace_paths.json`). Kept JSON-only on purpose: the test suite
-  runs every test program through both recorders, normalises the
-  native recorder's CTFS output via `ct print --json-events`, and
-  compares both against the same fixtures. The pure recorder is the
-  independent oracle that keeps the native recorder honest. **Do
-  not migrate it to CTFS** without coordinating with the test
-  framework. See
-  [`gems/codetracer-pure-ruby-recorder/README.md`](gems/codetracer-pure-ruby-recorder/README.md)
-  for the full rationale.
+  **a test oracle, not a production recorder.** A pure-Ruby
+  implementation that writes JSON (`trace.json`, `trace_metadata.json`,
+  `trace_paths.json`). **CodeTracer cannot open its output.** It exists
+  only so the test suite has an independent implementation to compare
+  the production recorder against.
 
+The testing protocol: run the same program through the pure recorder
+(JSON) and the production recorder (`.ct`), convert the `.ct` with
+`ct print` (`ct-print --json-events`), and compare. `test/test_tracer.rb`
+asserts that they agree, for every program in `test/programs/`. See
+[`gems/codetracer-pure-ruby-recorder/README.md`](gems/codetracer-pure-ruby-recorder/README.md).
 
 ### Installing as a gem
 
@@ -34,17 +32,13 @@ gem install codetracer-ruby-recorder
 ```
 
 The command downloads a prebuilt native extension when available and falls back
-to building it from source. If this fails, install the pure Ruby version:
-
-```bash
-gem install codetracer-pure-ruby-recorder
-```
+to building it from source. (`codetracer-pure-ruby-recorder` is not a substitute:
+it is a test oracle whose output CodeTracer cannot open.)
 
 After installing, load the tracer:
 
 ```ruby
-require 'codetracer_ruby_recorder' # native implementation
-# require 'codetracer_pure_ruby_recorder' # pure Ruby implementation
+require 'codetracer_ruby_recorder'
 
 recorder = RubyRecorder.new(Dir.pwd)
 recorder.enable_tracing
@@ -69,9 +63,8 @@ ruby gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder [--out-dir DIR] 
 # Pass --help to list all options.
 ```
 
-The pure-Ruby fallback (no native extension) preserves the legacy 3-file
-JSON output shape and is intended for environments where the Rust native
-extension cannot be built:
+The pure-Ruby test oracle is run the same way. Its JSON output is for
+comparison in the test suite only; CodeTracer cannot open it:
 
 ```bash
 ruby gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder [--out-dir DIR] <path to ruby file> [-- <program args>]
