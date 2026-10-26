@@ -10,10 +10,14 @@ cargo_build_target_opt := if os_family() == "windows" { "--target x86_64-pc-wind
 # `build-gem`.
 build: build-extension
 
-test: ensure-ct-print
+test: ensure-ct-print cargo-test
     ruby -Itest test/gem_installation.rb
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
     just verify-cli-convention
+
+# Full native Rust tests also belong to both test surfaces.
+cargo-test:
+    cargo test --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
 
 ensure-ct-print:
     @if ! command -v ct-print >/dev/null 2>&1 && [ ! -x ../codetracer-trace-format-nim/ct-print ]; then \

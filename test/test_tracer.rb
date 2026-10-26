@@ -59,6 +59,10 @@ class TraceTest < Minitest::Test
     assert status.success?, "ct-print failed: #{stderr}"
 
     raw_events = JSON.parse(stdout)
+    @native_type_declarations = raw_events.select { |event| event['type'] == 'type' }.to_h do |event|
+      [event.fetch('type_id'), { 'lang_type' => event.fetch('name'),
+                               'kind' => ruby_type_kind_for(event.fetch('name')) }]
+    end
     normalise_ct_events(raw_events)
   end
 
@@ -647,21 +651,42 @@ class TraceTest < Minitest::Test
   # Per `metacraft-specs/policies/recorder-test-requirements.md` §1
   # ("No silent skips"), every skip MUST emit a SKIP: line via Minitest's
   # `skip` so CI surfaces the deferral.
-  NATIVE_SEMANTIC_SKIP = {
-    # RECORDER BUG (codetracer-ruby-recorder issue TBD):
-    # Procs/lambdas surface as different value records depending on the
-    # backend.  The pure recorder treats a Proc as a generic Object (no
-    # instance variables), so it serialises as Struct{}.  The native
-    # recorder routes the same value through `to_s`, producing
-    # Raw{r="#<Proc:0xADDR path:line>"} — an opaque, address-bearing
-    # string.  The two encodings disagree both in `kind` and in the
-    # presence of a non-deterministic memory address.  Until both
-    # backends agree on a Proc encoding (proposal: a typed
-    # ValueRecord::Closure with source location and arity, no address),
-    # the semantic comparison cannot pass.  See file's program-level
-    # comment for the affected fixture.
-    'blocks_procs_lambdas' => 'Proc/Lambda value encoding diverges between pure (Struct{}) and native (Raw with object address)'
-  }.freeze
+  NATIVE_SEMANTIC_SKIP = {}.freeze
+
+  # Approved Ruby-Core-Receiver-Golden-Amendment: only these two fixtures
+  # project implicit receiver addresses. Class, complete Raw shape and alias
+  # identity remain checked; explicit arguments and locals remain untouched.
+  def project_core_receiver_identity(trace, base, native_types: nil)
+    allowed = { 'point_representation' => %w[Point], 'classes' => %w[Animal Dog] }[base]
+    return trace unless allowed
+
+    projected = Marshal.load(Marshal.dump(trace))
+    types = []
+    names = []
+    identities = {}
+    projected.each do |event|
+      types << event.fetch('Type') if event.key?('Type')
+      names << event.fetch('VariableName') if event.key?('VariableName')
+      values = event.key?('Value') ? [event.fetch('Value')] : []
+      values += event.fetch('Call').fetch('args') if event.key?('Call')
+      values.each do |entry|
+        next unless names.fetch(entry.fetch('variable_id')) == 'self'
+        value = entry.fetch('value')
+        type = (native_types || types).fetch(value.fetch('type_id'))
+        next unless allowed.include?(type.fetch('lang_type'))
+        assert_equal 16, type.fetch('kind'), 'receiver type must remain Raw'
+        assert_equal %w[kind r type_id], value.keys.sort, 'complete receiver Raw shape'
+        assert_equal 'Raw', value.fetch('kind')
+        class_name = type.fetch('lang_type')
+        rendering = value.fetch('r')
+        assert_match(/\A#<#{Regexp.escape(class_name)}:0x[0-9a-f]+>\z/, rendering,
+                     'actual core receiver identity must include its class and address')
+        identities[rendering] ||= identities.length
+        value['r'] = "#<#{class_name}:receiver-#{identities.fetch(rendering)}>"
+      end
+    end
+    projected
+  end
 
   Dir.glob(File.join(FIXTURE_DIR, '*_trace.json')).each do |fixture|
     base = File.basename(fixture, '_trace.json')
@@ -674,6 +699,9 @@ class TraceTest < Minitest::Test
       expected = expected_trace("#{base}.rb")
 
       # Pure recorder: exact structural match against fixture.
+      pure_trace = project_core_receiver_identity(pure_trace, base)
+      refute_nil native_trace, 'native recorder produced no trace output'
+      native_trace = project_core_receiver_identity(native_trace, base, native_types: @native_type_declarations)
       assert_equal expected, pure_trace
 
       expected_out = expected_output("#{base}.rb")

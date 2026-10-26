@@ -113,7 +113,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 5,
-        "r": "(, )"
+        "r": "#<Point:receiver-0>"
       }
     }
   },
@@ -165,7 +165,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 5,
-            "r": "(, )"
+            "r": "#<Point:receiver-0>"
           }
         },
         {
@@ -309,7 +309,7 @@
       "value": {
         "kind": "Raw",
         "type_id": 5,
-        "r": "(3, 4)"
+        "r": "#<Point:receiver-0>"
       }
     }
   },
@@ -335,7 +335,7 @@
           "value": {
             "kind": "Raw",
             "type_id": 5,
-            "r": "(3, 4)"
+            "r": "#<Point:receiver-0>"
           }
         }
       ]
