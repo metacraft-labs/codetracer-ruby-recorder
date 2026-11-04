@@ -40,6 +40,10 @@ package codetracer_ruby_recorder:
     "grep"
     "capnp"
     "zstd"
+    # zstd.h + libzstd for the sibling ct-print edge (buildCtPrint compiles
+    # and links against them; ``zstd`` is the CLI only).
+    when not defined(windows):
+      "zstd-dev"
     when defined(linux):
       "gcc"
       "clang"
