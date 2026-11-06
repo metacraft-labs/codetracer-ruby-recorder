@@ -97,7 +97,7 @@ class StdoutCaptureTest < Minitest::Test
           assert_identity_renderings(events, identities, backend)
           writes = events.filter_map { |event| event['Event'] }.select { |event| event['kind'] == 0 }
           assert_equal baseline, writes.map { |event| event.fetch('content') }.join
-          assert writes.all? { |event| event.fetch('metadata') == '' }
+          assert(writes.all? { |event| event.fetch('metadata') == '' })
         else
           ct_print = ENV['CT_PRINT'] || File.expand_path('../../codetracer-trace-format-nim/ct-print', __dir__)
           container = Dir[File.join(output_dir, '**', '*.ct')].fetch(0)
@@ -109,7 +109,7 @@ class StdoutCaptureTest < Minitest::Test
           assert_equal baseline, writes.map { |event| event.fetch('text') }.join
           # Canonical full JSON omits precisely empty metadata (Nim addEventMetadata).
           # Any emitted metadata field here signals unexpected nonempty recorder data.
-          assert writes.all? { |event| !event.key?('metadata') }
+          assert(writes.all? { |event| !event.key?('metadata') })
         end
         assert_equal 'not-stdout', File.read(File.join(root, 'other-stream.txt'))
       end
