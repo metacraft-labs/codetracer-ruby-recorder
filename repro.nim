@@ -48,6 +48,13 @@ package codetracer_ruby_recorder:
     when not defined(windows):
       "pkg-config"
       "openssl"
+      # `zstd` above is the CLI only. `buildCtPrint` compiles and links
+      # ct-print against `zstd.h`/libzstd and names `zstd-dev` on its edge on
+      # POSIX; a constructor called from `build:` cannot provision a tool, so
+      # this package must declare every selector in
+      # build_writer_artifacts.CtPrintToolSelectors (the C compiler is
+      # declared above), or buildCtPrint refuses the package.
+      "zstd-dev"
     when defined(windows):
       "gcc"
       "chocolatey"
