@@ -6,6 +6,7 @@ require 'fileutils'
 require 'open3'
 require 'rbconfig'
 require 'tmpdir'
+require_relative 'utf8_io'
 
 class HCRTest < Minitest::Test
   FIXTURE_DIR = File.expand_path('fixtures/hcr', __dir__)
@@ -71,7 +72,7 @@ class HCRTest < Minitest::Test
     program = File.join(workdir, 'hcr_test_program.rb')
 
     Dir.chdir(File.expand_path('..', __dir__)) do
-      stdout, stderr, status = Open3.capture3(
+      stdout, stderr, status = Utf8IO.capture3(
         RbConfig.ruby, recorder_script, '--out-dir', out_dir, program
       )
       [stdout, stderr, status, out_dir]
@@ -128,7 +129,7 @@ class HCRTest < Minitest::Test
     trace_file = File.join(out_dir, 'trace.json')
     assert File.exist?(trace_file), "Expected trace.json in #{out_dir}"
 
-    trace = JSON.parse(File.read(trace_file))
+    trace = JSON.parse(Utf8IO.read(trace_file))
     step_events = trace.select { |ev| ev.key?('Step') }
     assert step_events.size > 0, 'Trace should contain Step events'
   end
@@ -154,7 +155,7 @@ class HCRTest < Minitest::Test
       # ct-print's --json-events schema uses lowercase `type` tokens
       # (`step`, `call`, `function`, `path`, ...).
       if File.exist?(CT_PRINT)
-        stdout, stderr, st = Open3.capture3(CT_PRINT, '--json-events', ct_file)
+        stdout, stderr, st = Utf8IO.capture3(CT_PRINT, '--json-events', ct_file)
         assert st.success?, "ct-print failed: #{stderr}"
         events = JSON.parse(stdout)
         step_events = events.select { |ev| ev['type'] == 'step' }
@@ -250,7 +251,7 @@ class TestHCRTraceContent < Minitest::Test
     program  = File.join(workdir, 'hcr_test_program.rb')
 
     Dir.chdir(File.expand_path('..', __dir__)) do
-      _stdout, stderr, status = Open3.capture3(
+      _stdout, stderr, status = Utf8IO.capture3(
         RbConfig.ruby, PURE_RECORDER, '--out-dir', out_dir, program
       )
       assert status.success?, "Pure recorder failed: #{stderr}"
@@ -260,8 +261,8 @@ class TestHCRTraceContent < Minitest::Test
     metadata_file = File.join(out_dir, 'trace_metadata.json')
 
     assert File.exist?(trace_file), "Expected trace.json in #{out_dir}"
-    trace    = JSON.parse(File.read(trace_file))
-    metadata = File.exist?(metadata_file) ? JSON.parse(File.read(metadata_file)) : nil
+    trace    = JSON.parse(Utf8IO.read(trace_file))
+    metadata = File.exist?(metadata_file) ? JSON.parse(Utf8IO.read(metadata_file)) : nil
 
     [trace, metadata, out_dir]
   end
@@ -281,7 +282,7 @@ class TestHCRTraceContent < Minitest::Test
     program = File.join(workdir, 'hcr_test_program.rb')
 
     Dir.chdir(File.expand_path('..', __dir__)) do
-      _stdout, _stderr, status = Open3.capture3(
+      _stdout, _stderr, status = Utf8IO.capture3(
         RbConfig.ruby, NATIVE_RECORDER, '--out-dir', out_dir, program
       )
       return nil unless status.success?
@@ -292,7 +293,7 @@ class TestHCRTraceContent < Minitest::Test
     return nil unless File.executable?(CT_PRINT)
 
     ct_file = ct_files.first
-    stdout, _stderr, st = Open3.capture3(CT_PRINT, '--json-events', ct_file)
+    stdout, _stderr, st = Utf8IO.capture3(CT_PRINT, '--json-events', ct_file)
     return nil unless st.success?
 
     JSON.parse(stdout)

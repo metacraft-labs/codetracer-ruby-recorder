@@ -6,6 +6,7 @@ require 'fileutils'
 require 'benchmark'
 require 'optparse'
 require 'rbconfig'
+require_relative '../utf8_io'
 
 PROGRAMS_DIR = File.expand_path('programs', __dir__)
 FIXTURES_DIR = File.expand_path('fixtures', __dir__)
@@ -61,7 +62,7 @@ def trace_valid?(trace_file)
   return false if File.size(trace_file) == 0
 
   begin
-    data = JSON.parse(File.read(trace_file))
+    data = JSON.parse(Utf8IO.read(trace_file))
     return data.is_a?(Array) && !data.empty?
   rescue JSON::ParserError
     return false

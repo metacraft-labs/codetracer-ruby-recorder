@@ -38,6 +38,10 @@ require_relative '../gems/codetracer-rack/lib/codetracer-rack'
 class MinimalRackServer
   CRLF = "\r\n"
 
+  # The port actually bound. Pass 0 to `new` to let the kernel pick a free
+  # ephemeral port; `start` then records the port it was given.
+  attr_reader :port
+
   def initialize(app, port)
     @app = app
     @port = port
@@ -46,6 +50,7 @@ class MinimalRackServer
 
   def start
     @server = TCPServer.new('127.0.0.1', @port)
+    @port = @server.addr[1]
     @running = true
     @thread = Thread.new { accept_loop }
   end
@@ -179,10 +184,13 @@ class TestRackIntegration < Minitest::Test
 
     @app = CodeTracer::Rack::Middleware.new(inner_app)
 
-    # Pick a random port to avoid collisions with parallel test runs
-    @port = 18_900 + rand(100)
-    @server = MinimalRackServer.new(@app, @port)
+    # Bind port 0 so the kernel assigns a free ephemeral port. A port drawn
+    # from a fixed range collides with whatever else on a shared host already
+    # listens there (EADDRINUSE), and wait_for_server could then be answered
+    # by that foreign listener instead of this server.
+    @server = MinimalRackServer.new(@app, 0)
     @server.start
+    @port = @server.port
 
     # Wait briefly for the server to be ready
     wait_for_server

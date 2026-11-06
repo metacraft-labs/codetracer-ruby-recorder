@@ -8,6 +8,7 @@ require 'json'
 require 'tmpdir'
 require 'fileutils'
 require 'rbconfig'
+require_relative 'utf8_io'
 
 class StdoutCaptureTest < Minitest::Test
   def test_real_stdio_preserves_conversion_returns_errors_and_thread_guards
@@ -77,31 +78,31 @@ class StdoutCaptureTest < Minitest::Test
         File.open(File.join(__dir__, 'other-stream.txt'), 'w') { |file| file.write 'not-stdout' }
         $stderr.write "STDERR-CONTROL\n"
       RUBY
-      baseline, baseline_error, status = Open3.capture3(RbConfig.ruby, program)
+      baseline, baseline_error, status = Utf8IO.capture3(RbConfig.ruby, program)
       assert status.success?, baseline_error
       assert_equal "kernel\narray-a\narray-b\nprefix:coerced\nthread-a\nthread-b\n", baseline
       %w[pure native].each do |backend|
         gem = backend == 'pure' ? 'codetracer-pure-ruby-recorder' : 'codetracer-ruby-recorder'
         recorder = File.expand_path("../gems/#{gem}/bin/#{gem}", __dir__)
         output_dir = File.join(root, backend)
-        stdout, stderr, result = Open3.capture3(RbConfig.ruby, recorder, '--out-dir', output_dir, program)
+        stdout, stderr, result = Utf8IO.capture3(RbConfig.ruby, recorder, '--out-dir', output_dir, program)
         assert result.success?, "#{backend}: #{stderr}"
         assert_equal baseline, stdout, "#{backend}: original output and no duplicate delegation"
         assert_equal 1, stderr.lines.count { |line| line.chomp == 'CONVERSION' }, "#{backend}: one conversion"
         assert_equal 1, stderr.lines.count { |line| line.chomp == 'STDERR-CONTROL' }, "#{backend}: stderr unchanged"
-        identities = File.readlines(File.join(root, 'identities.txt'), chomp: true).map { |line| line.split("\t", 2) }.to_h
+        identities = Utf8IO.readlines(File.join(root, 'identities.txt'), chomp: true).map { |line| line.split("\t", 2) }.to_h
         assert_equal identities.fetch('first'), identities.fetch('first-again'), 'same receiver alias'
         refute_equal identities.fetch('first'), identities.fetch('second'), 'distinct receivers retain identity'
         if backend == 'pure'
-          events = JSON.parse(File.read(File.join(output_dir, 'trace.json')))
+          events = JSON.parse(Utf8IO.read(File.join(output_dir, 'trace.json')))
           assert_identity_renderings(events, identities, backend)
           writes = events.filter_map { |event| event['Event'] }.select { |event| event['kind'] == 0 }
           assert_equal baseline, writes.map { |event| event.fetch('content') }.join
-          assert writes.all? { |event| event.fetch('metadata') == '' }
+          assert(writes.all? { |event| event.fetch('metadata') == '' })
         else
           ct_print = ENV['CT_PRINT'] || File.expand_path('../../codetracer-trace-format-nim/ct-print', __dir__)
           container = Dir[File.join(output_dir, '**', '*.ct')].fetch(0)
-          decoded, diagnostics, decoded_status = Open3.capture3(ct_print, '--full', container)
+          decoded, diagnostics, decoded_status = Utf8IO.capture3(ct_print, '--full', container)
           assert decoded_status.success?, diagnostics
           bundle = JSON.parse(decoded)
           assert_identity_renderings(bundle, identities, backend)
@@ -109,9 +110,9 @@ class StdoutCaptureTest < Minitest::Test
           assert_equal baseline, writes.map { |event| event.fetch('text') }.join
           # Canonical full JSON omits precisely empty metadata (Nim addEventMetadata).
           # Any emitted metadata field here signals unexpected nonempty recorder data.
-          assert writes.all? { |event| !event.key?('metadata') }
+          assert(writes.all? { |event| !event.key?('metadata') })
         end
-        assert_equal 'not-stdout', File.read(File.join(root, 'other-stream.txt'))
+        assert_equal 'not-stdout', Utf8IO.read(File.join(root, 'other-stream.txt'))
       end
     end
   end

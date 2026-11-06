@@ -39,6 +39,14 @@ on:
   pull_request:
     branches-ignore: [agents]
 
+# Cancel superseded PR runs only: a new push to a PR makes its previous run
+# moot, and stale runs otherwise hold scarce self-hosted runners. Every other
+# event (mainline push, merge_group, tag, dispatch, schedule) gets a group
+# unique to its run_id, so it is never cancelled and never cancels anything.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   rubygems-bundling:
     runs-on: [self-hosted, linux, x64]
@@ -63,22 +71,31 @@ jobs:
           path: codetracer-launcher
           gh-token: ${{ steps.app-token.outputs.token }}
 
-      - name: Install Nim
-        uses: jiro4989/setup-nim-action@v2
+      # Nix first: `[self-hosted, linux, x64]` can land on an ephemeral
+      # runner whose PATH does not carry `nix` until this action provisions it.
+      - uses: metacraft-labs/devops-modules/.github/setup-nix@dev
         with:
-          nim-version: "2.2.4"
-
-      - name: Install musl-tools
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+          trusted-public-keys: ${{ vars.ATTIC_TRUSTED_PUBLIC_KEY }}
+          substituters: ${{ vars.ATTIC_SUBSTITUTER }}
 
       - name: Build launcher
         working-directory: codetracer-launcher
-        run: bash ./build.sh --target linux-musl-x86_64 --out launcher
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
+        # Nim + Zig from nixpkgs replace jiro4989/setup-nim-action and
+        # `apt-get install musl-tools`: the action's install_nim.sh starts
+        # with `#!/bin/bash` and failed with "bad interpreter" on every run on
+        # the NixOS runners, and there is no apt there. build.sh links the
+        # linux-musl-x86_64 target with `zig cc` when no musl-gcc is on PATH,
+        # the same toolchain codetracer-beam-recorder's smoke test uses. This
+        # job checks the bundled package works, not the launcher's size --
+        # that is codetracer-launcher's size-gate.
+        #
+        # `--inputs-from` resolves `nixpkgs` from this recorder's committed
+        # flake.lock rather than the floating flake registry, so the toolchain
+        # moves only when that lock does. A registry nixpkgs drifted to a
+        # release that removed `ruby_3_3` and broke this job without any
+        # change here. The path is absolute because the step runs in the
+        # launcher checkout.
+        run: nix shell --inputs-from "${{ github.workspace }}/codetracer-ruby-recorder" nixpkgs#nim nixpkgs#zig -c bash ./build.sh --target linux-musl-x86_64 --out launcher
 
       - name: Build bundled gem
         working-directory: codetracer-launcher/packaging/rubygems
@@ -87,14 +104,22 @@ jobs:
           CT_LAUNCHER_BIN: ${{ github.workspace }}/codetracer-launcher/out/launcher
           CT_LAUNCHER_PLATFORM: x86_64-linux
           CT_RECORDER_SRC: ${{ github.workspace }}/codetracer-ruby-recorder/gems/codetracer-ruby-recorder
-        run: ruby build_gem.rb --out dist
+        # Ruby 3.3 from nixpkgs replaces ruby/setup-ruby, which downloads a
+        # prebuilt glibc Ruby that cannot start on the NixOS runners. Pinned
+        # through this recorder's flake.lock (see "Build launcher").
+        run: nix shell --inputs-from "${{ github.workspace }}/codetracer-ruby-recorder" nixpkgs#ruby_3_3 -c ruby build_gem.rb --out dist
 
       - name: Smoke-test the gem
         working-directory: codetracer-launcher/packaging/rubygems
         run: |
-          export GEM_HOME=/tmp/m9-gem
-          export GEM_PATH=/tmp/m9-gem
-          gem install --no-document dist/*.gem
-          out=$(PATH=/tmp/m9-gem/bin:$PATH ct --version)
-          echo "$out"
-          echo "$out" | grep -qE "^ct [0-9]+\.[0-9]+"
+          export GEM_HOME="${RUNNER_TEMP}/m9-gem"
+          export GEM_PATH="$GEM_HOME"
+          # The inner script is single-quoted on purpose: `$GEM_HOME`, `$PATH`
+          # and `$out` must expand in the `nix shell` bash, not here.
+          # shellcheck disable=SC2016
+          nix shell --inputs-from "${{ github.workspace }}/codetracer-ruby-recorder" nixpkgs#ruby_3_3 -c bash -euo pipefail -c '
+            gem install --no-document dist/*.gem
+            out=$(PATH="$GEM_HOME/bin:$PATH" ct --version)
+            echo "$out"
+            echo "$out" | grep -qE "^ct [0-9]+\.[0-9]+"
+          '

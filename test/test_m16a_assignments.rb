@@ -19,6 +19,7 @@ require 'fileutils'
 require 'open3'
 require 'rbconfig'
 require 'tmpdir'
+require_relative 'utf8_io'
 
 class M16aAssignmentTest < Minitest::Test
   ROOT = File.expand_path('..', __dir__)
@@ -46,11 +47,11 @@ class M16aAssignmentTest < Minitest::Test
       '--',
       program_path
     ]
-    stdout, stderr, status = Open3.capture3(*cmd)
+    stdout, stderr, status = Utf8IO.capture3(*cmd)
     raise "tracer failed (#{status}): #{stderr}\nstdout: #{stdout}" unless status.success?
 
     trace_path = File.join(out_dir, 'trace.json')
-    JSON.parse(File.read(trace_path))
+    JSON.parse(Utf8IO.read(trace_path))
   end
 
   # Walk the event stream and resolve every Assignment / BindVariable

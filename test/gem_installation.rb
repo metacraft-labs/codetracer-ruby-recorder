@@ -5,6 +5,7 @@ require 'fileutils'
 require 'open3'
 require 'rbconfig'
 require 'tmpdir'
+require_relative 'utf8_io'
 
 class GemInstallationTest < Minitest::Test
   def run_gem_installation_test(gem_bin, gem_module)
@@ -29,7 +30,7 @@ class GemInstallationTest < Minitest::Test
 
         out_dir = File.join('test', 'tmp', "gem_install_#{gem_bin.tr('-', '_')}")
         FileUtils.rm_rf(out_dir)
-        stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, '-S', gem_bin, '--out-dir', out_dir,
+        stdout, stderr, status = Utf8IO.capture3(env, RbConfig.ruby, '-S', gem_bin, '--out-dir', out_dir,
                                                 File.join('test', 'programs', 'addition.rb'))
         raise "#{gem_bin} failed: #{stderr}" unless status.success?
 
@@ -63,7 +64,7 @@ class GemInstallationTest < Minitest::Test
         RUBY
         script_path = File.join('test', 'tmp', "use_#{gem_bin.tr('-', '_')}.rb")
         File.write(script_path, script)
-        stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, script_path)
+        stdout, stderr, status = Utf8IO.capture3(env, RbConfig.ruby, script_path)
         raise "#{gem_module} library failed: #{stderr}" unless status.success?
 
         expected_out = <<~OUT
