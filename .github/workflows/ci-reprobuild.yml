@@ -76,11 +76,18 @@ jobs:
         with:
           env-flavor: reprobuild
           repro-from-source: "true"
-          # reprobuild v0.2.19. It reads the committed repro.lock schema
+          # reprobuild v0.2.18. It reads the committed repro.lock schema
           # (reprobuild.solved-graph-lock.v3; the earlier 76659f57 read only
           # v2) and keeps a tool's expressionFile in `repro exec`
           # (reprobuild d4e516041).
-          repro-build-pin: "9a08d05e6495fc36e5a31ce4b03795284b5ca366"
+          #
+          # Not v0.2.19: that release imports the `test_certificates`
+          # package from a `test-certificates-tools` checkout, which this
+          # action's Windows sibling provisioning does not clone, so the
+          # Windows source build of repro stops at
+          # `cannot open file: test_certificates/roots`. v0.2.18 has no such
+          # import. Move forward once the action provisions that sibling.
+          repro-build-pin: "413830138a7a73293dfc551d623f7bf2cb0ab62c"
           gh-token: ${{ steps.ci_token.outputs.token }}
           # Trust and populate the org Attic cache (repo variables and the
           # ATTIC_TOKEN secret are already provisioned).
@@ -104,12 +111,13 @@ jobs:
         #
         # The selector is explicit because a bare `test` names this repo's
         # `test/` directory, which reprobuild resolves as a path before it
-        # tries collection names. `.#test` selects the collection. At
-        # v0.2.19 a certifying run still passes the bare name `test` to its
-        # build and fails the same way, so this run does not certify: no
-        # `[certificate_policy]` is enacted in `repro.lock`, so nothing
-        # requires a certificate here. Restore a certifying `repro test`
-        # once reprobuild resolves the collection on that path too.
+        # tries collection names. `.#test` selects the collection. At the
+        # pinned v0.2.18 (and at v0.2.19) a certifying run still passes the
+        # bare name `test` to its build and fails the same way, so this run
+        # does not certify: no `[certificate_policy]` is enacted in
+        # `repro.lock`, so nothing requires a certificate here. Restore a
+        # certifying `repro test` once reprobuild resolves the collection on
+        # that path too.
         run: dev-exec repro test --no-certify '.#test'
 
       - name: just build (cross-check)
