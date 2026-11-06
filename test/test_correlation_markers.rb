@@ -47,6 +47,7 @@ require 'rbconfig'
 require 'tmpdir'
 
 require_relative 'ct_print_support'
+require_relative 'utf8_io'
 
 class CorrelationMarkersTest < Minitest::Test
   include CtPrintSupport
@@ -120,7 +121,7 @@ class CorrelationMarkersTest < Minitest::Test
     out_dir = File.join(dir, 'trace')
     FileUtils.mkdir_p(out_dir)
 
-    stdout, stderr, status = Open3.capture3(
+    stdout, stderr, status = Utf8IO.capture3(
       { 'CT_MARK' => marking ? '1' : '0' },
       RbConfig.ruby, RECORDER, '--out-dir', out_dir, program
     )
@@ -220,7 +221,7 @@ class CorrelationMarkersTest < Minitest::Test
     program = File.join(dir, 'marked.rb')
     File.write(program, MARKER_PROGRAM)
 
-    stdout, stderr, status = Open3.capture3(RbConfig.ruby, '-I', GEM_LIB, program)
+    stdout, stderr, status = Utf8IO.capture3(RbConfig.ruby, '-I', GEM_LIB, program)
 
     assert_predicate status, :success?,
                      "the program failed when it was not being recorded:\n#{stdout}\n#{stderr}"

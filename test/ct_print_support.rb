@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'utf8_io'
+
 # Locating `ct-print`, shared by every suite that needs to read a `.ct`
 # container back.
 #
@@ -24,7 +26,7 @@ module CtPrintSupport
   # embeds each value's raw CBOR blob as a JSON string, so its stdout is not
   # guaranteed to be valid UTF-8.
   def ct_print_events(ct_file)
-    stdout, stderr, status = Open3.capture3(CT_PRINT, '--json-events', ct_file)
+    stdout, stderr, status = Utf8IO.capture3(CT_PRINT, '--json-events', ct_file)
     raise "ct-print failed for #{ct_file}: #{stderr}" unless status.success?
 
     JSON.parse(stdout.dup.force_encoding(Encoding::BINARY).scrub('?'))
@@ -44,7 +46,7 @@ module CtPrintSupport
   # `--json-events` deliberately does not carry the metadata slot, so it cannot
   # be used for this.
   def ct_print_markers(ct_file)
-    stdout, stderr, status = Open3.capture3(CT_PRINT, '--markers', '--json-out', ct_file)
+    stdout, stderr, status = Utf8IO.capture3(CT_PRINT, '--markers', '--json-out', ct_file)
     raise "ct-print --markers failed for #{ct_file}: #{stderr}" unless status.success?
 
     JSON.parse(stdout.dup.force_encoding(Encoding::BINARY).scrub('?'))

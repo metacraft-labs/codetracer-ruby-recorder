@@ -67,6 +67,7 @@ require 'rbconfig'
 require 'tmpdir'
 
 require_relative 'ct_print_support'
+require_relative 'utf8_io'
 
 class RecorderNeverWedgesTest < Minitest::Test
   include CtPrintSupport
@@ -132,7 +133,7 @@ class RecorderNeverWedgesTest < Minitest::Test
     end
 
     Recording.new(timed_out: timed_out, status: status,
-                  output: File.exist?(log) ? File.read(log) : '', out_dir: out_dir)
+                  output: File.exist?(log) ? Utf8IO.read(log) : '', out_dir: out_dir)
   end
 
   def kill_and_reap(pid)
