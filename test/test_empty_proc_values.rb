@@ -10,6 +10,7 @@ require 'open3'
 require 'json'
 require 'rbconfig'
 require_relative 'ct_print_support'
+require_relative 'utf8_io'
 
 class EmptyProcValuesTest < Minitest::Test
   def test_empty_proc_values_keep_local_argument_and_nested_array_siblings
@@ -30,12 +31,12 @@ class EmptyProcValuesTest < Minitest::Test
       RUBY
       recorder = File.expand_path('../gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder', __dir__)
       out = File.join(scratch, 'recording')
-      stdout, stderr, status = Open3.capture3(RbConfig.ruby, recorder, '--out-dir', out, program)
+      stdout, stderr, status = Utf8IO.capture3(RbConfig.ruby, recorder, '--out-dir', out, program)
       assert status.success?, stderr
       assert_equal "17:23:11:29\n", stdout
       files = Dir.glob(File.join(out, '*.ct'))
       assert_equal 1, files.length, 'expected one real recording'
-      decoded, decoder_error, decoder_status = Open3.capture3(CtPrintSupport::CT_PRINT, '--full', files.fetch(0))
+      decoded, decoder_error, decoder_status = Utf8IO.capture3(CtPrintSupport::CT_PRINT, '--full', files.fetch(0))
       assert decoder_status.success?, decoder_error
       bundle = JSON.parse(decoded)
       call = bundle.fetch('events').find { |event| event['kind'] == 'call_entry' && event.fetch('function').end_with?('accept_proc') }

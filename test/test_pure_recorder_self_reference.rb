@@ -16,6 +16,7 @@ require 'fileutils'
 require 'json'
 require 'rbconfig'
 require 'timeout'
+require_relative 'utf8_io'
 
 class PureRecorderSelfReferenceTest < Minitest::Test
   ROOT = File.expand_path('..', __dir__)
@@ -42,8 +43,8 @@ class PureRecorderSelfReferenceTest < Minitest::Test
       Process.wait(pid)
       flunk "recording did not finish within #{DEADLINE_SECONDS}s"
     end
-    assert $?.success?, "traced script failed: #{File.read(err_path)}"
-    File.read(out_path)
+    assert $?.success?, "traced script failed: #{Utf8IO.read(err_path)}"
+    Utf8IO.read(out_path)
   end
 
   def each_hash(node, &block)
@@ -68,7 +69,7 @@ class PureRecorderSelfReferenceTest < Minitest::Test
       recorder.flush_trace
     RUBY
     stdout = run_with_deadline(script_path)
-    [stdout, JSON.parse(File.read(File.join(trace_dir, 'trace.json')))]
+    [stdout, JSON.parse(Utf8IO.read(File.join(trace_dir, 'trace.json')))]
   end
 
   def test_library_use_does_not_record_the_recorders_own_frames
