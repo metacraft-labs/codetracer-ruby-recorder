@@ -9,6 +9,7 @@ require 'set'
 require 'tmpdir'
 
 require_relative 'ct_print_support'
+require_relative 'utf8_io'
 
 class TraceTest < Minitest::Test
   TMP_DIR = File.expand_path('tmp', __dir__)
@@ -46,7 +47,7 @@ class TraceTest < Minitest::Test
   # same fixture comparison works for both recorders.
   def read_trace(out_dir)
     trace_file = File.join(out_dir, 'trace.json')
-    return filter_trace(JSON.parse(File.read(trace_file))) if File.exist?(trace_file)
+    return filter_trace(JSON.parse(Utf8IO.read(trace_file))) if File.exist?(trace_file)
 
     # Look for a .ct file produced by the native (Nim-backed) recorder.
     ct_files = Dir.glob(File.join(out_dir, '*.ct'))
@@ -55,7 +56,7 @@ class TraceTest < Minitest::Test
     ct_file = ct_files.first
     assert File.exist?(CT_PRINT), "ct-print binary not found at #{CT_PRINT}"
 
-    stdout, stderr, status = Open3.capture3(CT_PRINT, '--json-events', ct_file)
+    stdout, stderr, status = Utf8IO.capture3(CT_PRINT, '--json-events', ct_file)
     assert status.success?, "ct-print failed: #{stderr}"
 
     raw_events = JSON.parse(stdout)
@@ -338,7 +339,7 @@ class TraceTest < Minitest::Test
       out_dir = File.join(TMP_DIR, base, tracer_name)
       FileUtils.rm_rf(out_dir)
       FileUtils.mkdir_p(out_dir)
-      stdout, stderr, status = Open3.capture3(RbConfig.ruby, tracer_script, '--out-dir', out_dir, program, *args)
+      stdout, stderr, status = Utf8IO.capture3(RbConfig.ruby, tracer_script, '--out-dir', out_dir, program, *args)
       raise "trace failed: #{stderr}" unless status.success?
 
       trace = read_trace(out_dir)
@@ -355,7 +356,7 @@ class TraceTest < Minitest::Test
       out_dir = File.join(TMP_DIR, "#{base}_dashdash", tracer_name)
       FileUtils.rm_rf(out_dir)
       FileUtils.mkdir_p(out_dir)
-      stdout, stderr, status = Open3.capture3(
+      stdout, stderr, status = Utf8IO.capture3(
         RbConfig.ruby, tracer_script, '--out-dir', out_dir, '--', program, *args
       )
       raise "trace failed: #{stderr}" unless status.success?
@@ -369,13 +370,13 @@ class TraceTest < Minitest::Test
   def expected_output(program_name)
     base = File.basename(program_name, '.rb')
     fixture = File.join(FIXTURE_DIR, "#{base}_output.txt")
-    File.read(fixture)
+    Utf8IO.read(fixture)
   end
 
   def expected_trace(program_name)
     base = File.basename(program_name, '.rb')
     fixture = File.join(FIXTURE_DIR, "#{base}_trace.json")
-    JSON.parse(File.read(fixture))
+    JSON.parse(Utf8IO.read(fixture))
   end
 
   def program_args(base)
@@ -809,7 +810,7 @@ class TraceTest < Minitest::Test
       FileUtils.rm_rf(out_dir)
       FileUtils.mkdir_p(out_dir)
       program = File.join('test', 'programs', "#{base}.rb")
-      _stdout, stderr, status = Open3.capture3(
+      _stdout, stderr, status = Utf8IO.capture3(
         RbConfig.ruby,
         'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder',
         '--out-dir', out_dir, program
@@ -823,7 +824,7 @@ class TraceTest < Minitest::Test
       # call writer.  A working recorder must emit at least one Call entry
       # for the addition.rb program (the `add(1, 2)` invocation).
       assert File.exist?(CT_PRINT), "ct-print binary not found at #{CT_PRINT}"
-      stdout, stderr, status = Open3.capture3(CT_PRINT, '--summary', ct_files.first)
+      stdout, stderr, status = Utf8IO.capture3(CT_PRINT, '--summary', ct_files.first)
       assert status.success?, "ct-print --summary failed: #{stderr}"
 
       calls_line = stdout.lines.find { |l| l =~ /^\s*calls:\s*(\d+)/ }
@@ -846,7 +847,7 @@ class TraceTest < Minitest::Test
       FileUtils.rm_rf(out_dir)
       FileUtils.mkdir_p(out_dir)
       program = File.join('test', 'programs', "#{base}.rb")
-      _stdout, stderr, status = Open3.capture3(
+      _stdout, stderr, status = Utf8IO.capture3(
         RbConfig.ruby,
         'gems/codetracer-ruby-recorder/bin/codetracer-ruby-recorder',
         '--out-dir', out_dir, program
@@ -856,7 +857,7 @@ class TraceTest < Minitest::Test
       ct_files = Dir.glob(File.join(out_dir, '*.ct'))
       refute_empty ct_files, 'native recorder did not produce a .ct trace'
 
-      stdout, stderr, status = Open3.capture3(CT_PRINT, '--json-events', ct_files.first)
+      stdout, stderr, status = Utf8IO.capture3(CT_PRINT, '--json-events', ct_files.first)
       assert status.success?, "ct-print --json-events failed: #{stderr}"
 
       # Parse only the `call` events out of the JSON stream.  We can't
@@ -911,7 +912,7 @@ class TraceTest < Minitest::Test
       FileUtils.mkdir_p(out_dir)
 
       Dir.chdir(File.expand_path('..', __dir__)) do
-        stdout, stderr, status = Open3.capture3(
+        stdout, stderr, status = Utf8IO.capture3(
           RbConfig.ruby, NATIVE_RECORDER_BIN, '--out-dir', out_dir, program
         )
         assert status.success?, "trace failed: #{stderr}"
@@ -922,7 +923,7 @@ class TraceTest < Minitest::Test
       ct_files = Dir.glob(File.join(out_dir, '*.ct'))
       refute_empty ct_files, 'native recorder did not produce a .ct trace'
       assert File.exist?(CT_PRINT), "ct-print binary not found at #{CT_PRINT}"
-      stdout, stderr, status = Open3.capture3(CT_PRINT, '--json', ct_files.first)
+      stdout, stderr, status = Utf8IO.capture3(CT_PRINT, '--json', ct_files.first)
       assert status.success?, "ct-print --json failed: #{stderr}"
       paths = JSON.parse(stdout).fetch('paths')
 
@@ -938,7 +939,7 @@ class TraceTest < Minitest::Test
       out_dir = File.join(TMP_DIR, 'debug_smoke')
       FileUtils.rm_rf(out_dir)
       FileUtils.mkdir_p(out_dir)
-      stdout, stderr, status = Open3.capture3(env, RbConfig.ruby,
+      stdout, stderr, status = Utf8IO.capture3(env, RbConfig.ruby,
                                               'gems/codetracer-pure-ruby-recorder/bin/codetracer-pure-ruby-recorder', '--out-dir', out_dir, File.join('test', 'programs', 'addition.rb'))
       raise "trace failed: #{stderr}" unless status.success?
 
@@ -1020,7 +1021,7 @@ class TraceTest < Minitest::Test
       FileUtils.mkdir_p(out_dir)
       program = File.join('test', 'programs', 'addition.rb')
 
-      _stdout, stderr, status = Open3.capture3(
+      _stdout, stderr, status = Utf8IO.capture3(
         RbConfig.ruby, NATIVE_RECORDER_BIN, '--out-dir', out_dir, program
       )
       assert status.success?, "trace failed: #{stderr}"
@@ -1033,7 +1034,7 @@ class TraceTest < Minitest::Test
       # Kept as a safety net so a regression in the textual rendering
       # is caught even if --full's JSON shape evolves.
       # ----------------------------------------------------------------
-      json_stdout, json_stderr, json_status = Open3.capture3(CT_PRINT, '--json', ct_files.first)
+      json_stdout, json_stderr, json_status = Utf8IO.capture3(CT_PRINT, '--json', ct_files.first)
       assert json_status.success?, "ct-print --json failed: #{json_stderr}"
 
       digest = JSON.parse(json_stdout)
@@ -1069,7 +1070,7 @@ class TraceTest < Minitest::Test
       # (e.g. `{"kind":"Int","i":3,"type_id":0}`) — without it, values
       # would be opaque blobs we could only substring-match against.
       # ----------------------------------------------------------------
-      full_stdout, full_stderr, full_status = Open3.capture3(
+      full_stdout, full_stderr, full_status = Utf8IO.capture3(
         CT_PRINT, '--full', '--strip-paths', ct_files.first
       )
       assert full_status.success?, "ct-print --full failed: #{full_stderr}"
@@ -1316,7 +1317,7 @@ class TraceTest < Minitest::Test
 
         env = { 'CODETRACER_RUBY_RECORDER_OUT_DIR' => out_dir }
         program = File.join('test', 'programs', 'addition.rb')
-        _stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, bin, program)
+        _stdout, stderr, status = Utf8IO.capture3(env, RbConfig.ruby, bin, program)
         assert status.success?, "[#{bin}] trace failed: #{stderr}"
 
         ct_files    = Dir.glob(File.join(out_dir, '*.ct'))
@@ -1342,7 +1343,7 @@ class TraceTest < Minitest::Test
 
         env = { 'CODETRACER_RUBY_RECORDER_DISABLED' => '1' }
         program = File.join('test', 'programs', 'addition.rb')
-        stdout, stderr, status = Open3.capture3(
+        stdout, stderr, status = Utf8IO.capture3(
           env, RbConfig.ruby, bin, '--out-dir', out_dir, program
         )
         assert status.success?, "[#{bin}] disabled-mode failed: #{stderr}"
@@ -1378,7 +1379,7 @@ class TraceTest < Minitest::Test
 
       begin
         program = File.join('test', 'programs', 'addition.rb')
-        _stdout, stderr, status = Open3.capture3(
+        _stdout, stderr, status = Utf8IO.capture3(
           RbConfig.ruby,
           NATIVE_RECORDER_BIN,
           '--out-dir', out_dir,
@@ -1416,7 +1417,7 @@ class TraceTest < Minitest::Test
                  else
                    ['--format', 'json', program]
                  end
-          _stdout, stderr, status = Open3.capture3(RbConfig.ruby, bin, *argv)
+          _stdout, stderr, status = Utf8IO.capture3(RbConfig.ruby, bin, *argv)
           refute status.success?,
                  "[#{bin}] expected non-zero exit for #{flag_form}, got success.\nstderr: #{stderr}"
         end
@@ -1429,7 +1430,7 @@ class TraceTest < Minitest::Test
   def test_no_format_flag_in_help
     [PURE_RECORDER_BIN, NATIVE_RECORDER_BIN].each do |bin|
       Dir.chdir(File.expand_path('..', __dir__)) do
-        stdout, _stderr, status = Open3.capture3(RbConfig.ruby, bin, '--help')
+        stdout, _stderr, status = Utf8IO.capture3(RbConfig.ruby, bin, '--help')
         assert status.success?, "[#{bin}] --help failed"
         refute_match(/--format/, stdout, "[#{bin}] --help must not mention --format")
         refute_match(/CODETRACER_FORMAT/, stdout, "[#{bin}] --help must not mention CODETRACER_FORMAT")
@@ -1442,7 +1443,7 @@ class TraceTest < Minitest::Test
   def test_help_mentions_ct_print
     [PURE_RECORDER_BIN, NATIVE_RECORDER_BIN].each do |bin|
       Dir.chdir(File.expand_path('..', __dir__)) do
-        stdout, _stderr, status = Open3.capture3(RbConfig.ruby, bin, '--help')
+        stdout, _stderr, status = Utf8IO.capture3(RbConfig.ruby, bin, '--help')
         assert status.success?, "[#{bin}] --help failed"
         assert_includes stdout, 'ct print',
                         "[#{bin}] --help must mention `ct print` (canonical CTFS converter)"

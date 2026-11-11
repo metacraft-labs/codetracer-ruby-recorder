@@ -76,7 +76,18 @@ jobs:
         with:
           env-flavor: reprobuild
           repro-from-source: "true"
-          repro-build-pin: "76659f5730ecf698b1963c656494d2cb66eb256d"
+          # reprobuild v0.2.18. It reads the committed repro.lock schema
+          # (reprobuild.solved-graph-lock.v3; the earlier 76659f57 read only
+          # v2) and keeps a tool's expressionFile in `repro exec`
+          # (reprobuild d4e516041).
+          #
+          # Not v0.2.19: that release imports the `test_certificates`
+          # package from a `test-certificates-tools` checkout, which this
+          # action's Windows sibling provisioning does not clone, so the
+          # Windows source build of repro stops at
+          # `cannot open file: test_certificates/roots`. v0.2.18 has no such
+          # import. Move forward once the action provisions that sibling.
+          repro-build-pin: "413830138a7a73293dfc551d623f7bf2cb0ab62c"
           gh-token: ${{ steps.ci_token.outputs.token }}
           # Trust and populate the org Attic cache (repo variables and the
           # ATTIC_TOKEN secret are already provisioned).
@@ -94,8 +105,20 @@ jobs:
         run: dev-exec repro build
 
       - name: repro test
-        # Materialises the `test` collection.
-        run: dev-exec repro test
+        # Materialises the complete `test` collection declared in
+        # `repro.nim` (ABI check, gem installation, the full Ruby suite, the
+        # CLI convention guard, and both Cargo test edges).
+        #
+        # The selector is explicit because a bare `test` names this repo's
+        # `test/` directory, which reprobuild resolves as a path before it
+        # tries collection names. `.#test` selects the collection. At the
+        # pinned v0.2.18 (and at v0.2.19) a certifying run still passes the
+        # bare name `test` to its build and fails the same way, so this run
+        # does not certify: no `[certificate_policy]` is enacted in
+        # `repro.lock`, so nothing requires a certificate here. Restore a
+        # certifying `repro test` once reprobuild resolves the collection on
+        # that path too.
+        run: dev-exec repro test --no-certify '.#test'
 
       - name: just build (cross-check)
         # Re-runs the legacy `just build` path inside the same env so

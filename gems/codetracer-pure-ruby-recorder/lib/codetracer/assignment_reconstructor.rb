@@ -389,7 +389,16 @@ module CodeTracer
       lines = @source_cache[path]
       if lines.nil?
         begin
-          lines = File.readlines(path)
+          # Read the source as UTF-8, Ruby's default source encoding
+          # (https://docs.ruby-lang.org/en/3.4/syntax/comments_rdoc.html#label-encoding+Directive),
+          # not as `Encoding.default_external`, which follows the
+          # locale: under `LC_ALL=C` that is US-ASCII, and the first
+          # non-ASCII byte made the regexps in `classify_assignment_line` raise
+          # `ArgumentError` and abort the traced program.  `scrub`
+          # keeps a line that is not valid UTF-8 (a source with a
+          # different `encoding:` magic comment) from doing the same;
+          # the text only feeds the name heuristics above.
+          lines = File.readlines(path, encoding: Encoding::UTF_8).map(&:scrub)
         rescue StandardError
           # Source unavailable (e.g. eval'd code, dynamically
           # generated stubs).  Cache an empty array so we don't keep
