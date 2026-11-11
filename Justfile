@@ -78,8 +78,11 @@ build-extension:
 format-rust:
     cargo fmt --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
 
+# nixfmt comes from the dev shell's pinned nixpkgs; a missing one is an error,
+# so the verdict does not depend on the caller's ambient PATH.
 format-nix:
-    if command -v nixfmt >/dev/null; then find . -name '*.nix' -print0 | xargs -0 nixfmt; fi
+    command -v nixfmt >/dev/null || { echo "nixfmt not found: run inside the dev shell (nix develop)" >&2; exit 1; }
+    find . -name '*.nix' -not -path './.git/*' -print0 | xargs -0 nixfmt
 
 format-ruby:
     if command -v bundle >/dev/null && bundle exec rubocop -v >/dev/null 2>&1; then bundle exec rubocop -A; else echo "Ruby formatter not available; skipping"; fi
@@ -93,7 +96,8 @@ lint-rust:
     cargo fmt --check --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
 
 lint-nix:
-    if command -v nixfmt >/dev/null; then find . -name '*.nix' -print0 | xargs -0 nixfmt --check; fi
+    command -v nixfmt >/dev/null || { echo "nixfmt not found: run inside the dev shell (nix develop)" >&2; exit 1; }
+    find . -name '*.nix' -not -path './.git/*' -print0 | xargs -0 nixfmt --check
 
 lint-ruby:
     if command -v bundle >/dev/null && bundle exec rubocop -v >/dev/null 2>&1; then bundle exec rubocop; else echo "rubocop not available; skipping"; fi
@@ -247,3 +251,7 @@ record-request-panel-fixture OUT FRAMEWORK="sinatra":
 # Runs `nix develop`, so it is not part of the in-shell test recipes.
 test-dev-shell:
     bash tests/test_dev_shell_writes_nothing_elsewhere.sh
+
+# lint-nix must not depend on an ambient nixfmt. Runs `nix develop`.
+test-lint-nix:
+    bash tests/test_lint_nix_requires_pinned_nixfmt.sh
