@@ -60,6 +60,9 @@ package codetracer_ruby_recorder:
       "zstd-dev"
     when defined(windows):
       "gcc"
+      # From codetracer-trace-format-nim 30bf1a1, buildCtPrint names zstd-dev
+      # on Windows too (a MinGW libzstd), and refuses a package without it.
+      "zstd-dev"
       "chocolatey"
 
   library codetracerRubyRecorder
