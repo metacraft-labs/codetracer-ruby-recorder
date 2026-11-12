@@ -59,7 +59,11 @@ package codetracer_ruby_recorder:
       # declared above), or buildCtPrint refuses the package.
       "zstd-dev"
     when defined(windows):
-      "gcc"
+      # A range, so that path mode refuses an old gcc found first on PATH
+      # (a Windows runner lists Free Pascal's gcc 2.95 ahead of a usable one,
+      # which fails every C compile with "<header>: Invalid argument") and
+      # falls through to the declared archive (WinLibs).
+      "gcc >=12"
       # From codetracer-trace-format-nim 30bf1a1, buildCtPrint names zstd-dev
       # on Windows too (a MinGW libzstd), and refuses a package without it.
       "zstd-dev"
