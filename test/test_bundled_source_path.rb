@@ -33,12 +33,16 @@ class BundledSourcePathTest < Minitest::Test
       program = File.join(dir, 'prog.rb')
       File.write(program, "puts 1\n")
       out = File.join(dir, 'out')
+      # Expanded inside the chdir, as the recorder expands it: the working
+      # directory may resolve through a symlink (macOS /tmp is /private/tmp).
+      expanded = nil
       Dir.chdir(dir) do
+        expanded = File.expand_path('prog.rb')
         CodeTracer::RubyRecorder.bundle_source_file('prog.rb', out)
       end
       sources = File.join(out, 'meta_dat', 'sources')
       assert File.file?(File.join(sources, 'prog.rb'))
-      absolute = File.join(sources, mapped(File.expand_path(program)))
+      absolute = File.join(sources, mapped(expanded))
       assert File.file?(absolute), "missing #{absolute}"
     end
   end
