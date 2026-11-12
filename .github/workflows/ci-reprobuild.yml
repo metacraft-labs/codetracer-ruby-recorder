@@ -100,7 +100,10 @@ jobs:
         # `repro.nim`. Verifies the primary shipping artefact (the
         # recorder binary or extension) materialises through the
         # reprobuild engine identically to `just build`.
-        run: dev-exec repro build
+        # reprobuild v0.2.23 refuses `uses:` declarations without an explicit
+        # provisioning mode ("refusing implicit PATH fallback"); this recipe
+        # resolves its tools from the prepared environment's PATH.
+        run: dev-exec repro build --tool-provisioning=path
 
       - name: repro test
         # Materialises the complete `test` collection declared in
@@ -109,7 +112,7 @@ jobs:
         #
         # Not certifying: no `[certificate_policy]` is enacted in `repro.lock`,
         # so nothing requires a certificate here.
-        run: dev-exec repro test --no-certify
+        run: dev-exec repro test --no-certify --tool-provisioning=path
 
       - name: just build (cross-check)
         # Re-runs the legacy `just build` path inside the same env so
