@@ -110,14 +110,23 @@ module CodeTracer
       trace_ruby_file(program, out_dir, program_args)
     end
 
+    # The path a recorded source file takes under `meta_dat/sources/`: the
+    # recorded path with its root removed. On POSIX that is the leading `/`.
+    # On Windows it is the drive (`C:`) and the separator after it, because
+    # `C:` is not a valid directory name and mkdir refuses it. The replay
+    # backend finds a bundled file by matching trailing components of the
+    # recorded path, so `C:/Users/a/x.rb` is found at `Users/a/x.rb`.
+    def self.bundled_source_relative_path(source_path)
+      source_path.sub(/\A[A-Za-z]:/, '').sub(%r{\A[/\\]+}, '')
+    end
+
     def self.bundle_source_file(program, out_dir)
       return unless program && File.file?(program)
 
       root = File.join(out_dir, 'meta_dat', 'sources')
       paths = [program, File.expand_path(program)].uniq
       paths.each do |source_path|
-        relative = source_path.sub(%r{\A/+}, '')
-        dest = File.join(root, relative)
+        dest = File.join(root, bundled_source_relative_path(source_path))
         FileUtils.mkdir_p(File.dirname(dest))
         FileUtils.cp(source_path, dest)
       end
