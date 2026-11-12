@@ -46,6 +46,9 @@ package codetracer_ruby_recorder:
     elif defined(macosx):
       "clang"
     when not defined(windows):
+      # rb-sys's build script runs bindgen, which loads libclang; the
+      # `clang` driver above does not carry the library.
+      "libclang"
       "pkg-config"
       "openssl"
       # `zstd` above is the CLI only. `buildCtPrint` compiles and links
@@ -94,9 +97,9 @@ package codetracer_ruby_recorder:
       appendRegisteredActionToolIdentityRefs(action.id,
         ["cargo", "rustc", "ruby-recorder-sdk", "nim", "nimble", "git", "capnp", "zstd"])
       when defined(linux):
-        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "libclang", "pkg-config", "openssl"])
       elif defined(macosx):
-        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "libclang", "pkg-config", "openssl"])
       else:
         appendRegisteredActionToolIdentityRefs(action.id, ["gcc"])
     let extensionCopy = fs.copyFile(source = rawBinary, output = extension,
@@ -116,9 +119,9 @@ package codetracer_ruby_recorder:
       appendRegisteredActionToolIdentityRefs(action.id,
         ["cargo", "rustc", "ruby-recorder-sdk", "nim", "nimble", "git", "capnp", "zstd"])
       when defined(linux):
-        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "libclang", "pkg-config", "openssl"])
       elif defined(macosx):
-        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "libclang", "pkg-config", "openssl"])
       else:
         appendRegisteredActionToolIdentityRefs(action.id, ["gcc"])
 
