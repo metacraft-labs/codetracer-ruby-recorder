@@ -215,11 +215,26 @@ $env:LIBCLANG_PATH = $mingwBin
 # (a POSIX bash/sh + coreutils that `just` recipes need), then the rest.
 $pathEntries = @($mingwBin, (Join-Path $msysRoot "usr\bin"),
                  "$cargoHome\bin", $capnpDir, (Join-Path $nimDir "bin"), $justDir)
+# Prepend in reverse, so the entries end up on PATH in the order listed.
+[array]::Reverse($pathEntries)
 foreach ($entry in $pathEntries) {
     if ($env:Path -notlike "*$entry*") {
         $env:Path = "$entry;$($env:Path)"
     }
 }
+
+# The `make` RubyGems runs to build native gem extensions (prism, json, ...).
+# Gem::Ext::Builder uses $MAKE when it is set, else the first `make` on PATH,
+# and on a runner that can be a make from another MSYS environment that
+# rewrites the extension Makefile's `D:/.../ruby.h` dependency to `/D/...`
+# and stops with "No rule to make target". The MinGW64 toolchain's own make
+# (mingw-w64-x86_64-make, installed above) is `mingw32-make.exe` and reads
+# native Windows paths.
+$mingwMake = Join-Path $mingwBin "mingw32-make.exe"
+if (-not (Test-Path -LiteralPath $mingwMake -PathType Leaf)) {
+    throw "MSYS2 MinGW64 make not found at $mingwMake"
+}
+$env:MAKE = $mingwMake
 
 Write-Host "rustc: $((& rustc --version) 2>&1)"
 Write-Host "capnp: $((& capnp --version) 2>&1)"
