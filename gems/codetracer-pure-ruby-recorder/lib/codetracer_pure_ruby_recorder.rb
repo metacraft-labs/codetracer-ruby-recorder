@@ -159,8 +159,16 @@ module CodeTracer
       tracer.ignore('<internal:')
       tracer.ignore('gems/')
 
-      tracer.trace_block do
-        begin
+      # Exit status (Recorder-CLI-Conventions.md §6), the same as the native
+      # recorder's: an exception the traced program leaves uncaught, its
+      # `exit` status, and an internal recorder error raised while it runs
+      # all propagate, so the process ends as `ruby <program>` would
+      # (uncaught exception: message on stderr, exit 1; `exit N`: exit N;
+      # the backtrace also shows the recorder's own frames).
+      # The trace recorded so far is still written. A failure to write it is
+      # a recorder error and replaces the program's status with exit 1.
+      begin
+        tracer.trace_block do
           # Set ARGV to contain the program arguments
           original_argv = ARGV.dup
           ARGV.clear
@@ -168,7 +176,7 @@ module CodeTracer
 
           Kernel.load(program)
         rescue Exception => e
-          if tracer.debug
+          if tracer.debug && !e.is_a?(SystemExit)
             codetracer_original_puts ''
             codetracer_original_puts '==== trace.rb error while tracing program ==='
             codetracer_original_puts 'ERROR'
@@ -177,14 +185,15 @@ module CodeTracer
             codetracer_original_puts '====================='
             codetracer_original_puts ''
           end
+          raise
         ensure
           # Restore original ARGV
           ARGV.clear
           ARGV.concat(original_argv)
         end
+      ensure
+        tracer.record.serialize(program, out_dir)
       end
-
-      tracer.record.serialize(program, out_dir)
       0
     end
 

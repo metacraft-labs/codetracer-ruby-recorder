@@ -72,23 +72,21 @@ jobs:
           owner: metacraft-labs
 
       - name: Setup dev env (reprobuild flavor)
-        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@3fcbb26dd920adf6ccc64a87c6d24797ab0b5d94
+        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@dev
         with:
           env-flavor: reprobuild
-          repro-from-source: "true"
-          # reprobuild v0.2.18. It reads the committed repro.lock schema
-          # (reprobuild.solved-graph-lock.v3; the earlier 76659f57 read only
-          # v2) and keeps a tool's expressionFile in `repro exec`
-          # (reprobuild d4e516041).
-          #
-          # Not v0.2.19: that release imports the `test_certificates`
-          # package from a `test-certificates-tools` checkout, which this
-          # action's Windows sibling provisioning does not clone, so the
-          # Windows source build of repro stops at
-          # `cannot open file: test_certificates/roots`. v0.2.18 has no such
-          # import. Move forward once the action provisions that sibling.
-          repro-build-pin: "413830138a7a73293dfc551d623f7bf2cb0ab62c"
+          # reprobuild v0.2.23 (9dbf4e710d) on every leg. Unix legs build that
+          # commit from source; Windows legs install the v0.2.23 release
+          # archive (arm64 runs the x86_64 one under emulation), because
+          # reprobuild's Windows source bootstrap has no arm64 toolchain.
+          repro-from-source: ${{ runner.os != 'Windows' && 'true' || 'false' }}
+          repro-version: v0.2.23
+          repro-build-pin: "9dbf4e710d7cc0b9a79a4bcd54c931afb6849dd0"
           gh-token: ${{ steps.ci_token.outputs.token }}
+          # A job-scoped broker re-mints the Nix GitHub credential while
+          # setup and the build run, so it outlives the token's one hour.
+          app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
+          app-private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
           # Trust and populate the org Attic cache (repo variables and the
           # ATTIC_TOKEN secret are already provisioned).
           substituters: ${{ vars.SUBSTITUTERS }}
@@ -102,23 +100,19 @@ jobs:
         # `repro.nim`. Verifies the primary shipping artefact (the
         # recorder binary or extension) materialises through the
         # reprobuild engine identically to `just build`.
-        run: dev-exec repro build
+        # reprobuild v0.2.23 refuses `uses:` declarations without an explicit
+        # provisioning mode ("refusing implicit PATH fallback"); this recipe
+        # resolves its tools from the prepared environment's PATH.
+        run: dev-exec repro build --tool-provisioning=path
 
       - name: repro test
         # Materialises the complete `test` collection declared in
         # `repro.nim` (ABI check, gem installation, the full Ruby suite, the
         # CLI convention guard, and both Cargo test edges).
         #
-        # The selector is explicit because a bare `test` names this repo's
-        # `test/` directory, which reprobuild resolves as a path before it
-        # tries collection names. `.#test` selects the collection. At the
-        # pinned v0.2.18 (and at v0.2.19) a certifying run still passes the
-        # bare name `test` to its build and fails the same way, so this run
-        # does not certify: no `[certificate_policy]` is enacted in
-        # `repro.lock`, so nothing requires a certificate here. Restore a
-        # certifying `repro test` once reprobuild resolves the collection on
-        # that path too.
-        run: dev-exec repro test --no-certify '.#test'
+        # Not certifying: no `[certificate_policy]` is enacted in `repro.lock`,
+        # so nothing requires a certificate here.
+        run: dev-exec repro test --no-certify --tool-provisioning=path
 
       - name: just build (cross-check)
         # Re-runs the legacy `just build` path inside the same env so
