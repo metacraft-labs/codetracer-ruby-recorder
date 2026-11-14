@@ -61,6 +61,16 @@ package codetracer_ruby_recorder:
     when defined(windows):
       "gcc"
       "chocolatey"
+    # Workspace siblings, resolved BY PATH: the native extension's
+    # Cargo.toml path-depends on codetracer-trace-format's crates (among
+    # them the Nim-backed codetracer_trace_writer_nim, whose build script
+    # compiles codetracer-trace-format-nim's Nim library), and this recipe
+    # imports codetracer-trace-format-nim's build_writer_artifacts
+    # (ct-print). The storage-contract conformance test calls
+    # codetracer_ctfs::recorder_conformance. Naming them here is what puts
+    # their pinned revisions in this repo's repro.lock.
+    "codetracer-trace-format"
+    "codetracer-trace-format-nim"
 
   library codetracerRubyRecorder
 
@@ -83,8 +93,10 @@ package codetracer_ruby_recorder:
     const extension = releaseRoot / ("codetracer_ruby_recorder." & dlext)
     const nimRoot = "../codetracer-trace-format-nim"
     let cargoInputs = @[manifest, root / "Cargo.lock", root / "src",
+      root / "tests",
       "../codetracer-trace-format/Cargo.toml", "../codetracer-trace-format/src",
       "../codetracer-trace-format/codetracer_trace_writer_nim",
+      "../codetracer-trace-format/codetracer_ctfs",
       nimRoot / "src", nimRoot / "include", nimRoot / "build_ffi.nims",
       nimRoot / "build_ffi_flags.nim"]
     let buildEnv =
