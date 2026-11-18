@@ -132,7 +132,14 @@ package codetracer_ruby_recorder:
       else:
         appendRegisteredActionToolIdentityRefs(action.id, ["gcc"])
 
-    let decoder = buildCtPrint(nimRoot)
+    # The decoder edge runs after the extension build: that cargo build's
+    # ``codetracer_trace_writer_nim`` ``build.rs`` is what installs the
+    # sibling's nimble ``requires`` (``results``, ``stew``) into the nimble
+    # path ``buildCtPrint``'s compile resolves them from (its doc comment
+    # asks a recorder to pass that edge here). Unordered, the two edges race
+    # and the compile fails with "cannot open file: results" on a host whose
+    # nimble store is empty.
+    let decoder = buildCtPrint(nimRoot, after = @[extensionBuild])
     let testInputs = @["test/*.rb", "test/programs", "test/fixtures",
       "gems/*/*.gemspec", "gems/*/lib", "gems/*/bin",
       "gems/*/README.md", "gems/codetracer-ruby-recorder/ext/native_tracer/extconf.rb",
