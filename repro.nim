@@ -46,6 +46,9 @@ package codetracer_ruby_recorder:
     elif defined(macosx):
       "clang"
     when not defined(windows):
+      # rb-sys's build script runs bindgen, which loads libclang; the
+      # `clang` driver above does not carry the library.
+      "libclang"
       "pkg-config"
       "openssl"
       # `zstd` above is the CLI only. `buildCtPrint` compiles and links
@@ -56,7 +59,14 @@ package codetracer_ruby_recorder:
       # declared above), or buildCtPrint refuses the package.
       "zstd-dev"
     when defined(windows):
-      "gcc"
+      # A range, so that path mode refuses an old gcc found first on PATH
+      # (a Windows runner lists Free Pascal's gcc 2.95 ahead of a usable one,
+      # which fails every C compile with "<header>: Invalid argument") and
+      # falls through to the declared archive (WinLibs).
+      "gcc >=12"
+      # From codetracer-trace-format-nim 30bf1a1, buildCtPrint names zstd-dev
+      # on Windows too (a MinGW libzstd), and refuses a package without it.
+      "zstd-dev"
       "chocolatey"
 
   library codetracerRubyRecorder
@@ -94,9 +104,9 @@ package codetracer_ruby_recorder:
       appendRegisteredActionToolIdentityRefs(action.id,
         ["cargo", "rustc", "ruby-recorder-sdk", "nim", "nimble", "git", "capnp", "zstd"])
       when defined(linux):
-        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "libclang", "pkg-config", "openssl"])
       elif defined(macosx):
-        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "libclang", "pkg-config", "openssl"])
       else:
         appendRegisteredActionToolIdentityRefs(action.id, ["gcc"])
     let extensionCopy = fs.copyFile(source = rawBinary, output = extension,
@@ -116,13 +126,20 @@ package codetracer_ruby_recorder:
       appendRegisteredActionToolIdentityRefs(action.id,
         ["cargo", "rustc", "ruby-recorder-sdk", "nim", "nimble", "git", "capnp", "zstd"])
       when defined(linux):
-        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "libclang", "pkg-config", "openssl"])
       elif defined(macosx):
-        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "libclang", "pkg-config", "openssl"])
       else:
         appendRegisteredActionToolIdentityRefs(action.id, ["gcc"])
 
-    let decoder = buildCtPrint(nimRoot)
+    # The decoder edge runs after the extension build: that cargo build's
+    # ``codetracer_trace_writer_nim`` ``build.rs`` is what installs the
+    # sibling's nimble ``requires`` (``results``, ``stew``) into the nimble
+    # path ``buildCtPrint``'s compile resolves them from (its doc comment
+    # asks a recorder to pass that edge here). Unordered, the two edges race
+    # and the compile fails with "cannot open file: results" on a host whose
+    # nimble store is empty.
+    let decoder = buildCtPrint(nimRoot, after = @[extensionBuild])
     let testInputs = @["test/*.rb", "test/programs", "test/fixtures",
       "gems/*/*.gemspec", "gems/*/lib", "gems/*/bin",
       "gems/*/README.md", "gems/codetracer-ruby-recorder/ext/native_tracer/extconf.rb",
