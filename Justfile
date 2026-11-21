@@ -15,6 +15,7 @@ test: ensure-ct-print cargo-test
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
     just verify-cli-convention
     bash tests/test_build_extension_target_dir.sh
+    bash tests/test_recipe_reads_project_files_from_its_root.sh
 
 # Full native Rust tests also belong to both test surfaces.
 cargo-test:

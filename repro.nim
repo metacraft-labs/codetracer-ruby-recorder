@@ -22,6 +22,19 @@ proc rubyAction(tool, id: string; args: seq[string];
     scratchDirs = @["test/tmp", ".repro/build/ruby-test-tmp"],
     cacheable = false)
 
+proc gemVersion(): string =
+  ## The gems' version, from ``version.txt`` at this project's root.
+  ##
+  ## Read through ``activeProviderProjectRoot()``, never the working
+  ## directory: a consumer such as CodeTracer runs this recipe as a
+  ## cross-repo producer from its own root. Before a request arrives the
+  ## provider also runs every ``build:`` body once with no project root (the
+  ## startup pass), where nothing this body registers survives; the file is
+  ## not read there, and the version is a placeholder.
+  if providerStartupBodyActive():
+    return "0.0.0"
+  readFile(activeProviderProjectRoot() / "version.txt").strip
+
 package codetracer_ruby_recorder:
   uses:
     "rustc >=1.85"
@@ -155,8 +168,8 @@ package codetracer_ruby_recorder:
       else: @["gcc"]
     let gemInstall = rubyAction("ruby-recorder-sdk", "codetracer-ruby-recorder.gem-installation",
       @["-Itest", "test/gem_installation.rb"], @[abi, testsRun.action], testInputs,
-      outputs = @["gems/codetracer-ruby-recorder/codetracer-ruby-recorder-" & readFile("version.txt").strip & ".gem",
-        "gems/codetracer-pure-ruby-recorder/codetracer-pure-ruby-recorder-" & readFile("version.txt").strip & ".gem"],
+      outputs = @["gems/codetracer-ruby-recorder/codetracer-ruby-recorder-" & gemVersion() & ".gem",
+        "gems/codetracer-pure-ruby-recorder/codetracer-pure-ruby-recorder-" & gemVersion() & ".gem"],
       extraEnv = testEnv,
       refs = @["just", "cargo", "rustc", "nim", "nimble", "git", "bash",
         "capnp", "zstd", "cp", "mv", "rm", "readlink"] & gemCompilerRefs)
