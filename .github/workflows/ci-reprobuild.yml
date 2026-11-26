@@ -77,18 +77,10 @@ jobs:
           WINDOWS_DIY_ARCH_OVERRIDE: ${{ runner.os == 'Windows' && runner.arch == 'ARM64' && 'x64' || '' }}
         with:
           env-flavor: reprobuild
-          # The Reprobuild engine is the fleet pin: `pins/reprobuild.json` in
-          # metacraft-labs/metacraft-github-actions (d1bf1f06, v0.2.34). Every
-          # leg builds that revision from source (Windows ARM64 as x64 under
-          # emulation), so CI runs the engine the fleet runs; it has no release
-          # archive to install. The companion pins are that revision's own
-          # flake.lock entries. These literals follow that pin file and move
-          # with it.
-          repro-from-source: "true"
-          repro-build-pin: "d1bf1f065aca01b90c3bbdddc57d14e977f49e1a"
-          repro-runquota-pin: "6ff973131e7f715f0237cb0f08b8dd16cbeba0dc"
-          repro-io-mon-pin: "b1c32599f9cd671b150f68de2b21bdc9ae0c42be"
-          repro-stackable-hooks-pin: "c34e3252d413361a0f250d8921e00c119d30e114"
+          # The Reprobuild engine is the fleet pin, the action's default:
+          # `pins/reprobuild.json` in metacraft-labs/metacraft-github-actions,
+          # with the companion revisions that pinned revision locks. Windows
+          # ARM64 runs it as x64 under emulation.
           gh-token: ${{ steps.ci_token.outputs.token }}
           # A job-scoped broker re-mints the Nix GitHub credential while
           # setup and the build run, so it outlives the token's one hour.
