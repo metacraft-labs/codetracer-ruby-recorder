@@ -34,22 +34,50 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `tool-provisioning-overrides` is the per-tool provisioning override
+        # set the two repro steps below run under
+        # (REPRO_TOOL_PROVISIONING_OVERRIDES, `<package>=<mode>,...`).
+        # From reprobuild v0.2.31 on, `--tool-provisioning=path` takes every
+        # tool from PATH and nothing else: a tool PATH lacks fails resolution
+        # instead of falling back to an archive or Nix. The flake dev shell
+        # supplies most of `repro.nim`'s `uses:` on Linux and macOS, but not
+        # these three:
+        #
+        # - `ruby-recorder-sdk`, this repo's pinned Ruby SDK
+        #   (`ruby_sdk_tools.nim`). It has only a Nix realization, and no
+        #   executable on PATH carries its identity.
+        # - `libclang` and `zstd-dev`, which select headers and libraries.
+        #   Path mode can take neither from PATH.
+        #
+        # Each is realized by its package's Nix arm, which is what v0.2.29's
+        # path-mode fall-through did implicitly. On Windows `zstd-dev` comes
+        # from its MSYS2 archive arm. `ruby-recorder-sdk` has no Windows
+        # realization yet, so the Windows legs still stop at it.
+        #
+        # The overrides are set here and not in a committed
+        # `repro-workspace.toml`: that file would make this repository a
+        # workspace root, and its override table cannot differ per platform.
         include:
           - os: linux
             arch: x64
             runner: [self-hosted, linux, x64]
+            tool-provisioning-overrides: "ruby-recorder-sdk=nix,libclang=nix,zstd-dev=nix"
           - os: linux
             arch: arm64
             runner: [self-hosted, linux, arm64]
+            tool-provisioning-overrides: "ruby-recorder-sdk=nix,libclang=nix,zstd-dev=nix"
           - os: macos
             arch: arm64
             runner: [self-hosted, macos, arm64]
+            tool-provisioning-overrides: "ruby-recorder-sdk=nix,libclang=nix,zstd-dev=nix"
           - os: windows
             arch: x64
             runner: [self-hosted, windows, x64]
+            tool-provisioning-overrides: "zstd-dev=tarball"
           - os: windows
             arch: arm64
             runner: [self-hosted, windows, arm64]
+            tool-provisioning-overrides: "zstd-dev=tarball"
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -72,23 +100,21 @@ jobs:
           owner: metacraft-labs
 
       - name: Setup dev env (reprobuild flavor)
-        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@3fcbb26dd920adf6ccc64a87c6d24797ab0b5d94
+        uses: metacraft-labs/metacraft-github-actions/setup-dev-env@dev
         with:
           env-flavor: reprobuild
-          repro-from-source: "true"
-          # reprobuild v0.2.18. It reads the committed repro.lock schema
-          # (reprobuild.solved-graph-lock.v3; the earlier 76659f57 read only
-          # v2) and keeps a tool's expressionFile in `repro exec`
-          # (reprobuild d4e516041).
-          #
-          # Not v0.2.19: that release imports the `test_certificates`
-          # package from a `test-certificates-tools` checkout, which this
-          # action's Windows sibling provisioning does not clone, so the
-          # Windows source build of repro stops at
-          # `cannot open file: test_certificates/roots`. v0.2.18 has no such
-          # import. Move forward once the action provisions that sibling.
-          repro-build-pin: "413830138a7a73293dfc551d623f7bf2cb0ab62c"
+          # reprobuild v0.2.36 (37a109c4e1) on every leg. Unix legs build that
+          # commit from source; Windows legs install the v0.2.36 release
+          # archive (arm64 runs the x86_64 one under emulation), because
+          # reprobuild's Windows source bootstrap has no arm64 toolchain.
+          repro-from-source: ${{ runner.os != 'Windows' && 'true' || 'false' }}
+          repro-version: v0.2.36
+          repro-build-pin: "37a109c4e1cf650e6eb79b11d9fadf6e49e64614"
           gh-token: ${{ steps.ci_token.outputs.token }}
+          # A job-scoped broker re-mints the Nix GitHub credential while
+          # setup and the build run, so it outlives the token's one hour.
+          app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
+          app-private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
           # Trust and populate the org Attic cache (repo variables and the
           # ATTIC_TOKEN secret are already provisioned).
           substituters: ${{ vars.SUBSTITUTERS }}
@@ -102,23 +128,23 @@ jobs:
         # `repro.nim`. Verifies the primary shipping artefact (the
         # recorder binary or extension) materialises through the
         # reprobuild engine identically to `just build`.
-        run: dev-exec repro build
+        # reprobuild v0.2.23 refuses `uses:` declarations without an explicit
+        # provisioning mode ("refusing implicit PATH fallback"); this recipe
+        # resolves its tools from the prepared environment's PATH.
+        env:
+          REPRO_TOOL_PROVISIONING_OVERRIDES: ${{ matrix.tool-provisioning-overrides }}
+        run: dev-exec repro build --tool-provisioning=path
 
       - name: repro test
         # Materialises the complete `test` collection declared in
         # `repro.nim` (ABI check, gem installation, the full Ruby suite, the
         # CLI convention guard, and both Cargo test edges).
         #
-        # The selector is explicit because a bare `test` names this repo's
-        # `test/` directory, which reprobuild resolves as a path before it
-        # tries collection names. `.#test` selects the collection. At the
-        # pinned v0.2.18 (and at v0.2.19) a certifying run still passes the
-        # bare name `test` to its build and fails the same way, so this run
-        # does not certify: no `[certificate_policy]` is enacted in
-        # `repro.lock`, so nothing requires a certificate here. Restore a
-        # certifying `repro test` once reprobuild resolves the collection on
-        # that path too.
-        run: dev-exec repro test --no-certify '.#test'
+        # Not certifying: no `[certificate_policy]` is enacted in `repro.lock`,
+        # so nothing requires a certificate here.
+        env:
+          REPRO_TOOL_PROVISIONING_OVERRIDES: ${{ matrix.tool-provisioning-overrides }}
+        run: dev-exec repro test --no-certify --tool-provisioning=path
 
       - name: just build (cross-check)
         # Re-runs the legacy `just build` path inside the same env so

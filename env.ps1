@@ -163,8 +163,9 @@ $msysBash = Join-Path $msysRoot "usr\bin\bash.exe"
 $mingwBin = Join-Path $msysRoot "mingw64\bin"
 $mingwRuby = Join-Path $mingwBin "ruby.exe"
 $mingwGcc = Join-Path $mingwBin "gcc.exe"
+$msysMake = Join-Path $msysRoot "usr\bin\make.exe"
 
-if ((Test-Path $mingwRuby) -and (Test-Path $mingwGcc)) {
+if ((Test-Path $mingwRuby) -and (Test-Path $mingwGcc) -and (Test-Path $msysMake)) {
     Write-Host "MSYS2 MinGW Ruby + gcc already installed at $msysRoot"
 } else {
     if ($arch -ne "x64") { throw "MSYS2 provisioning in this script only supports x64." }
@@ -215,11 +216,25 @@ $env:LIBCLANG_PATH = $mingwBin
 # (a POSIX bash/sh + coreutils that `just` recipes need), then the rest.
 $pathEntries = @($mingwBin, (Join-Path $msysRoot "usr\bin"),
                  "$cargoHome\bin", $capnpDir, (Join-Path $nimDir "bin"), $justDir)
+# Prepend in reverse, so the entries end up on PATH in the order listed.
+[array]::Reverse($pathEntries)
 foreach ($entry in $pathEntries) {
     if ($env:Path -notlike "*$entry*") {
         $env:Path = "$entry;$($env:Path)"
     }
 }
+
+# The `make` RubyGems runs to build native gem extensions (prism, json, ...).
+# Gem::Ext::Builder uses $MAKE when it is set, else the first `make` on PATH.
+# It must be MSYS2's own make (the msys `make` package, in usr\bin): on a
+# mingw32 build, mkmf writes the extension Makefile's paths in MSYS form
+# (`/D/.../ruby.h`, mkmf.rb `mkintpath`: "mingw uses make from msys"), which
+# only the MSYS runtime maps back to `D:\...`. Any other make on PATH stops
+# with "No rule to make target", and so does the native mingw32-make.
+if (-not (Test-Path -LiteralPath $msysMake -PathType Leaf)) {
+    throw "MSYS2 make not found at $msysMake"
+}
+$env:MAKE = $msysMake
 
 Write-Host "rustc: $((& rustc --version) 2>&1)"
 Write-Host "capnp: $((& capnp --version) 2>&1)"

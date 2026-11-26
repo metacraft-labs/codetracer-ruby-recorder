@@ -33,7 +33,14 @@
 
 require 'fileutils'
 require 'set'
-require 'ostruct'
+# ostruct stopped being a default gem in Ruby 4.0, so it is optional here:
+# OpenStruct values are serialised only when the program loaded it, which
+# the `defined?(OpenStruct)` check in the value encoder already allows for.
+begin
+  require 'ostruct'
+rescue LoadError
+  nil
+end
 require 'pp'
 
 CallRecord = Struct.new(:function_id, :args) do

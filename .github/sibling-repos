@@ -2,3 +2,5 @@
 # revisions (see codetracer-specs/Testing/Cross-Repo-CI-Integration.md).
 codetracer-trace-format
 codetracer-trace-format-nim
+nim-stew
+nim-results

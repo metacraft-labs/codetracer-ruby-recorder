@@ -40,12 +40,27 @@ package codetracer_ruby_recorder:
     "grep"
     "capnp"
     "zstd"
+    # Workspace siblings the build reads by path: the extension's Cargo
+    # build compiles codetracer-trace-format's crates and, through its
+    # ``codetracer_trace_writer_nim`` adapter, codetracer-trace-format-nim's
+    # Nim library; this recipe imports that repo's ``build_writer_artifacts``;
+    # and the ct-print edge below compiles from nim-stew and nim-results (the
+    # trace-format-nim package's nimble ``requires``). Naming them here is
+    # what pins them in ``repro.lock``, so CI clones the revisions the build
+    # was tested against.
+    "codetracer-trace-format"
+    "codetracer-trace-format-nim"
+    "nim-stew"
+    "nim-results"
     when defined(linux):
       "gcc"
       "clang"
     elif defined(macosx):
       "clang"
     when not defined(windows):
+      # rb-sys's build script runs bindgen, which loads libclang; the
+      # `clang` driver above does not carry the library.
+      "libclang"
       "pkg-config"
       "openssl"
       # `zstd` above is the CLI only. `buildCtPrint` compiles and links
@@ -56,7 +71,14 @@ package codetracer_ruby_recorder:
       # declared above), or buildCtPrint refuses the package.
       "zstd-dev"
     when defined(windows):
-      "gcc"
+      # A range, so that path mode refuses an old gcc found first on PATH
+      # (a Windows runner lists Free Pascal's gcc 2.95 ahead of a usable one,
+      # which fails every C compile with "<header>: Invalid argument") and
+      # falls through to the declared archive (WinLibs).
+      "gcc >=12"
+      # From codetracer-trace-format-nim 30bf1a1, buildCtPrint names zstd-dev
+      # on Windows too (a MinGW libzstd), and refuses a package without it.
+      "zstd-dev"
       "chocolatey"
 
   library codetracerRubyRecorder
@@ -94,9 +116,9 @@ package codetracer_ruby_recorder:
       appendRegisteredActionToolIdentityRefs(action.id,
         ["cargo", "rustc", "ruby-recorder-sdk", "nim", "nimble", "git", "capnp", "zstd"])
       when defined(linux):
-        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "libclang", "pkg-config", "openssl"])
       elif defined(macosx):
-        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "libclang", "pkg-config", "openssl"])
       else:
         appendRegisteredActionToolIdentityRefs(action.id, ["gcc"])
     let extensionCopy = fs.copyFile(source = rawBinary, output = extension,
@@ -116,13 +138,24 @@ package codetracer_ruby_recorder:
       appendRegisteredActionToolIdentityRefs(action.id,
         ["cargo", "rustc", "ruby-recorder-sdk", "nim", "nimble", "git", "capnp", "zstd"])
       when defined(linux):
-        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["gcc", "clang", "libclang", "pkg-config", "openssl"])
       elif defined(macosx):
-        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "pkg-config", "openssl"])
+        appendRegisteredActionToolIdentityRefs(action.id, ["clang", "libclang", "pkg-config", "openssl"])
       else:
         appendRegisteredActionToolIdentityRefs(action.id, ["gcc"])
 
-    let decoder = buildCtPrint(nimRoot)
+    # ct-print imports the trace-format-nim package's nimble ``requires``
+    # (``stew``, ``results``). They are compiled from the pinned sibling
+    # checkouts named here and from nowhere else: ``buildCtPrint`` passes
+    # ``--noNimblePath`` with these directories, and Reprobuild compiles Nim on
+    # a scratch HOME, so the user's ``~/.nimble`` (which the cargo build's
+    # ``build.rs`` populates) is never visible to this edge. That is also why
+    # the edge no longer needs ordering after the cargo build.
+    const nimDependencyRoots = ["../nim-stew", "../nim-results"]
+    var nimDependencyDirs: seq[string] = @[]
+    for dependencyRoot in nimDependencyRoots:
+      nimDependencyDirs.add(normalizedPath(activeProviderProjectRoot() / dependencyRoot))
+    let decoder = buildCtPrint(nimRoot, nimDependencyDirs = nimDependencyDirs)
     let testInputs = @["test/*.rb", "test/programs", "test/fixtures",
       "gems/*/*.gemspec", "gems/*/lib", "gems/*/bin",
       "gems/*/README.md", "gems/codetracer-ruby-recorder/ext/native_tracer/extconf.rb",

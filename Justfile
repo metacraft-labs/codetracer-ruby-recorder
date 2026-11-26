@@ -14,6 +14,7 @@ test: ensure-ct-print cargo-test
     ruby -Itest test/gem_installation.rb
     ruby -Itest -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
     just verify-cli-convention
+    bash tests/test_build_extension_target_dir.sh
 
 # Full native Rust tests also belong to both test surfaces.
 cargo-test:
@@ -32,35 +33,56 @@ verify-cli-convention:
 bench pattern="*" write_report="console":
     ruby test/benchmarks/run_benchmarks.rb '{{pattern}}' --write-report={{write_report}}
 
+# The directory the gem's loader (`load_extension!` in
+# gems/codetracer-ruby-recorder/lib/codetracer/native.rb), the gemspec and every
+# consumer read the extension from. `build-extension` passes it to cargo as
+# `--target-dir`, which outranks CARGO_TARGET_DIR / CARGO_BUILD_TARGET_DIR
+# (https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir):
+# runners that export a shared target directory must not move the build to a
+# place nothing reads.
+ext_target_dir := "gems/codetracer-ruby-recorder/ext/native_tracer/target"
+
 build-extension:
-    cargo build {{ cargo_build_target_opt }} --release --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
+    cargo build {{ cargo_build_target_opt }} --release --target-dir {{ ext_target_dir }} --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
     # Only a Windows build promotes the x86_64-pc-windows-gnu output. On Linux
     # and macOS a leftover cross-target directory (an earlier Windows cross
-    # build, or a shared target cache) must not replace the host build.
-    if [ "{{ cargo_build_target_opt }}" = "--target x86_64-pc-windows-gnu" ] && [ -d "gems/codetracer-ruby-recorder/ext/native_tracer/target/x86_64-pc-windows-gnu/release" ]; then \
-        rm -rf gems/codetracer-ruby-recorder/ext/native_tracer/target/release; \
-        cp -r gems/codetracer-ruby-recorder/ext/native_tracer/target/x86_64-pc-windows-gnu/release gems/codetracer-ruby-recorder/ext/native_tracer/target; \
-        mv gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder.dll gems/codetracer-ruby-recorder/ext/native_tracer/target/release/codetracer_ruby_recorder.so; \
+    # build) must not replace the host build.
+    if [ "{{ cargo_build_target_opt }}" = "--target x86_64-pc-windows-gnu" ] && [ -d "{{ ext_target_dir }}/x86_64-pc-windows-gnu/release" ]; then \
+        rm -rf {{ ext_target_dir }}/release; \
+        cp -r {{ ext_target_dir }}/x86_64-pc-windows-gnu/release {{ ext_target_dir }}; \
+        mv {{ ext_target_dir }}/release/codetracer_ruby_recorder.dll {{ ext_target_dir }}/release/codetracer_ruby_recorder.so; \
     fi
-    # Ensure the expected filename exists as a real file (not an absolute symlink)
-    # so that gem build/install works correctly.
-    @release_dir="gems/codetracer-ruby-recorder/ext/native_tracer/target/release"; \
+    # Ensure the name `require` wants exists as a real file (not an absolute
+    # symlink) so that gem build/install works correctly. The copy keeps the
+    # link target's mtime, so a newer cargo output still replaces it below.
+    # cargo names the cdylib `libcodetracer_ruby_recorder.<so|dylib>`; Ruby's
+    # DLEXT is `so` on Linux and `bundle` on macOS. A build that leaves no
+    # such file fails here rather than exiting 0 with nothing for the loader
+    # to load.
+    @release_dir="{{ ext_target_dir }}/release"; \
     dlext=$(ruby -e 'print RbConfig::CONFIG["DLEXT"]' 2>/dev/null || echo "so"); \
     target="$release_dir/codetracer_ruby_recorder.$dlext"; \
     if [ -L "$target" ]; then \
         real=$(readlink -f "$target"); \
         rm "$target"; \
-        cp "$real" "$target"; \
-    elif [ ! -f "$target" ]; then \
-        src="$release_dir/libcodetracer_ruby_recorder.$dlext"; \
-        if [ -f "$src" ]; then cp "$src" "$target"; fi; \
+        cp -p "$real" "$target"; \
+    fi; \
+    for src in "$release_dir/libcodetracer_ruby_recorder.$dlext" "$release_dir/libcodetracer_ruby_recorder.dylib"; do \
+        if [ -f "$src" ] && { [ ! -f "$target" ] || [ "$src" -nt "$target" ]; }; then cp "$src" "$target"; break; fi; \
+    done; \
+    if [ ! -f "$target" ]; then \
+        echo "error: cargo reported success but $target does not exist; $release_dir holds: $(ls -A "$release_dir" 2>/dev/null | tr '\n' ' ')" >&2; \
+        exit 1; \
     fi
 
 format-rust:
     cargo fmt --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
 
+# nixfmt comes from the dev shell's pinned nixpkgs; a missing one is an error,
+# so the verdict does not depend on the caller's ambient PATH.
 format-nix:
-    if command -v nixfmt >/dev/null; then find . -name '*.nix' -print0 | xargs -0 nixfmt; fi
+    command -v nixfmt >/dev/null || { echo "nixfmt not found: run inside the dev shell (nix develop)" >&2; exit 1; }
+    find . -name '*.nix' -not -path './.git/*' -print0 | xargs -0 nixfmt
 
 format-ruby:
     if command -v bundle >/dev/null && bundle exec rubocop -v >/dev/null 2>&1; then bundle exec rubocop -A; else echo "Ruby formatter not available; skipping"; fi
@@ -74,7 +96,8 @@ lint-rust:
     cargo fmt --check --manifest-path gems/codetracer-ruby-recorder/ext/native_tracer/Cargo.toml
 
 lint-nix:
-    if command -v nixfmt >/dev/null; then find . -name '*.nix' -print0 | xargs -0 nixfmt --check; fi
+    command -v nixfmt >/dev/null || { echo "nixfmt not found: run inside the dev shell (nix develop)" >&2; exit 1; }
+    find . -name '*.nix' -not -path './.git/*' -print0 | xargs -0 nixfmt --check
 
 lint-ruby:
     if command -v bundle >/dev/null && bundle exec rubocop -v >/dev/null 2>&1; then bundle exec rubocop; else echo "rubocop not available; skipping"; fi
@@ -228,3 +251,7 @@ record-request-panel-fixture OUT FRAMEWORK="sinatra":
 # Runs `nix develop`, so it is not part of the in-shell test recipes.
 test-dev-shell:
     bash tests/test_dev_shell_writes_nothing_elsewhere.sh
+
+# lint-nix must not depend on an ambient nixfmt. Runs `nix develop`.
+test-lint-nix:
+    bash tests/test_lint_nix_requires_pinned_nixfmt.sh
