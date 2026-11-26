@@ -103,13 +103,13 @@ jobs:
         uses: metacraft-labs/metacraft-github-actions/setup-dev-env@dev
         with:
           env-flavor: reprobuild
-          # reprobuild v0.2.33 (688303d4b1) on every leg. Unix legs build that
-          # commit from source; Windows legs install the v0.2.33 release
+          # reprobuild v0.2.36 (37a109c4e1) on every leg. Unix legs build that
+          # commit from source; Windows legs install the v0.2.36 release
           # archive (arm64 runs the x86_64 one under emulation), because
           # reprobuild's Windows source bootstrap has no arm64 toolchain.
           repro-from-source: ${{ runner.os != 'Windows' && 'true' || 'false' }}
-          repro-version: v0.2.33
-          repro-build-pin: "688303d4b132c42deeaa7bcca77b008e3f0f8b8c"
+          repro-version: v0.2.36
+          repro-build-pin: "37a109c4e1cf650e6eb79b11d9fadf6e49e64614"
           gh-token: ${{ steps.ci_token.outputs.token }}
           # A job-scoped broker re-mints the Nix GitHub credential while
           # setup and the build run, so it outlives the token's one hour.

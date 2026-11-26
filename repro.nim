@@ -40,6 +40,18 @@ package codetracer_ruby_recorder:
     "grep"
     "capnp"
     "zstd"
+    # Workspace siblings the build reads by path: the extension's Cargo
+    # build compiles codetracer-trace-format's crates and, through its
+    # ``codetracer_trace_writer_nim`` adapter, codetracer-trace-format-nim's
+    # Nim library; this recipe imports that repo's ``build_writer_artifacts``;
+    # and the ct-print edge below compiles from nim-stew and nim-results (the
+    # trace-format-nim package's nimble ``requires``). Naming them here is
+    # what pins them in ``repro.lock``, so CI clones the revisions the build
+    # was tested against.
+    "codetracer-trace-format"
+    "codetracer-trace-format-nim"
+    "nim-stew"
+    "nim-results"
     when defined(linux):
       "gcc"
       "clang"
@@ -132,14 +144,18 @@ package codetracer_ruby_recorder:
       else:
         appendRegisteredActionToolIdentityRefs(action.id, ["gcc"])
 
-    # The decoder edge runs after the extension build: that cargo build's
-    # ``codetracer_trace_writer_nim`` ``build.rs`` is what installs the
-    # sibling's nimble ``requires`` (``results``, ``stew``) into the nimble
-    # path ``buildCtPrint``'s compile resolves them from (its doc comment
-    # asks a recorder to pass that edge here). Unordered, the two edges race
-    # and the compile fails with "cannot open file: results" on a host whose
-    # nimble store is empty.
-    let decoder = buildCtPrint(nimRoot, after = @[extensionBuild])
+    # ct-print imports the trace-format-nim package's nimble ``requires``
+    # (``stew``, ``results``). They are compiled from the pinned sibling
+    # checkouts named here and from nowhere else: ``buildCtPrint`` passes
+    # ``--noNimblePath`` with these directories, and Reprobuild compiles Nim on
+    # a scratch HOME, so the user's ``~/.nimble`` (which the cargo build's
+    # ``build.rs`` populates) is never visible to this edge. That is also why
+    # the edge no longer needs ordering after the cargo build.
+    const nimDependencyRoots = ["../nim-stew", "../nim-results"]
+    var nimDependencyDirs: seq[string] = @[]
+    for dependencyRoot in nimDependencyRoots:
+      nimDependencyDirs.add(normalizedPath(activeProviderProjectRoot() / dependencyRoot))
+    let decoder = buildCtPrint(nimRoot, nimDependencyDirs = nimDependencyDirs)
     let testInputs = @["test/*.rb", "test/programs", "test/fixtures",
       "gems/*/*.gemspec", "gems/*/lib", "gems/*/bin",
       "gems/*/README.md", "gems/codetracer-ruby-recorder/ext/native_tracer/extconf.rb",

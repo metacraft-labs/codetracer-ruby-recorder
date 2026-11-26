@@ -25,11 +25,11 @@
     # inside the Nix sandbox) and pass their paths through
     # CODETRACER_TRACE_FORMAT_NIM_EXTRA_PATHS.
     nim-stew = {
-      url = "github:status-im/nim-stew/master";
+      url = "github:metacraft-labs/nim-stew/codetracer";
       flake = false;
     };
     nim-results = {
-      url = "github:arnetheduck/nim-results/master";
+      url = "github:metacraft-labs/nim-results/codetracer";
       flake = false;
     };
   };
